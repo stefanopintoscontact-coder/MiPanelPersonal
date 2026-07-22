@@ -690,11 +690,11 @@ export default function Home() {
         }`}
       >
         <div>
-          <div className="p-3 sm:p-4 flex items-center justify-between border-b border-slate-800">
+          <div className={`p-3 sm:p-4 flex items-center ${sidebarAbierto ? 'justify-between' : 'justify-start'} border-b border-slate-800`}>
             {sidebarAbierto && <h1 className="font-bold text-lg text-indigo-400 tracking-wide">Panel Personal</h1>}
             <button
               onClick={() => setSidebarAbierto(!sidebarAbierto)}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer flex items-center justify-center gap-2 mx-auto md:mx-0"
+              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer flex items-center justify-center gap-2"
               title={sidebarAbierto ? 'Cerrar Menú' : 'Abrir Menú'}
             >
               <span className="text-xs font-bold uppercase tracking-wider">{sidebarAbierto ? '✕ Cerrar' : '☰ Menú'}</span>
@@ -748,7 +748,7 @@ export default function Home() {
       </aside>
 
       {/* CONTENIDO PRINCIPAL */}
-      <main className="flex-1 p-3.5 sm:p-6 md:p-8 overflow-y-auto max-h-screen">
+      <main className="flex-1 p-3.5 sm:p-6 md:p-8 overflow-y-auto">
         
         {/* HEADER TOP BAR CON FECHA, RELOJ Y CLIMA */}
         <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 bg-slate-900/60 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
