@@ -116,7 +116,9 @@ export default function Home() {
   // Pestaña Activa
   const [seccionActiva, setSeccionActiva] = useState<'general' | 'finanzas' | 'habitos' | 'nutricion' | 'extra' | 'notas'>('general');
   const [subSeccionExtra, setSubSeccionExtra] = useState<'agua' | 'sueno' | 'peso' | 'metas' | 'pomodoro'>('agua');
-  const [sidebarAbierto, setSidebarAbierto] = useState(true);
+  
+  // Estado inicial del Menú Lateral: cerrado en móviles por defecto
+  const [sidebarAbierto, setSidebarAbierto] = useState(false);
 
   // Hora actual en vivo
   const [horaVivo, setHoraVivo] = useState<string>('');
@@ -150,11 +152,11 @@ export default function Home() {
   const [comidas, setComidas] = useState<ItemCalorico[]>(COMIDAS_POR_DEFECTO);
   const [guardandoCalorias, setGuardandoCalorias] = useState(false);
 
-  // Novedades: Hidratación (Agua)
+  // Hidratación (Agua)
   const [aguaMl, setAguaMl] = useState<number>(0);
-  const metaAguaMl = 2500; // Objetivo de 2.5 Litros diario
+  const metaAguaMl = 2500;
 
-  // Novedades: Sueño
+  // Sueño
   const [suenoHoy, setSuenoHoy] = useState<RegistroSueno>({
     fecha: fechaSeleccionada,
     hora_acostarse: '23:00',
@@ -163,16 +165,16 @@ export default function Home() {
     calidad: 4,
   });
 
-  // Novedades: Peso
+  // Peso
   const [historialPeso, setHistorialPeso] = useState<RegistroPeso[]>([]);
   const [nuevoPeso, setNuevoPeso] = useState<string>('');
 
-  // Novedades: Metas (OKRs)
+  // Metas (OKRs)
   const [metas, setMetas] = useState<MetaMensual[]>([]);
   const [nuevaMetaTitulo, setNuevaMetaTitulo] = useState('');
   const [nuevaMetaObjetivo, setNuevaMetaObjetivo] = useState('100');
 
-  // Novedades: Temporizador Pomodoro
+  // Temporizador Pomodoro
   const [pomodoroSegundos, setPomodoroSegundos] = useState<number>(25 * 60);
   const [pomodoroActivo, setPomodoroActivo] = useState<boolean>(false);
   const [pomodoroModo, setPomodoroModo] = useState<'trabajo' | 'descanso'>('trabajo');
@@ -182,6 +184,12 @@ export default function Home() {
   const [guardandoNota, setGuardandoNota] = useState(false);
 
   const [cargando, setCargando] = useState(true);
+
+  // Handler para cambiar de sección y cerrar menú automáticamente en móvil
+  const cambiarSeccion = (id: 'general' | 'finanzas' | 'habitos' | 'nutricion' | 'extra' | 'notas') => {
+    setSeccionActiva(id);
+    setSidebarAbierto(false);
+  };
 
   // Reloj en tiempo real
   useEffect(() => {
@@ -673,20 +681,27 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row font-sans">
       
-      {/* BARRA LATERAL */}
-      <aside className={`bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'w-full md:w-64' : 'w-full md:w-16'}`}>
+      {/* BARRA LATERAL / MENÚ RESPONSIVE */}
+      <aside
+        className={`bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 transition-all duration-300 flex flex-col justify-between shrink-0 ${
+          sidebarAbierto
+            ? 'fixed inset-0 z-50 w-full h-full md:relative md:inset-auto md:w-64 md:h-auto'
+            : 'w-full md:w-16'
+        }`}
+      >
         <div>
-          <div className="p-4 flex items-center justify-between border-b border-slate-800">
+          <div className="p-3 sm:p-4 flex items-center justify-between border-b border-slate-800">
             {sidebarAbierto && <h1 className="font-bold text-lg text-indigo-400 tracking-wide">Panel Personal</h1>}
             <button
               onClick={() => setSidebarAbierto(!sidebarAbierto)}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition mx-auto cursor-pointer"
+              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer flex items-center justify-center gap-2 mx-auto md:mx-0"
+              title={sidebarAbierto ? 'Cerrar Menú' : 'Abrir Menú'}
             >
-              {sidebarAbierto ? '◀' : '▶'}
+              <span className="text-xs font-bold uppercase tracking-wider">{sidebarAbierto ? '✕ Cerrar' : '☰ Menú'}</span>
             </button>
           </div>
 
-          <nav className="p-3 space-y-1.5">
+          <nav className={`p-2 sm:p-3 ${sidebarAbierto ? 'flex flex-col space-y-2' : 'flex flex-row md:flex-col overflow-x-auto gap-1.5 md:space-y-1.5 justify-around md:justify-start'}`}>
             {[
               { id: 'general', label: 'General', icon: '📊' },
               { id: 'finanzas', label: 'Finanzas', icon: '💵' },
@@ -697,12 +712,12 @@ export default function Home() {
             ].map((item) => (
               <button
                 key={item.id}
-                onClick={() => setSeccionActiva(item.id as any)}
-                className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-medium transition cursor-pointer ${
+                onClick={() => cambiarSeccion(item.id as any)}
+                className={`flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer shrink-0 ${
                   seccionActiva === item.id
                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
                     : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
-                }`}
+                } ${sidebarAbierto ? 'w-full justify-start text-base py-3' : 'justify-center'}`}
               >
                 <span className="text-lg">{item.icon}</span>
                 {sidebarAbierto && <span>{item.label}</span>}
@@ -712,7 +727,7 @@ export default function Home() {
         </div>
 
         {sidebarAbierto && (
-          <div className="p-4 border-t border-slate-800 bg-slate-900/50 space-y-3">
+          <div className="p-4 border-t border-slate-800 bg-slate-900/50 space-y-3 mt-auto">
             <div>
               <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider block mb-1">Fecha Activa</label>
               <input
@@ -735,7 +750,7 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-3.5 sm:p-6 md:p-8 overflow-y-auto max-h-screen">
         
-        {/* HEADER TOP BAR CON FECHA, RELOJ, POMODORO Y CLIMA */}
+        {/* HEADER TOP BAR CON FECHA, RELOJ Y CLIMA */}
         <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 bg-slate-900/60 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
           <div>
             <h2 className="text-lg sm:text-2xl font-bold text-slate-100 whitespace-nowrap">
