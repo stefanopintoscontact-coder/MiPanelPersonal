@@ -296,7 +296,6 @@ export default function Home() {
   };
 
   const calcularRachas = async (listaHabitos: Habito[]) => {
-    // Calcula la racha consecutiva de cada hábito en base al historial
     const { data: historial } = await supabase
       .from('registro_habitos')
       .select('habito_id, fecha, completado')
@@ -318,7 +317,6 @@ export default function Home() {
           racha++;
           fechaActual.setDate(fechaActual.getDate() - 1);
         } else if (i === 0) {
-          // Si hoy no se ha marcado aún, verificar si ayer sí se cumplió
           fechaActual.setDate(fechaActual.getDate() - 1);
         } else {
           break;
@@ -673,10 +671,10 @@ export default function Home() {
   const segPomodoro = String(pomodoroSegundos % 60).padStart(2, '0');
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex font-sans">
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row font-sans">
       
       {/* BARRA LATERAL */}
-      <aside className={`bg-slate-900 border-r border-slate-800 transition-all duration-300 flex flex-col justify-between ${sidebarAbierto ? 'w-64' : 'w-20'}`}>
+      <aside className={`bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'w-full md:w-64' : 'w-full md:w-16'}`}>
         <div>
           <div className="p-4 flex items-center justify-between border-b border-slate-800">
             {sidebarAbierto && <h1 className="font-bold text-lg text-indigo-400 tracking-wide">Panel Personal</h1>}
@@ -735,12 +733,12 @@ export default function Home() {
       </aside>
 
       {/* CONTENIDO PRINCIPAL */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto max-h-screen">
+      <main className="flex-1 p-3.5 sm:p-6 md:p-8 overflow-y-auto max-h-screen">
         
         {/* HEADER TOP BAR CON FECHA, RELOJ, POMODORO Y CLIMA */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 bg-slate-900/60 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
           <div>
-            <h2 className="text-2xl font-bold text-slate-100 capitalize">
+            <h2 className="text-lg sm:text-2xl font-bold text-slate-100 whitespace-nowrap">
               {seccionActiva === 'general' && '📊 Resumen General'}
               {seccionActiva === 'finanzas' && '💵 Control Financiero'}
               {seccionActiva === 'habitos' && '⚡ Hábitos Diarios'}
@@ -749,7 +747,7 @@ export default function Home() {
               {seccionActiva === 'notas' && '📝 Notas'}
             </h2>
 
-            <div className="flex flex-wrap items-center gap-3 mt-1.5">
+            <div className="flex flex-wrap items-center justify-start gap-2 mt-1.5 w-full">
               <span className="text-xs font-semibold text-indigo-400 flex items-center gap-1">
                 <span>📅</span> {formatearFechaLarga(fechaSeleccionada)}
               </span>
@@ -757,27 +755,19 @@ export default function Home() {
               <span className="text-xs font-mono font-bold bg-indigo-950 text-indigo-300 px-2.5 py-0.5 rounded-md border border-indigo-800 flex items-center gap-1">
                 <span>🕒</span> {horaVivo || '00:00:00'}
               </span>
-
-              {/* Pomodoro widget en header */}
-              <button
-                onClick={() => { setSeccionActiva('extra'); setSubSeccionExtra('pomodoro'); }}
-                className="text-xs font-mono font-bold bg-amber-950/60 text-amber-300 px-2.5 py-0.5 rounded-md border border-amber-800 flex items-center gap-1.5 hover:bg-amber-900/50 transition cursor-pointer"
-              >
-                <span>⏱️ Pomodoro:</span> {minPomodoro}:{segPomodoro} {pomodoroActivo ? '▶️' : '⏸️'}
-              </button>
             </div>
           </div>
 
           {/* Clima */}
           {clima && (
-            <div className="bg-slate-950 border border-slate-800 px-4 py-2.5 rounded-xl flex items-center gap-3">
-              <span className="text-2xl">🌦️</span>
-              <div>
+            <div className="bg-slate-950 border border-slate-800 px-3.5 py-2.5 rounded-xl flex items-center gap-3 w-full lg:w-auto">
+              <span className="text-2xl shrink-0">🌦️</span>
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-slate-200">{clima.temp}°C</span>
                   <span className="text-xs text-slate-400">• {clima.descripcion}</span>
                 </div>
-                <p className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
+                <p className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1 truncate">
                   <span>📍</span> {clima.ubicacion}
                 </p>
                 <p className="text-[10px] text-amber-400 font-medium max-w-xs mt-0.5">{clima.recomendacion}</p>
@@ -798,7 +788,7 @@ export default function Home() {
             {/* 1. GENERAL */}
             {seccionActiva === 'general' && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                   
                   {/* Card Calorías */}
                   <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl">
@@ -855,48 +845,73 @@ export default function Home() {
 
             {/* 2. FINANZAS */}
             {seccionActiva === 'finanzas' && (
-              <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                <h2 className="text-xl font-semibold text-emerald-400 flex items-center justify-between">
+              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-emerald-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <span>💵 Resumen Financiero</span>
-                  <span className="text-sm font-mono font-bold text-slate-300">
+                  <span className="text-xs sm:text-sm font-mono font-bold text-slate-300">
                     Balance: <span className={balanceFinanciero < 0 ? 'text-rose-400' : 'text-emerald-400'}>${formatearMonto(balanceFinanciero)}</span>
                   </span>
                 </h2>
 
-                <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
-                  <div className="flex justify-between items-center text-xs mb-1">
-                    <span className="text-slate-400 font-medium">Fondo Mensual Consumido:</span>
-                    <span className={`font-mono font-bold ${pctGastoMensual >= 100 ? 'text-rose-400' : 'text-slate-300'}`}>
-                      {pctGastoMensual}%
-                    </span>
+                <div className="space-y-3">
+                  {/* Barra de Fondo Mensual */}
+                  <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+                    <div className="flex justify-between items-center text-xs mb-1">
+                      <span className="text-slate-400 font-medium">Fondo Mensual Consumido:</span>
+                      <span className={`font-mono font-bold ${pctGastoMensual >= 100 ? 'text-rose-400' : 'text-slate-300'}`}>
+                        {pctGastoMensual}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${pctGastoMensual >= 100 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                        style={{ width: `${pctGastoMensual}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${pctGastoMensual >= 100 ? 'bg-rose-500' : 'bg-emerald-500'}`}
-                      style={{ width: `${pctGastoMensual}%` }}
-                    ></div>
+
+                  {/* Barra de Gastos Diarios (Variables) */}
+                  <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <div>
+                        <span className="text-slate-300 font-semibold block">Gastos Diarios (Variables)</span>
+                        <span className="text-[10px] text-slate-400">
+                          Hoy: ${formatearMonto(gastosVariablesHoy)} / Disp: ${formatearMonto(presupuestoDiario)}
+                        </span>
+                      </div>
+                      <span className={`font-mono font-bold ${pctGastoDiario >= 100 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                        {pctGastoDiario}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${pctGastoDiario >= 100 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                        style={{ width: `${pctGastoDiario}%` }}
+                      ></div>
+                    </div>
                   </div>
                 </div>
 
+                {/* Formulario Agregar Transacción */}
                 <form onSubmit={agregarTransaccion} className="space-y-3">
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="text"
                       placeholder="Descripción (ej. Luz, Alquiler, Super)..."
                       value={descripcion}
                       onChange={(e) => setDescripcion(e.target.value)}
-                      className="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="min-w-0 flex-1 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
                     />
                     <input
                       type="number"
                       placeholder="Monto"
                       value={monto}
                       onChange={(e) => setMonto(e.target.value)}
-                      className="w-28 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full sm:w-32 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 
-                  <div className="flex gap-2 items-center flex-wrap">
+                  <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                     <select
                       value={tipo}
                       onChange={(e) => setTipo(e.target.value as 'ingreso' | 'gasto')}
@@ -916,6 +931,18 @@ export default function Home() {
                       ))}
                     </select>
 
+                    {tipo === 'gasto' && (
+                      <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={esFijo}
+                          onChange={(e) => setEsFijo(e.target.checked)}
+                          className="accent-emerald-500 rounded cursor-pointer"
+                        />
+                        <span>📌 Gasto Fijo</span>
+                      </label>
+                    )}
+
                     <button
                       type="submit"
                       className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl font-medium text-sm transition cursor-pointer flex items-center justify-center gap-1"
@@ -933,15 +960,15 @@ export default function Home() {
                   ) : (
                     <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
                       {transacciones.map((t) => (
-                        <div key={t.id} className="bg-slate-900/70 p-3 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-base">{t.tipo === 'ingreso' ? '🟢' : '🔻'}</span>
-                            <div>
-                              <p className="font-semibold text-slate-200">{t.descripcion}</p>
-                              <p className="text-[10px] text-slate-400">{t.categoria}</p>
+                        <div key={t.id} className="bg-slate-900/70 p-3 rounded-xl border border-slate-800 flex items-center justify-between text-xs gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="text-base shrink-0">{t.tipo === 'ingreso' ? '🟢' : '🔻'}</span>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-slate-200 truncate">{t.descripcion}</p>
+                              <p className="text-[10px] text-slate-400">{t.categoria} {t.es_fijo && '• 📌 Fijo'}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 shrink-0">
                             <span className={`font-mono font-bold text-sm ${t.tipo === 'ingreso' ? 'text-emerald-400' : 'text-rose-400'}`}>
                               {t.tipo === 'ingreso' ? '+' : '-'}${formatearMonto(t.monto)}
                             </span>
@@ -962,34 +989,36 @@ export default function Home() {
 
             {/* 3. HÁBITOS */}
             {seccionActiva === 'habitos' && (
-              <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                <div className="flex items-center justify-between">
+              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <h2 className="text-xl font-semibold text-indigo-400">⚡ Hábitos Diarios</h2>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300">
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300 self-start sm:self-auto">
                     {totalCompletados}/{habitos.length} Completados ({porcentajeHabitos}%)
                   </span>
                 </div>
 
-                <form onSubmit={agregarHabito} className="flex gap-2">
+                <form onSubmit={agregarHabito} className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     placeholder="Nuevo hábito..."
                     value={nuevoHabito}
                     onChange={(e) => setNuevoHabito(e.target.value)}
-                    className="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    className="min-w-0 flex-1 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
                   />
-                  <input
-                    type="time"
-                    value={horaObjetivo}
-                    onChange={(e) => setHoraObjetivo(e.target.value)}
-                    className="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
-                  >
-                    ➕ Añadir
-                  </button>
+                  <div className="flex gap-2">
+                    <input
+                      type="time"
+                      value={horaObjetivo}
+                      onChange={(e) => setHoraObjetivo(e.target.value)}
+                      className="flex-1 sm:flex-none bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    />
+                    <button
+                      type="submit"
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
+                    >
+                      ➕ Añadir
+                    </button>
+                  </div>
                 </form>
 
                 <div className="space-y-2">
@@ -1000,21 +1029,21 @@ export default function Home() {
                     return (
                       <div
                         key={h.id}
-                        className={`p-3.5 rounded-xl border flex items-center justify-between transition ${
+                        className={`p-3.5 rounded-xl border flex items-center justify-between transition gap-2 ${
                           completado ? 'bg-indigo-950/40 border-indigo-800/60 text-slate-300' : 'bg-slate-900/70 border-slate-800 text-slate-100'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <button
                             onClick={() => alternarHabito(h.id)}
-                            className={`w-6 h-6 rounded-lg border flex items-center justify-center transition cursor-pointer ${
+                            className={`w-6 h-6 rounded-lg border flex items-center justify-center transition cursor-pointer shrink-0 ${
                               completado ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-slate-600 hover:border-indigo-400'
                             }`}
                           >
                             {completado && '✓'}
                           </button>
-                          <div>
-                            <p className={`text-sm font-medium ${completado ? 'line-through text-slate-400' : ''}`}>
+                          <div className="min-w-0">
+                            <p className={`text-sm font-medium truncate ${completado ? 'line-through text-slate-400' : ''}`}>
                               {h.texto}
                             </p>
                             <p className="text-[10px] text-slate-500">
@@ -1023,9 +1052,8 @@ export default function Home() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          {/* Contador de Racha */}
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-amber-950/60 border border-amber-800/60 text-amber-400 flex items-center gap-1">
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-amber-950/60 border border-amber-800/60 text-amber-400 flex items-center gap-1">
                             🔥 {racha} {racha === 1 ? 'día' : 'días'}
                           </span>
                           <button onClick={() => eliminarHabito(h.id)} className="text-slate-500 hover:text-rose-400 transition cursor-pointer">
@@ -1041,16 +1069,16 @@ export default function Home() {
 
             {/* 4. NUTRICIÓN */}
             {seccionActiva === 'nutricion' && (
-              <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+             <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                 <h2 className="text-xl font-semibold text-amber-400">🔥 Nutrición y Balance Calórico</h2>
 
                 {/* Metabolismo Base */}
-                <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+                <div className="bg-slate-900/80 p-3.5 sm:p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold text-slate-300">Metabolismo Basal (BMR)</p>
                     <p className="text-[10px] text-slate-500">Gasto calórico en reposo absoluto</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
                     <input
                       type="number"
                       value={baseMetabolismo}
@@ -1070,21 +1098,24 @@ export default function Home() {
                     </button>
                   </div>
                   {ejercicios.map((item) => (
-                    <div key={item.id} className="flex gap-2 items-center">
+                    <div key={item.id} className="flex gap-1.5 sm:gap-2 items-center w-full">
                       <input
                         type="text"
                         value={item.nombre}
                         onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)}
-                        className="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                        className="min-w-0 flex-1 bg-slate-900/80 border border-slate-700 rounded-xl px-2 sm:px-3 py-1.5 text-xs text-white"
                       />
                       <input
                         type="number"
                         value={item.calorias}
                         onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))}
-                        className="w-24 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                        className="w-16 sm:w-20 bg-slate-900/80 border border-slate-700 rounded-xl px-2 sm:px-3 py-1.5 text-xs text-white text-right"
                       />
-                      <span className="text-xs text-slate-400">kcal</span>
-                      <button onClick={() => eliminarEjercicio(item.id)} className="text-slate-500 hover:text-rose-400 transition cursor-pointer">
+                      <span className="text-[11px] sm:text-xs text-slate-400 shrink-0">kcal</span>
+                      <button 
+                        onClick={() => eliminarEjercicio(item.id)} 
+                        className="text-slate-500 hover:text-rose-400 shrink-0 p-1 cursor-pointer"
+                      >
                         🗑️
                       </button>
                     </div>
@@ -1100,21 +1131,24 @@ export default function Home() {
                     </button>
                   </div>
                   {comidas.map((item) => (
-                    <div key={item.id} className="flex gap-2 items-center">
+                    <div key={item.id} className="flex gap-1.5 sm:gap-2 items-center w-full">
                       <input
                         type="text"
                         value={item.nombre}
                         onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)}
-                        className="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                        className="min-w-0 flex-1 bg-slate-900/80 border border-slate-700 rounded-xl px-2 sm:px-3 py-1.5 text-xs text-white"
                       />
                       <input
                         type="number"
                         value={item.calorias}
                         onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))}
-                        className="w-24 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                        className="w-16 sm:w-20 bg-slate-900/80 border border-slate-700 rounded-xl px-2 sm:px-3 py-1.5 text-xs text-white text-right"
                       />
-                      <span className="text-xs text-slate-400">kcal</span>
-                      <button onClick={() => eliminarComida(item.id)} className="text-slate-500 hover:text-rose-400 transition cursor-pointer">
+                      <span className="text-[11px] sm:text-xs text-slate-400 shrink-0">kcal</span>
+                      <button 
+                        onClick={() => eliminarComida(item.id)} 
+                        className="text-slate-500 hover:text-rose-400 shrink-0 p-1 cursor-pointer"
+                      >
                         🗑️
                       </button>
                     </div>
@@ -1138,22 +1172,22 @@ export default function Home() {
               </section>
             )}
 
-            {/* 5. SECCIÓN EXTRA (Nuevos Módulos Integrados) */}
+            {/* 5. SECCIÓN EXTRA */}
             {seccionActiva === 'extra' && (
               <div className="space-y-6">
                 {/* Submenú Navegación Extras */}
                 <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
                   {[
-                    { id: 'agua', label: '💧 Hidratación', color: 'cyan' },
-                    { id: 'sueno', label: '😴 Sueño y Descanso', color: 'indigo' },
-                    { id: 'peso', label: '⚖️ Peso y Medidas', color: 'emerald' },
-                    { id: 'metas', label: '🎯 Metas Mensuales', color: 'amber' },
-                    { id: 'pomodoro', label: '⏱️ Pomodoro', color: 'rose' },
+                    { id: 'agua', label: '💧 Hidratación' },
+                    { id: 'sueno', label: '😴 Sueño y Descanso' },
+                    { id: 'peso', label: '⚖️ Peso y Medidas' },
+                    { id: 'metas', label: '🎯 Metas Mensuales' },
+                    { id: 'pomodoro', label: '⏱️ Pomodoro' },
                   ].map((sub) => (
                     <button
                       key={sub.id}
                       onClick={() => setSubSeccionExtra(sub.id as any)}
-                      className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                      className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
                         subSeccionExtra === sub.id
                           ? 'bg-slate-800 text-white border border-slate-700 shadow-md'
                           : 'text-slate-400 hover:bg-slate-900'
@@ -1166,8 +1200,8 @@ export default function Home() {
 
                 {/* SUB 1: HIDRATACIÓN */}
                 {subSeccionExtra === 'agua' && (
-                  <div className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                    <h3 className="text-lg font-semibold text-cyan-400 flex items-center justify-between">
+                  <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                    <h3 className="text-lg font-semibold text-cyan-400 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                       <span>💧 Control de Hidratación</span>
                       <span className="text-sm font-mono font-bold text-slate-300">
                         {aguaMl} / {metaAguaMl} ml ({Math.round((aguaMl / metaAguaMl) * 100)}%)
@@ -1181,22 +1215,22 @@ export default function Home() {
                       ></div>
                     </div>
 
-                    <div className="flex flex-wrap gap-3 justify-center">
+                    <div className="flex flex-wrap gap-2.5 justify-center">
                       <button
                         onClick={() => modificarAgua(250)}
-                        className="bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                        className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
                       >
-                        ➕ 🥤 +250 ml (Vaso)
+                        ➕ 🥤 +250 ml
                       </button>
                       <button
                         onClick={() => modificarAgua(500)}
-                        className="bg-cyan-700 hover:bg-cyan-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                        className="bg-cyan-700 hover:bg-cyan-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
                       >
-                        ➕ 🍾 +500 ml (Botella)
+                        ➕ 🍾 +500 ml
                       </button>
                       <button
                         onClick={() => modificarAgua(-250)}
-                        className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-4 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer"
+                        className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer"
                       >
                         ➖ 250 ml
                       </button>
@@ -1206,10 +1240,10 @@ export default function Home() {
 
                 {/* SUB 2: SUEÑO Y DESCANSO */}
                 {subSeccionExtra === 'sueno' && (
-                  <div className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                  <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                     <h3 className="text-lg font-semibold text-indigo-400">😴 Registro de Sueño y Descanso</h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="text-xs text-slate-400 block mb-1">Hora de acostarse</label>
                         <input
@@ -1229,7 +1263,7 @@ export default function Home() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Calidad del Sueño (1-5 ⭐)</label>
+                        <label className="text-xs text-slate-400 block mb-1">Calidad (1-5 ⭐)</label>
                         <select
                           value={suenoHoy.calidad}
                           onChange={(e) => setSuenoHoy({ ...suenoHoy, calidad: Number(e.target.value) })}
@@ -1260,17 +1294,17 @@ export default function Home() {
 
                 {/* SUB 3: PESO Y MEDIDAS */}
                 {subSeccionExtra === 'peso' && (
-                  <div className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                  <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                     <h3 className="text-lg font-semibold text-emerald-400">⚖️ Registro de Peso Corporal</h3>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="number"
                         step="0.1"
                         placeholder="Tu peso en kg (ej. 75.5)..."
                         value={nuevoPeso}
                         onChange={(e) => setNuevoPeso(e.target.value)}
-                        className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                        className="min-w-0 flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
                       />
                       <button
                         onClick={guardarPeso}
@@ -1300,30 +1334,32 @@ export default function Home() {
 
                 {/* SUB 4: METAS Y OKRs */}
                 {subSeccionExtra === 'metas' && (
-                  <div className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                  <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                     <h3 className="text-lg font-semibold text-amber-400">🎯 Metas y Objetivos del Mes (OKRs)</h3>
 
-                    <form onSubmit={agregarMeta} className="flex gap-2">
+                    <form onSubmit={agregarMeta} className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
                         placeholder="Objetivo principal del mes..."
                         value={nuevaMetaTitulo}
                         onChange={(e) => setNuevaMetaTitulo(e.target.value)}
-                        className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
+                        className="min-w-0 flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
                       />
-                      <input
-                        type="number"
-                        placeholder="Meta %"
-                        value={nuevaMetaObjetivo}
-                        onChange={(e) => setNuevaMetaObjetivo(e.target.value)}
-                        className="w-24 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
-                      />
-                      <button
-                        type="submit"
-                        className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
-                      >
-                        ➕ Crear
-                      </button>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          placeholder="Meta %"
+                          value={nuevaMetaObjetivo}
+                          onChange={(e) => setNuevaMetaObjetivo(e.target.value)}
+                          className="w-24 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
+                        />
+                        <button
+                          type="submit"
+                          className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
+                        >
+                          ➕ Crear
+                        </button>
+                      </div>
                     </form>
 
                     <div className="space-y-3">
@@ -1331,9 +1367,9 @@ export default function Home() {
                         const pct = Math.min(100, Math.round((m.progreso_actual / m.progreso_objetivo) * 100));
                         return (
                           <div key={m.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="font-semibold text-slate-200">{m.titulo}</span>
-                              <span className="font-mono text-amber-400 font-bold">{pct}%</span>
+                            <div className="flex justify-between items-center text-xs gap-2">
+                              <span className="font-semibold text-slate-200 truncate">{m.titulo}</span>
+                              <span className="font-mono text-amber-400 font-bold shrink-0">{pct}%</span>
                             </div>
                             <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
                               <div className="bg-amber-500 h-full rounded-full transition-all duration-300" style={{ width: `${pct}%` }}></div>
@@ -1358,11 +1394,11 @@ export default function Home() {
 
                 {/* SUB 5: POMODORO */}
                 {subSeccionExtra === 'pomodoro' && (
-                  <div className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/50 shadow-xl text-center space-y-6">
-                    <h3 className="text-lg font-semibold text-rose-400">⏱️ Temporizador Pomodoro de Enfoque</h3>
+                  <div className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl text-center space-y-6">
+                    <h3 className="text-lg font-semibold text-rose-400">⏱️ Temporizador Pomodoro</h3>
 
-                    <div className="py-6">
-                      <span className="text-6xl font-mono font-extrabold text-slate-100 tracking-wider">
+                    <div className="py-4">
+                      <span className="text-5xl sm:text-6xl font-mono font-extrabold text-slate-100 tracking-wider">
                         {minPomodoro}:{segPomodoro}
                       </span>
                       <p className="text-xs uppercase tracking-widest text-slate-400 mt-2">
@@ -1373,7 +1409,7 @@ export default function Home() {
                     <div className="flex justify-center gap-3">
                       <button
                         onClick={() => setPomodoroActivo(!pomodoroActivo)}
-                        className={`px-6 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer ${
+                        className={`px-5 sm:px-6 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer ${
                           pomodoroActivo ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-rose-600 hover:bg-rose-500 text-white'
                         }`}
                       >
@@ -1381,7 +1417,7 @@ export default function Home() {
                       </button>
                       <button
                         onClick={() => { setPomodoroActivo(false); setPomodoroSegundos(pomodoroModo === 'trabajo' ? 25 * 60 : 5 * 60); }}
-                        className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer"
+                        className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer"
                       >
                         🔄 Reiniciar
                       </button>
@@ -1393,7 +1429,7 @@ export default function Home() {
 
             {/* 6. NOTAS */}
             {seccionActiva === 'notas' && (
-              <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
+              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
                 <h2 className="text-xl font-semibold text-indigo-400">📝 Notas del Día</h2>
                 <textarea
                   value={notaDiaria}
