@@ -171,13 +171,11 @@ export default function Home() {
 
   const [cargando, setCargando] = useState(true);
 
-  // Handler para cambiar de sección
   const cambiarSeccion = (id: 'general' | 'perfil' | 'finanzas' | 'habitos' | 'nutricion' | 'extra' | 'notas') => {
     setSeccionActiva(id);
     setSidebarAbierto(false);
   };
 
-  // Reloj
   useEffect(() => {
     const actualizarReloj = () => {
       const ahora = new Date();
@@ -336,10 +334,10 @@ export default function Home() {
   // --- MÉTODOS PERFIL ---
   const guardarPerfil = async () => {
     setGuardandoPerfil(true);
-    // Asumimos que hay un solo registro con id 1 o usamos upsert
-    await supabase.from('perfil_usuario').upsert({ id: 1, ...perfil });
+    const { error } = await supabase.from('perfil_usuario').upsert({ id: 1, ...perfil });
     setGuardandoPerfil(false);
-    alert('Perfil guardado correctamente');
+    if (error) alert('❌ Error al guardar perfil: ' + error.message);
+    else alert('✅ Perfil guardado correctamente');
   };
 
   // --- MÉTODOS HÁBITOS ---
@@ -347,7 +345,8 @@ export default function Home() {
     e.preventDefault();
     if (!nuevoHabito.trim()) return;
     const { data, error } = await supabase.from('habitos').insert([{ texto: nuevoHabito, hora_objetivo: horaObjetivo }]).select();
-    if (!error && data) { setHabitos([...habitos, data[0]]); setNuevoHabito(''); }
+    if (error) alert('❌ Error al agregar hábito: ' + error.message);
+    else if (data) { setHabitos([...habitos, data[0]]); setNuevoHabito(''); }
   };
 
   const alternarHabito = async (habitoId: number) => {
@@ -359,19 +358,20 @@ export default function Home() {
       if (!error) {
         setRegistrosHoy((prev) => ({ ...prev, [habitoId]: { habito_id: habitoId, completado: true, hora_completado: horaActual } }));
         calcularRachas(habitos);
-      }
+      } else alert('❌ Error: ' + error.message);
     } else {
       const { error } = await supabase.from('registro_habitos').delete().eq('habito_id', habitoId).eq('fecha', fechaSeleccionada);
       if (!error) {
         setRegistrosHoy((prev) => { const copia = { ...prev }; delete copia[habitoId]; return copia; });
         calcularRachas(habitos);
-      }
+      } else alert('❌ Error: ' + error.message);
     }
   };
 
   const eliminarHabito = async (id: number) => {
     const { error } = await supabase.from('habitos').delete().eq('id', id);
     if (!error) setHabitos(habitos.filter((h) => h.id !== id));
+    else alert('❌ Error: ' + error.message);
   };
 
   // --- MÉTODOS FINANZAS ---
@@ -382,12 +382,14 @@ export default function Home() {
 
     const fechaHora = new Date(`${fechaSeleccionada}T${obtenerHora24()}:00`).toISOString();
     const { data, error } = await supabase.from('transacciones').insert([{ descripcion, monto: numMonto, tipo, categoria, es_fijo: esFijo, fecha: fechaHora }]).select();
-    if (!error && data) { setTransacciones([data[0], ...transacciones]); setMonto(''); setDescripcion(''); setEsFijo(false); }
+    if (error) alert('❌ Error: ' + error.message);
+    else if (data) { setTransacciones([data[0], ...transacciones]); setMonto(''); setDescripcion(''); setEsFijo(false); }
   };
 
   const eliminarTransaccion = async (id: number) => {
     const { error } = await supabase.from('transacciones').delete().eq('id', id);
     if (!error) setTransacciones(transacciones.filter((t) => t.id !== id));
+    else alert('❌ Error: ' + error.message);
   };
 
   // --- MÉTODOS NUTRICIÓN & AGUA ---
@@ -402,13 +404,16 @@ export default function Home() {
   const modificarAgua = async (deltaMl: number) => {
     const nuevaCantidad = Math.max(0, aguaMl + deltaMl);
     setAguaMl(nuevaCantidad);
-    await supabase.from('registro_calorias').upsert({ fecha: fechaSeleccionada, agua_ml: nuevaCantidad, base: bmrCalculado, ejercicios, comidas }, { onConflict: 'fecha' });
+    const { error } = await supabase.from('registro_calorias').upsert({ fecha: fechaSeleccionada, agua_ml: nuevaCantidad, base: bmrCalculado, ejercicios, comidas }, { onConflict: 'fecha' });
+    if (error) alert('❌ Error al actualizar agua: ' + error.message);
   };
 
   const guardarCalorias = async () => {
     setGuardandoCalorias(true);
-    await supabase.from('registro_calorias').upsert({ fecha: fechaSeleccionada, base: bmrCalculado, agua_ml: aguaMl, ejercicios, comidas }, { onConflict: 'fecha' });
+    const { error } = await supabase.from('registro_calorias').upsert({ fecha: fechaSeleccionada, base: bmrCalculado, agua_ml: aguaMl, ejercicios, comidas }, { onConflict: 'fecha' });
     setGuardandoCalorias(false);
+    if (error) alert('❌ Error al guardar calorías: ' + error.message);
+    else alert('✅ Nutrición y ejercicios guardados correctamente');
   };
 
   // --- MÉTODOS EXTRAS ---
@@ -421,14 +426,20 @@ export default function Home() {
     const duracionHoras = parseFloat(((minLevantado - minAcostado) / 60).toFixed(1));
 
     const datosGuardar = { ...suenoHoy, fecha: fechaSeleccionada, horas_totales: duracionHoras };
-    await supabase.from('registro_sueno').upsert(datosGuardar, { onConflict: 'fecha' });
-    setSuenoHoy(datosGuardar);
+    const { error } = await supabase.from('registro_sueno').upsert(datosGuardar, { onConflict: 'fecha' });
+    if (error) alert('❌ Error al guardar sueño: ' + error.message);
+    else {
+      setSuenoHoy(datosGuardar);
+      alert('✅ Sueño guardado correctamente');
+    }
   };
 
   const guardarNota = async () => {
     setGuardandoNota(true);
-    await supabase.from('notas_diarias').upsert({ fecha: fechaSeleccionada, contenido: notaDiaria }, { onConflict: 'fecha' });
+    const { error } = await supabase.from('notas_diarias').upsert({ fecha: fechaSeleccionada, contenido: notaDiaria }, { onConflict: 'fecha' });
     setGuardandoNota(false);
+    if (error) alert('❌ Error al guardar nota: ' + error.message);
+    else alert('✅ Nota guardada correctamente');
   };
 
   // --- CÁLCULOS GLOBALES ---
@@ -561,7 +572,6 @@ export default function Home() {
           <div className="flex items-center gap-4 self-end lg:self-auto w-full lg:w-auto">
             {perfil.nombre && <div className="text-sm font-semibold text-slate-300 hidden sm:block">Hola, <span className="text-indigo-400">{perfil.nombre}</span> 👋</div>}
             
-            {/* Clima Interactivo abriendo app externa / web */}
             {clima && (
               <a 
                 href={`https://www.google.com/search?q=clima+${clima.ubicacion}`} 
@@ -596,7 +606,6 @@ export default function Home() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
                   
-                  {/* Cards Interactivas */}
                   <div onClick={() => cambiarSeccion('nutricion')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-amber-500/50 transition-all">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-xs font-semibold uppercase text-slate-400">Bal. Calórico</span>
@@ -667,7 +676,6 @@ export default function Home() {
                 <h2 className="text-xl font-semibold text-slate-200">👤 Datos Personales y Objetivos</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Bloque Datos Básicos */}
                   <div className="space-y-4 bg-slate-900/50 p-5 rounded-xl border border-slate-800">
                     <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-2">Datos Básicos</h3>
                     <div>
@@ -697,7 +705,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Bloque Objetivos */}
                   <div className="space-y-4 bg-slate-900/50 p-5 rounded-xl border border-slate-800">
                     <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider mb-2">Objetivos Físicos</h3>
                     <div>
@@ -730,7 +737,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <button onClick={guardarPerfil} disabled={guardandoPerfil} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50">
+                <button onClick={guardarPerfil} disabled={guardandoPerfil} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50 cursor-pointer">
                   {guardandoPerfil ? 'Guardando...' : '💾 Guardar Perfil y Actualizar Cálculos'}
                 </button>
               </section>
@@ -870,7 +877,6 @@ export default function Home() {
              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                 <h2 className="text-xl font-semibold text-amber-400">🔥 Nutrición y Balance Calórico</h2>
 
-                {/* Score Nutricional */}
                 <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-700 flex flex-col md:flex-row items-center gap-4">
                   <div className="w-full md:w-auto flex flex-col items-center justify-center p-3 bg-slate-950 rounded-xl border border-slate-800 shrink-0">
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Nota Diaria</span>
@@ -885,7 +891,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Metabolismo Base Automático */}
                 <div className="bg-indigo-950/20 p-4 rounded-xl border border-indigo-900/50 flex justify-between items-center">
                   <div>
                     <p className="text-sm font-semibold text-indigo-300">Metabolismo Basal Calculado (BMR)</p>
@@ -896,7 +901,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Ejercicios */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xs font-semibold uppercase text-slate-400 tracking-wider">🏃 Ejercicios (+Gasto)</h3>
@@ -912,7 +916,6 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Comidas */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xs font-semibold uppercase text-slate-400 tracking-wider">🥗 Comidas del día (+Ingesta)</h3>
@@ -929,12 +932,12 @@ export default function Home() {
                 </div>
 
                 <button onClick={guardarCalorias} disabled={guardandoCalorias} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium text-sm py-2.5 rounded-xl transition cursor-pointer disabled:opacity-50">
-                  {guardandoCalorias ? 'Guardando...' : '💾 Guardar Registro Calórico'}
+                  {guardandoCalorias ? 'Guardando...' : '💾 Guardar Registro Calórico y Ejercicios'}
                 </button>
               </section>
             )}
 
-            {/* 6. EXTRA (Limpio, solo Agua y Sueño) */}
+            {/* 6. EXTRA */}
             {seccionActiva === 'extra' && (
               <div className="space-y-6">
                 <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
@@ -954,7 +957,6 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* SUB 1: HIDRATACIÓN */}
                 {subSeccionExtra === 'agua' && (
                   <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                     <h3 className="text-lg font-semibold text-cyan-400 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
@@ -972,7 +974,6 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* SUB 2: SUEÑO Y DESCANSO */}
                 {subSeccionExtra === 'sueno' && (
                   <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                     <h3 className="text-lg font-semibold text-indigo-400">😴 Registro de Sueño y Descanso</h3>
