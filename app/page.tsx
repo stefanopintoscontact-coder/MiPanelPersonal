@@ -12,7 +12,7 @@ interface PerfilUsuario {
   sexo: 'masculino' | 'femenino';
   objetivo: 'bajar' | 'subir' | 'mantener';
   kilos_objetivo: number;
-  tiempo_objetivo_semanas: number;
+  tiempo_objetivo_meses: number; // Cambiado a MESES
   porcentaje_probabilidad: number;
 }
 
@@ -51,6 +51,7 @@ interface ClimaData {
   recomendacion: string;
   descripcion: string;
   ubicacion: string;
+  icono: string;
 }
 
 interface RegistroSueno {
@@ -108,6 +109,13 @@ const formatearFechaLarga = (fechaStr: string) => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
+// Helper para determinar color según porcentaje (Verde, Amarillo, Rojo)
+const getEstadoBarra = (pct: number) => {
+  if (pct >= 80) return { bar: 'bg-emerald-500', text: 'text-emerald-400' };
+  if (pct >= 50) return { bar: 'bg-amber-500', text: 'text-amber-400' };
+  return { bar: 'bg-rose-500', text: 'text-rose-400' };
+};
+
 export default function Home() {
   // Pestaña Activa
   const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'finanzas' | 'habitos' | 'nutricion' | 'extra' | 'notas'>('general');
@@ -127,7 +135,7 @@ export default function Home() {
     sexo: 'masculino',
     objetivo: 'bajar',
     kilos_objetivo: 5,
-    tiempo_objetivo_semanas: 12,
+    tiempo_objetivo_meses: 3, // Cambiado de semanas a meses
     porcentaje_probabilidad: 85
   });
   const [guardandoPerfil, setGuardandoPerfil] = useState(false);
@@ -197,6 +205,26 @@ export default function Home() {
     cargarDatos();
   }, [fechaSeleccionada]);
 
+  // --- CÁLCULO AUTOMÁTICO DE PROBABILIDAD DE LOGRO ---
+  const probabilidadCalculada = useMemo(() => {
+    if (perfil.objetivo === 'mantener') return 95;
+    if (!perfil.kilos_objetivo || perfil.kilos_objetivo <= 0 || !perfil.tiempo_objetivo_meses || perfil.tiempo_objetivo_meses <= 0) return 50;
+
+    const kgPorMes = perfil.kilos_objetivo / perfil.tiempo_objetivo_meses;
+
+    // Ritmo saludable/realista: 1kg a 3kg por mes
+    if (kgPorMes <= 2.0) return 95;
+    if (kgPorMes <= 3.5) return 80;
+    if (kgPorMes <= 5.0) return 60;
+    if (kgPorMes <= 6.5) return 40;
+    return 20; // Objetivos no realistas (>6.5kg por mes)
+  }, [perfil.objetivo, perfil.kilos_objetivo, perfil.tiempo_objetivo_meses]);
+
+  // Actualiza la probabilidad internamente
+  useEffect(() => {
+    setPerfil(prev => ({ ...prev, porcentaje_probabilidad: probabilidadCalculada }));
+  }, [probabilidadCalculada]);
+
   const obtenerClimaYUbicacion = () => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -219,23 +247,30 @@ export default function Home() {
             if (dataClima.current_weather) {
               const temp = Math.round(dataClima.current_weather.temperature);
               const code = dataClima.current_weather.weathercode;
+              
               let desc = 'Despejado';
-              let rec = 'Día ideal para realizar tus tareas.';
+              let icono = '☀️';
+              let rec = 'Día ideal para realizar tus actividades.';
 
-              if (code >= 1 && code <= 3) desc = 'Parcialmente Nublado';
-              else if (code >= 45 && code <= 48) desc = 'Neblina';
-              else if (code >= 51 && code <= 67) { desc = 'Lluvia / Llovizna'; rec = '⚠️ Lluvia en tu zona. Recordá llevar paraguas.'; }
-              else if (code >= 80 && code <= 82) { desc = 'Chubascos'; rec = '⚠️ Probabilidad de chaparrones.'; }
+              // Mapeo detallado de códigos WMO OpenMeteo
+              if (code === 0) { desc = 'Despejado / Sol'; icono = '☀️'; }
+              else if (code >= 1 && code <= 3) { desc = 'Parcialmente Nublado'; icono = '⛅'; }
+              else if (code >= 45 && code <= 48) { desc = 'Neblina'; icono = '🌫️'; }
+              else if (code >= 51 && code <= 67) { desc = 'Lluvia / Llovizna'; icono = '🌧️'; rec = '⚠️ Lluvia en tu zona. Llevá paraguas si salís.'; }
+              else if (code >= 71 && code <= 77) { desc = 'Nieve'; icono = '❄️'; rec = '⚠️ Nieve. Abrigate muy bien.'; }
+              else if (code >= 80 && code <= 82) { desc = 'Chaparrones'; icono = '🌦️'; rec = '⚠️ Probabilidad de chaparrones aislados.'; }
+              else if (code >= 95) { desc = 'Tormenta Eléctrica'; icono = '⛈️'; rec = '⚠️ Alerta de tormenta. Mantenete a resguardo.'; }
 
-              if (temp >= 26) rec += ' Hace calor, hidrátate bien.';
-              else if (temp <= 12) rec += ' Hace frío, salí abrigado.';
+              // Recomendaciones según temperatura
+              if (temp <= 14) rec = `🧥 Hace frío (${temp}°C). Podés salir pero abrígate bien.`;
+              else if (temp >= 28) rec = `☀️ Hace calor (${temp}°C). Recordá mantenerte bien hidratado.`;
 
-              setClima({ temp, codigoClima: code, descripcion: desc, recomendacion: rec, ubicacion: textoUbicacion });
+              setClima({ temp, codigoClima: code, descripcion: desc, recomendacion: rec, ubicacion: textoUbicacion, icono });
             }
           } catch (e) {}
         },
         () => {
-          setClima({ temp: 18, codigoClima: 0, descripcion: 'Templado', recomendacion: 'Recuerda llevar ropa cómoda según tus actividades.', ubicacion: 'Ubicación local' });
+          setClima({ temp: 18, codigoClima: 0, descripcion: 'Templado', recomendacion: '🧥 Temperatura agradable. Llevá abrigo liviano.', ubicacion: 'Ubicación local', icono: '🌤️' });
         }
       );
     }
@@ -269,7 +304,10 @@ export default function Home() {
     // 0. Perfil de Usuario
     const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').limit(1).maybeSingle();
     if (datosPerfil) {
-      setPerfil(datosPerfil);
+      setPerfil({
+        ...datosPerfil,
+        tiempo_objetivo_meses: datosPerfil.tiempo_objetivo_meses || datosPerfil.tiempo_objetivo_semanas || 3
+      });
     }
 
     // 1. Hábitos
@@ -495,6 +533,12 @@ export default function Home() {
     return { nota: Math.max(0, Math.min(10, Math.round(nota))), mensaje };
   }, [balanceCalorico, perfil.objetivo]);
 
+  // PORCENTAJES PARA RESUMEN GENERAL Y BARRAS
+  const pctCalorias = evaluacionNutricion.nota * 10;
+  const pctAgua = Math.min(100, Math.round((aguaMl / metaAguaMl) * 100));
+  const pctGastosSaludables = Math.max(0, 100 - pctGastoDiario); // Si gasta menos, porcentaje más alto (verde)
+  const pctSueño = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
+
   const diaNumero = parseInt(fechaSeleccionada.split('-')[2] || '1', 10);
   const fraseDelDia = FRASES_MOTIVACIONALES[diaNumero % FRASES_MOTIVACIONALES.length];
 
@@ -548,47 +592,52 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-3.5 sm:p-6 md:p-8 overflow-y-auto">
         
-        {/* HEADER */}
-        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 bg-slate-900/60 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
+        {/* HEADER CON NOMBRE ALINEADO A LA DERECHA */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h2 className="text-lg sm:text-2xl font-bold text-slate-100 whitespace-nowrap">
-                {seccionActiva === 'general' && '📊 Resumen General'}
-                {seccionActiva === 'perfil' && '👤 Mi Perfil y Objetivos'}
-                {seccionActiva === 'finanzas' && '💵 Control Financiero'}
-                {seccionActiva === 'habitos' && '⚡ Hábitos Diarios'}
-                {seccionActiva === 'nutricion' && '🔥 Nutrición y Calorías'}
-                {seccionActiva === 'extra' && '✨ Módulos Extra'}
-                {seccionActiva === 'notas' && '📝 Notas'}
-              </h2>
-            </div>
+            <h2 className="text-lg sm:text-2xl font-bold text-slate-100 whitespace-nowrap">
+              {seccionActiva === 'general' && '📊 Resumen General'}
+              {seccionActiva === 'perfil' && '👤 Mi Perfil y Objetivos'}
+              {seccionActiva === 'finanzas' && '💵 Control Financiero'}
+              {seccionActiva === 'habitos' && '⚡ Hábitos Diarios'}
+              {seccionActiva === 'nutricion' && '🔥 Nutrición y Calorías'}
+              {seccionActiva === 'extra' && '✨ Módulos Extra'}
+              {seccionActiva === 'notas' && '📝 Notas'}
+            </h2>
 
-            <div className="flex flex-wrap items-center justify-start gap-2 mt-1.5 w-full">
+            <div className="flex flex-wrap items-center gap-2 mt-1.5">
               <span className="text-xs font-semibold text-indigo-400 flex items-center gap-1"><span>📅</span> {formatearFechaLarga(fechaSeleccionada)}</span>
               <span className="text-xs font-mono font-bold bg-indigo-950 text-indigo-300 px-2.5 py-0.5 rounded-md border border-indigo-800 flex items-center gap-1"><span>🕒</span> {horaVivo || '00:00:00'}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 self-end lg:self-auto w-full lg:w-auto">
-            {perfil.nombre && <div className="text-sm font-semibold text-slate-300 hidden sm:block">Hola, <span className="text-indigo-400">{perfil.nombre}</span> 👋</div>}
-            
+          <div className="flex items-center gap-4 ml-auto w-full md:w-auto justify-end">
+            {/* VISTA DEL CLIMA Y RECOMENDACIÓN CORREGIDA */}
             {clima && (
               <a 
                 href={`https://www.google.com/search?q=clima+${clima.ubicacion}`} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="bg-slate-950 border border-slate-800 hover:border-indigo-500/50 px-3.5 py-2.5 rounded-xl flex items-center gap-3 w-full lg:w-auto cursor-pointer transition-colors"
+                className="bg-slate-950 border border-slate-800 hover:border-indigo-500/50 px-3.5 py-2 rounded-xl flex items-center gap-3 cursor-pointer transition-colors"
                 title="Ver pronóstico detallado"
               >
-                <span className="text-2xl shrink-0">🌦️</span>
-                <div className="min-w-0 flex-1">
+                <span className="text-2xl shrink-0">{clima.icono}</span>
+                <div className="min-w-0 text-left">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm text-slate-200">{clima.temp}°C</span>
                     <span className="text-xs text-slate-400">• {clima.descripcion}</span>
                   </div>
-                  <p className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1 truncate"><span>📍</span> {clima.ubicacion}</p>
+                  <p className="text-[11px] font-semibold text-indigo-300 truncate max-w-[220px]">{clima.recomendacion}</p>
                 </div>
               </a>
+            )}
+
+            {/* NOMBRE DE USUARIO PEGADO A LA DERECHA */}
+            {perfil.nombre && (
+              <div className="text-right shrink-0 bg-slate-950/80 px-3.5 py-2 rounded-xl border border-slate-800">
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Perfil</span>
+                <span className="text-sm font-bold text-indigo-400">{perfil.nombre} 👋</span>
+              </div>
             )}
           </div>
         </header>
@@ -606,60 +655,103 @@ export default function Home() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
                   
-                  <div onClick={() => cambiarSeccion('nutricion')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-amber-500/50 transition-all">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-semibold uppercase text-slate-400">Bal. Calórico</span>
-                      <span className="text-base">⚖️</span>
+                  {/* CALORÍAS */}
+                  <div onClick={() => cambiarSeccion('nutricion')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-amber-500/50 transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-semibold uppercase text-slate-400">Bal. Calórico</span>
+                        {/* Porcentaje y Barra */}
+                        <span className={`text-xs font-bold ${getEstadoBarra(pctCalorias).text}`}>{pctCalorias}%</span>
+                        <span className="text-base ml-1">⚖️</span>
+                      </div>
+                      <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mb-3 border border-slate-800">
+                        <div className={`h-full rounded-full ${getEstadoBarra(pctCalorias).bar}`} style={{ width: `${pctCalorias}%` }}></div>
+                      </div>
+                      <p className={`text-2xl font-extrabold ${balanceCalorico < 0 ? 'text-amber-400' : balanceCalorico === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico}
+                      </p>
                     </div>
-                    <p className={`text-2xl font-extrabold ${balanceCalorico < 0 ? 'text-amber-400' : balanceCalorico === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico}
-                    </p>
-                    <p className="text-xs font-normal text-slate-500 mt-1">Clic para Nutrición</p>
+                    <p className="text-[11px] font-normal text-slate-500 mt-2">Clic para Nutrición</p>
                   </div>
 
-                  <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('agua'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-cyan-500/50 transition-all">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-semibold uppercase text-slate-400">Agua Diaria</span>
-                      <span className="text-base">💧</span>
+                  {/* AGUA */}
+                  <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('agua'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-cyan-500/50 transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-semibold uppercase text-slate-400">Agua Diaria</span>
+                        <span className={`text-xs font-bold ${getEstadoBarra(pctAgua).text}`}>{pctAgua}%</span>
+                        <span className="text-base ml-1">💧</span>
+                      </div>
+                      <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mb-3 border border-slate-800">
+                        <div className={`h-full rounded-full ${getEstadoBarra(pctAgua).bar}`} style={{ width: `${pctAgua}%` }}></div>
+                      </div>
+                      <p className="text-2xl font-extrabold text-cyan-400">{(aguaMl / 1000).toFixed(2)}L</p>
                     </div>
-                    <p className="text-2xl font-extrabold text-cyan-400">{(aguaMl / 1000).toFixed(2)}L</p>
-                    <p className="text-xs font-normal text-slate-500 mt-1">Clic para Hidratación</p>
+                    <p className="text-[11px] font-normal text-slate-500 mt-2">Clic para Hidratación</p>
                   </div>
 
-                  <div onClick={() => cambiarSeccion('habitos')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-indigo-500/50 transition-all">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-semibold uppercase text-slate-400">Hábitos</span>
-                      <span className="text-base">⚡</span>
+                  {/* HÁBITOS */}
+                  <div onClick={() => cambiarSeccion('habitos')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-indigo-500/50 transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-semibold uppercase text-slate-400">Hábitos</span>
+                        <span className={`text-xs font-bold ${getEstadoBarra(porcentajeHabitos).text}`}>{porcentajeHabitos}%</span>
+                        <span className="text-base ml-1">⚡</span>
+                      </div>
+                      <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mb-3 border border-slate-800">
+                        <div className={`h-full rounded-full ${getEstadoBarra(porcentajeHabitos).bar}`} style={{ width: `${porcentajeHabitos}%` }}></div>
+                      </div>
+                      <p className="text-2xl font-extrabold text-indigo-400">{porcentajeHabitos}%</p>
                     </div>
-                    <p className="text-2xl font-extrabold text-indigo-400">{porcentajeHabitos}%</p>
-                    <p className="text-xs font-normal text-slate-500 mt-1">Clic para Hábitos</p>
+                    <p className="text-[11px] font-normal text-slate-500 mt-2">Clic para Hábitos</p>
                   </div>
 
-                  <div onClick={() => cambiarSeccion('finanzas')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-emerald-500/50 transition-all">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-semibold uppercase text-slate-400">Gastos Hoy</span>
-                      <span className="text-base">💵</span>
+                  {/* GASTOS HOY */}
+                  <div onClick={() => cambiarSeccion('finanzas')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-emerald-500/50 transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-semibold uppercase text-slate-400">Gastos Hoy</span>
+                        <span className={`text-xs font-bold ${getEstadoBarra(pctGastosSaludables).text}`}>{pctGastosSaludables}%</span>
+                        <span className="text-base ml-1">💵</span>
+                      </div>
+                      <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mb-3 border border-slate-800">
+                        <div className={`h-full rounded-full ${getEstadoBarra(pctGastosSaludables).bar}`} style={{ width: `${pctGastosSaludables}%` }}></div>
+                      </div>
+                      <p className="text-2xl font-extrabold text-emerald-400">${formatearMonto(gastosVariablesHoy)}</p>
                     </div>
-                    <p className="text-2xl font-extrabold text-emerald-400">${formatearMonto(gastosVariablesHoy)}</p>
-                    <p className="text-xs font-normal text-slate-500 mt-1">Clic para Finanzas</p>
+                    <p className="text-[11px] font-normal text-slate-500 mt-2">Clic para Finanzas</p>
                   </div>
 
-                  <div onClick={() => cambiarSeccion('perfil')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-slate-400/50 transition-all">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-semibold uppercase text-slate-400">Físico</span>
-                      <span className="text-base">⚖️</span>
+                  {/* FÍSICO / LOGRO */}
+                  <div onClick={() => cambiarSeccion('perfil')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-slate-400/50 transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-semibold uppercase text-slate-400">Físico (Éxito)</span>
+                        <span className={`text-xs font-bold ${getEstadoBarra(perfil.porcentaje_probabilidad).text}`}>{perfil.porcentaje_probabilidad}%</span>
+                        <span className="text-base ml-1">🎯</span>
+                      </div>
+                      <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mb-3 border border-slate-800">
+                        <div className={`h-full rounded-full ${getEstadoBarra(perfil.porcentaje_probabilidad).bar}`} style={{ width: `${perfil.porcentaje_probabilidad}%` }}></div>
+                      </div>
+                      <p className="text-xl font-extrabold text-slate-200">{perfil.peso} <span className="text-sm font-normal">kg</span></p>
                     </div>
-                    <p className="text-xl font-extrabold text-slate-200">{perfil.peso} <span className="text-sm font-normal">kg</span></p>
-                    <p className="text-xs font-normal text-slate-500 mt-1">Clic para Perfil</p>
+                    <p className="text-[11px] font-normal text-slate-500 mt-2">Clic para Perfil</p>
                   </div>
 
-                  <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('sueno'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-indigo-400/50 transition-all">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-semibold uppercase text-slate-400">Sueño</span>
-                      <span className="text-base">😴</span>
+                  {/* SUEÑO */}
+                  <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('sueno'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-indigo-400/50 transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-semibold uppercase text-slate-400">Sueño</span>
+                        <span className={`text-xs font-bold ${getEstadoBarra(pctSueño).text}`}>{pctSueño}%</span>
+                        <span className="text-base ml-1">😴</span>
+                      </div>
+                      <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mb-3 border border-slate-800">
+                        <div className={`h-full rounded-full ${getEstadoBarra(pctSueño).bar}`} style={{ width: `${pctSueño}%` }}></div>
+                      </div>
+                      <p className="text-xl font-extrabold text-indigo-300">{suenoHoy.horas_totales} <span className="text-sm font-normal">hrs</span></p>
                     </div>
-                    <p className="text-xl font-extrabold text-indigo-300">{suenoHoy.horas_totales} <span className="text-sm font-normal">hrs</span></p>
-                    <p className="text-xs font-normal text-slate-500 mt-1">Clic para Descanso</p>
+                    <p className="text-[11px] font-normal text-slate-500 mt-2">Clic para Descanso</p>
                   </div>
                 </div>
 
@@ -723,16 +815,23 @@ export default function Home() {
                           <input type="number" step="0.1" value={perfil.kilos_objetivo} onChange={(e) => setPerfil({...perfil, kilos_objetivo: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" />
                         </div>
                         <div>
-                          <label className="text-xs text-slate-400 block mb-1">En tiempo (Semanas)</label>
-                          <input type="number" value={perfil.tiempo_objetivo_semanas} onChange={(e) => setPerfil({...perfil, tiempo_objetivo_semanas: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" />
+                          {/* CAMBIO A MESES */}
+                          <label className="text-xs text-slate-400 block mb-1">En tiempo (Meses)</label>
+                          <input type="number" min="1" value={perfil.tiempo_objetivo_meses} onChange={(e) => setPerfil({...perfil, tiempo_objetivo_meses: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" />
                         </div>
                       </div>
                     )}
                     
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Probabilidad de Logro Esperada (%)</label>
-                      <input type="range" min="10" max="100" value={perfil.porcentaje_probabilidad} onChange={(e) => setPerfil({...perfil, porcentaje_probabilidad: Number(e.target.value)})} className="w-full accent-amber-500 cursor-pointer" />
-                      <div className="text-right text-xs text-amber-400 font-bold mt-1">{perfil.porcentaje_probabilidad}% Confianza</div>
+                    {/* PROBABILIDAD DE LOGRO CÁLCULO AUTOMÁTICO (NO EDITABLE) */}
+                    <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-xs text-slate-400 font-medium">Probabilidad de Logro (Calculado)</label>
+                        <span className={`text-sm font-bold ${getEstadoBarra(probabilidadCalculada).text}`}>{probabilidadCalculada}% Éxito</span>
+                      </div>
+                      <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800 mb-1.5">
+                        <div className={`h-full rounded-full transition-all duration-500 ${getEstadoBarra(probabilidadCalculada).bar}`} style={{ width: `${probabilidadCalculada}%` }}></div>
+                      </div>
+                      <p className="text-[10px] text-slate-500">🤖 Calculado automáticamente según kilos y plazo configurado.</p>
                     </div>
                   </div>
                 </div>
@@ -961,10 +1060,10 @@ export default function Home() {
                   <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                     <h3 className="text-lg font-semibold text-cyan-400 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                       <span>💧 Control de Hidratación</span>
-                      <span className="text-sm font-mono font-bold text-slate-300">{aguaMl} / {metaAguaMl} ml ({Math.round((aguaMl / metaAguaMl) * 100)}%)</span>
+                      <span className="text-sm font-mono font-bold text-slate-300">{aguaMl} / {metaAguaMl} ml ({pctAgua}%)</span>
                     </h3>
                     <div className="w-full bg-slate-950 rounded-full h-4 overflow-hidden border border-slate-800">
-                      <div className="bg-cyan-500 h-full rounded-full transition-all duration-300" style={{ width: `${Math.min(100, (aguaMl / metaAguaMl) * 100)}%` }}></div>
+                      <div className={`h-full rounded-full transition-all duration-300 ${getEstadoBarra(pctAgua).bar}`} style={{ width: `${pctAgua}%` }}></div>
                     </div>
                     <div className="flex flex-wrap gap-2.5 justify-center">
                       <button onClick={() => modificarAgua(250)} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer">➕ 🥤 +250 ml</button>
