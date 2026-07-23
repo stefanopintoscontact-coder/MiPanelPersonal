@@ -12,7 +12,7 @@ interface PerfilUsuario {
   sexo: 'masculino' | 'femenino';
   objetivo: 'bajar' | 'subir' | 'mantener';
   kilos_objetivo: number;
-  tiempo_objetivo_meses: number; // Cambiado a MESES
+  tiempo_objetivo_meses: number;
   porcentaje_probabilidad: number;
 }
 
@@ -85,6 +85,13 @@ const COMIDAS_POR_DEFECTO: ItemCalorico[] = [
 ];
 
 // --- FUNCIONES AUXILIARES ---
+// Calcula el día lógico restando 4 horas (cambio de día a las 04:00 AM)
+const obtenerFechaLogica = () => {
+  const ahora = new Date();
+  const fechaAjustada = new Date(ahora.getTime() - 4 * 60 * 60 * 1000);
+  return fechaAjustada.toISOString().split('T')[0];
+};
+
 const formatearMonto = (monto: number) => {
   return Math.round(monto).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
@@ -109,7 +116,6 @@ const formatearFechaLarga = (fechaStr: string) => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
-// Helper para determinar color según porcentaje (Verde, Amarillo, Rojo)
 const getEstadoBarra = (pct: number) => {
   if (pct >= 80) return { bar: 'bg-emerald-500', text: 'text-emerald-400' };
   if (pct >= 50) return { bar: 'bg-amber-500', text: 'text-amber-400' };
@@ -117,13 +123,12 @@ const getEstadoBarra = (pct: number) => {
 };
 
 export default function Home() {
-  // Pestaña Activa
   const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'finanzas' | 'habitos' | 'nutricion' | 'extra' | 'notas'>('general');
   const [subSeccionExtra, setSubSeccionExtra] = useState<'agua' | 'sueno'>('agua');
   
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
   const [horaVivo, setHoraVivo] = useState<string>('');
-  const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(obtenerFechaLogica());
   const [clima, setClima] = useState<ClimaData | null>(null);
 
   // Perfil del Usuario
@@ -135,7 +140,7 @@ export default function Home() {
     sexo: 'masculino',
     objetivo: 'bajar',
     kilos_objetivo: 5,
-    tiempo_objetivo_meses: 3, // Cambiado de semanas a meses
+    tiempo_objetivo_meses: 3,
     porcentaje_probabilidad: 85
   });
   const [guardandoPerfil, setGuardandoPerfil] = useState(false);
@@ -184,6 +189,7 @@ export default function Home() {
     setSidebarAbierto(false);
   };
 
+  // Reloj y verificación de cambio de día a las 04:00 AM
   useEffect(() => {
     const actualizarReloj = () => {
       const ahora = new Date();
@@ -191,6 +197,13 @@ export default function Home() {
       const m = String(ahora.getMinutes()).padStart(2, '0');
       const s = String(ahora.getSeconds()).padStart(2, '0');
       setHoraVivo(`${h}:${m}:${s}`);
+
+      // Si eran las 3:59:59 y pasan a ser las 4:00 AM, cambia la fecha lógica
+      const nuevaFechaLogica = obtenerFechaLogica();
+      setFechaSeleccionada((prev) => {
+        if (prev !== nuevaFechaLogica) return nuevaFechaLogica;
+        return prev;
+      });
     };
     actualizarReloj();
     const timer = setInterval(actualizarReloj, 1000);
@@ -205,22 +218,19 @@ export default function Home() {
     cargarDatos();
   }, [fechaSeleccionada]);
 
-  // --- CÁLCULO AUTOMÁTICO DE PROBABILIDAD DE LOGRO ---
+  // Cálculo de probabilidad
   const probabilidadCalculada = useMemo(() => {
     if (perfil.objetivo === 'mantener') return 95;
     if (!perfil.kilos_objetivo || perfil.kilos_objetivo <= 0 || !perfil.tiempo_objetivo_meses || perfil.tiempo_objetivo_meses <= 0) return 50;
 
     const kgPorMes = perfil.kilos_objetivo / perfil.tiempo_objetivo_meses;
-
-    // Ritmo saludable/realista: 1kg a 3kg por mes
     if (kgPorMes <= 2.0) return 95;
     if (kgPorMes <= 3.5) return 80;
     if (kgPorMes <= 5.0) return 60;
     if (kgPorMes <= 6.5) return 40;
-    return 20; // Objetivos no realistas (>6.5kg por mes)
+    return 20;
   }, [perfil.objetivo, perfil.kilos_objetivo, perfil.tiempo_objetivo_meses]);
 
-  // Actualiza la probabilidad internamente
   useEffect(() => {
     setPerfil(prev => ({ ...prev, porcentaje_probabilidad: probabilidadCalculada }));
   }, [probabilidadCalculada]);
@@ -252,7 +262,6 @@ export default function Home() {
               let icono = '☀️';
               let rec = 'Día ideal para realizar tus actividades.';
 
-              // Mapeo detallado de códigos WMO OpenMeteo
               if (code === 0) { desc = 'Despejado / Sol'; icono = '☀️'; }
               else if (code >= 1 && code <= 3) { desc = 'Parcialmente Nublado'; icono = '⛅'; }
               else if (code >= 45 && code <= 48) { desc = 'Neblina'; icono = '🌫️'; }
@@ -261,16 +270,15 @@ export default function Home() {
               else if (code >= 80 && code <= 82) { desc = 'Chaparrones'; icono = '🌦️'; rec = '⚠️ Probabilidad de chaparrones aislados.'; }
               else if (code >= 95) { desc = 'Tormenta Eléctrica'; icono = '⛈️'; rec = '⚠️ Alerta de tormenta. Mantenete a resguardo.'; }
 
-              // Recomendaciones según temperatura
-              if (temp <= 14) rec = `🧥 Hace frío (${temp}°C). Podés salir pero abrígate bien.`;
-              else if (temp >= 28) rec = `☀️ Hace calor (${temp}°C). Recordá mantenerte bien hidratado.`;
+              if (temp <= 14) rec = `Hace frío (${temp}°C). Podés salir pero abrigate bien.`;
+              else if (temp >= 28) rec = `Hace calor (${temp}°C). Recordá mantenerte bien hidratado.`;
 
               setClima({ temp, codigoClima: code, descripcion: desc, recomendacion: rec, ubicacion: textoUbicacion, icono });
             }
           } catch (e) {}
         },
         () => {
-          setClima({ temp: 18, codigoClima: 0, descripcion: 'Templado', recomendacion: '🧥 Temperatura agradable. Llevá abrigo liviano.', ubicacion: 'Ubicación local', icono: '🌤️' });
+          setClima({ temp: 18, codigoClima: 0, descripcion: 'Templado', recomendacion: 'Temperatura agradable. Llevá abrigo liviano.', ubicacion: 'Ubicación local', icono: '🌤️' });
         }
       );
     }
@@ -356,7 +364,7 @@ export default function Home() {
     setCargando(false);
   };
 
-  // --- CÁLCULO BMR AUTOMÁTICO ---
+  // Cálculo BMR
   const bmrCalculado = useMemo(() => {
     if (!perfil.fecha_nacimiento || !perfil.peso || !perfil.altura) return 1500;
     const hoy = new Date();
@@ -369,7 +377,7 @@ export default function Home() {
     return Math.round(perfil.sexo === 'masculino' ? bmr + 5 : bmr - 161);
   }, [perfil]);
 
-  // --- MÉTODOS PERFIL ---
+  // Perfil
   const guardarPerfil = async () => {
     setGuardandoPerfil(true);
     const { error } = await supabase.from('perfil_usuario').upsert({ id: 1, ...perfil });
@@ -378,7 +386,7 @@ export default function Home() {
     else alert('✅ Perfil guardado correctamente');
   };
 
-  // --- MÉTODOS HÁBITOS ---
+  // Hábitos
   const agregarHabito = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nuevoHabito.trim()) return;
@@ -412,7 +420,7 @@ export default function Home() {
     else alert('❌ Error: ' + error.message);
   };
 
-  // --- MÉTODOS FINANZAS ---
+  // Finanzas
   const agregarTransaccion = async (e: React.FormEvent) => {
     e.preventDefault();
     const numMonto = parseFloat(monto);
@@ -430,7 +438,7 @@ export default function Home() {
     else alert('❌ Error: ' + error.message);
   };
 
-  // --- MÉTODOS NUTRICIÓN & AGUA ---
+  // Nutrición & Agua
   const agregarEjercicio = () => setEjercicios([...ejercicios, { id: Date.now().toString(), nombre: 'Nuevo Entrenamiento', calorias: 0 }]);
   const actualizarEjercicio = (id: string, campo: 'nombre' | 'calorias', valor: any) => setEjercicios(ejercicios.map((item) => (item.id === id ? { ...item, [campo]: valor } : item)));
   const eliminarEjercicio = (id: string) => setEjercicios(ejercicios.filter((item) => item.id !== id));
@@ -454,7 +462,7 @@ export default function Home() {
     else alert('✅ Nutrición y ejercicios guardados correctamente');
   };
 
-  // --- MÉTODOS EXTRAS ---
+  // Extras
   const guardarSueno = async () => {
     const [hA, mA] = suenoHoy.hora_acostarse.split(':').map(Number);
     const [hL, mL] = suenoHoy.hora_levantarse.split(':').map(Number);
@@ -480,7 +488,7 @@ export default function Home() {
     else alert('✅ Nota guardada correctamente');
   };
 
-  // --- CÁLCULOS GLOBALES ---
+  // Cálculos generales
   const transaccionesDelDia = transacciones.filter((t) => t.fecha && t.fecha.startsWith(fechaSeleccionada));
   const totalIngresos = transacciones.filter((t) => t.tipo === 'ingreso').reduce((acc, t) => acc + Number(t.monto), 0);
   const totalGastosFijos = transacciones.filter((t) => t.tipo === 'gasto' && t.es_fijo).reduce((acc, t) => acc + Number(t.monto), 0);
@@ -506,7 +514,6 @@ export default function Home() {
   const totalIngeridoCal = comidas.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
   const balanceCalorico = totalIngeridoCal - totalGastadoCal;
 
-  // CÁLCULO DE NOTA NUTRICIONAL
   const evaluacionNutricion = useMemo(() => {
     let nota = 0;
     let mensaje = '';
@@ -533,10 +540,9 @@ export default function Home() {
     return { nota: Math.max(0, Math.min(10, Math.round(nota))), mensaje };
   }, [balanceCalorico, perfil.objetivo]);
 
-  // PORCENTAJES PARA RESUMEN GENERAL Y BARRAS
   const pctCalorias = evaluacionNutricion.nota * 10;
   const pctAgua = Math.min(100, Math.round((aguaMl / metaAguaMl) * 100));
-  const pctGastosSaludables = Math.max(0, 100 - pctGastoDiario); // Si gasta menos, porcentaje más alto (verde)
+  const pctGastosSaludables = Math.max(0, 100 - pctGastoDiario);
   const pctSueño = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
 
   const diaNumero = parseInt(fechaSeleccionada.split('-')[2] || '1', 10);
@@ -545,14 +551,28 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row font-sans">
       
-      {/* BARRA LATERAL */}
+      {/* BARRA LATERAL / NAVEGACIÓN */}
       <aside className={`bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:inset-auto md:w-64 md:h-auto' : 'w-full md:w-16'}`}>
         <div>
-          <div className={`p-3 sm:p-4 flex items-center ${sidebarAbierto ? 'justify-between' : 'justify-start'} border-b border-slate-800`}>
-            {sidebarAbierto && <h1 className="font-bold text-lg text-indigo-400 tracking-wide">Panel Personal</h1>}
-            <button onClick={() => setSidebarAbierto(!sidebarAbierto)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer flex items-center justify-center gap-2">
+          {/* BARRA SUPERIOR CON MENÚ A LA IZQUIERDA Y PERFIL A LA DERECHA */}
+          <div className="p-3 sm:p-4 flex items-center justify-between border-b border-slate-800">
+            <button onClick={() => setSidebarAbierto(!sidebarAbierto)} className="p-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer flex items-center justify-center gap-2 border border-slate-700/50">
               <span className="text-xs font-bold uppercase tracking-wider">{sidebarAbierto ? '✕ Cerrar' : '☰ Menú'}</span>
             </button>
+
+            {/* NOMBRE DE USUARIO Y MANO SALUDANDO (ARRIBA DEL TODO A LA DERECHA) */}
+            {perfil.nombre && (
+              <button 
+                onClick={() => cambiarSeccion('perfil')}
+                className="flex items-center gap-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 px-3.5 py-2 rounded-xl transition-all cursor-pointer shadow-sm group"
+                title="Ir a mi perfil"
+              >
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden sm:inline">Perfil</span>
+                <span className="text-xs sm:text-sm font-extrabold text-indigo-400 group-hover:text-indigo-300 flex items-center gap-1">
+                  {perfil.nombre} 👋
+                </span>
+              </button>
+            )}
           </div>
 
           <nav className={`p-2 sm:p-3 ${sidebarAbierto ? 'flex flex-col space-y-2' : 'flex flex-row md:flex-col overflow-x-auto gap-1.5 md:space-y-1.5 justify-around md:justify-start'}`}>
@@ -592,54 +612,47 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-3.5 sm:p-6 md:p-8 overflow-y-auto">
         
-        {/* HEADER CON NOMBRE ALINEADO A LA DERECHA */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-          <div>
-            <h2 className="text-lg sm:text-2xl font-bold text-slate-100 whitespace-nowrap">
-              {seccionActiva === 'general' && '📊 Resumen General'}
-              {seccionActiva === 'perfil' && '👤 Mi Perfil y Objetivos'}
-              {seccionActiva === 'finanzas' && '💵 Control Financiero'}
-              {seccionActiva === 'habitos' && '⚡ Hábitos Diarios'}
-              {seccionActiva === 'nutricion' && '🔥 Nutrición y Calorías'}
-              {seccionActiva === 'extra' && '✨ Módulos Extra'}
-              {seccionActiva === 'notas' && '📝 Notas'}
-            </h2>
+        {/* HEADER DE LA SECCIÓN */}
+        <header className="flex flex-col gap-4 mb-6 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div>
+              <h2 className="text-lg sm:text-2xl font-bold text-slate-100">
+                {seccionActiva === 'general' && '📊 Resumen General'}
+                {seccionActiva === 'perfil' && '👤 Mi Perfil y Objetivos'}
+                {seccionActiva === 'finanzas' && '💵 Control Financiero'}
+                {seccionActiva === 'habitos' && '⚡ Hábitos Diarios'}
+                {seccionActiva === 'nutricion' && '🔥 Nutrición y Calorías'}
+                {seccionActiva === 'extra' && '✨ Módulos Extra'}
+                {seccionActiva === 'notas' && '📝 Notas'}
+              </h2>
 
-            <div className="flex flex-wrap items-center gap-2 mt-1.5">
-              <span className="text-xs font-semibold text-indigo-400 flex items-center gap-1"><span>📅</span> {formatearFechaLarga(fechaSeleccionada)}</span>
-              <span className="text-xs font-mono font-bold bg-indigo-950 text-indigo-300 px-2.5 py-0.5 rounded-md border border-indigo-800 flex items-center gap-1"><span>🕒</span> {horaVivo || '00:00:00'}</span>
+              <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                <span className="text-xs font-semibold text-indigo-400 flex items-center gap-1"><span>📅</span> {formatearFechaLarga(fechaSeleccionada)}</span>
+                <span className="text-xs font-mono font-bold bg-indigo-950 text-indigo-300 px-2.5 py-0.5 rounded-md border border-indigo-800 flex items-center gap-1"><span>🕒</span> {horaVivo || '00:00:00'}</span>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 ml-auto w-full md:w-auto justify-end">
-            {/* VISTA DEL CLIMA Y RECOMENDACIÓN CORREGIDA */}
-            {clima && (
-              <a 
-                href={`https://www.google.com/search?q=clima+${clima.ubicacion}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="bg-slate-950 border border-slate-800 hover:border-indigo-500/50 px-3.5 py-2 rounded-xl flex items-center gap-3 cursor-pointer transition-colors"
-                title="Ver pronóstico detallado"
-              >
-                <span className="text-2xl shrink-0">{clima.icono}</span>
-                <div className="min-w-0 text-left">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-slate-200">{clima.temp}°C</span>
-                    <span className="text-xs text-slate-400">• {clima.descripcion}</span>
-                  </div>
-                  <p className="text-[11px] font-semibold text-indigo-300 truncate max-w-[220px]">{clima.recomendacion}</p>
+          {/* VISTA DEL CLIMA Y RECOMENDACIÓN CORREGIDA (SIN "...") */}
+          {clima && (
+            <a 
+              href={`https://www.google.com/search?q=clima+${clima.ubicacion}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-full bg-slate-950 border border-slate-800 hover:border-indigo-500/50 p-3 rounded-xl flex items-center gap-3.5 cursor-pointer transition-colors shadow-sm"
+              title="Ver pronóstico detallado"
+            >
+              <span className="text-3xl shrink-0">{clima.icono}</span>
+              <div className="flex-1 min-w-0 text-left">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-bold text-sm text-slate-100">{clima.temp}°C</span>
+                  <span className="text-xs text-slate-400">• {clima.descripcion}</span>
+                  <span className="text-[10px] text-slate-500 hidden sm:inline">• {clima.ubicacion}</span>
                 </div>
-              </a>
-            )}
-
-            {/* NOMBRE DE USUARIO PEGADO A LA DERECHA */}
-            {perfil.nombre && (
-              <div className="text-right shrink-0 bg-slate-950/80 px-3.5 py-2 rounded-xl border border-slate-800">
-                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Perfil</span>
-                <span className="text-sm font-bold text-indigo-400">{perfil.nombre} 👋</span>
+                <p className="text-xs font-semibold text-indigo-300 leading-normal break-words">{clima.recomendacion}</p>
               </div>
-            )}
-          </div>
+            </a>
+          )}
         </header>
 
         <div className="mb-6 bg-indigo-950/40 border border-indigo-800/50 p-3 rounded-xl text-center text-indigo-300 text-xs font-medium italic">
@@ -660,7 +673,6 @@ export default function Home() {
                     <div>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-xs font-semibold uppercase text-slate-400">Bal. Calórico</span>
-                        {/* Porcentaje y Barra */}
                         <span className={`text-xs font-bold ${getEstadoBarra(pctCalorias).text}`}>{pctCalorias}%</span>
                         <span className="text-base ml-1">⚖️</span>
                       </div>
@@ -815,14 +827,12 @@ export default function Home() {
                           <input type="number" step="0.1" value={perfil.kilos_objetivo} onChange={(e) => setPerfil({...perfil, kilos_objetivo: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" />
                         </div>
                         <div>
-                          {/* CAMBIO A MESES */}
                           <label className="text-xs text-slate-400 block mb-1">En tiempo (Meses)</label>
                           <input type="number" min="1" value={perfil.tiempo_objetivo_meses} onChange={(e) => setPerfil({...perfil, tiempo_objetivo_meses: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" />
                         </div>
                       </div>
                     )}
                     
-                    {/* PROBABILIDAD DE LOGRO CÁLCULO AUTOMÁTICO (NO EDITABLE) */}
                     <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
                       <div className="flex justify-between items-center mb-1">
                         <label className="text-xs text-slate-400 font-medium">Probabilidad de Logro (Calculado)</label>
