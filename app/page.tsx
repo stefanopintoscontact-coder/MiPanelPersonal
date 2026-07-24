@@ -197,7 +197,6 @@ export default function Home() {
     setSidebarAbierto(false);
   };
 
-  // Cambio de tipo de transacción -> Resetea automáticamente la categoría correcta
   const cambiarTipoTransaccion = (nuevoTipo: 'ingreso' | 'gasto') => {
     setTipo(nuevoTipo);
     if (nuevoTipo === 'ingreso') {
@@ -250,7 +249,7 @@ export default function Home() {
     setPerfil(prev => ({ ...prev, porcentaje_probabilidad: probabilidadCalculada }));
   }, [probabilidadCalculada]);
 
-  // Clima inteligente con detección de NOCHE
+  // Clima
   const obtenerClimaYUbicacion = () => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -384,7 +383,7 @@ export default function Home() {
     const { data: datosTransacciones } = await supabase.from('transacciones').select('*').order('fecha', { ascending: false });
     if (datosTransacciones) setTransacciones(datosTransacciones);
 
-    // 4. Calorías & Agua (Sin borrar los nombres de las comidas/ejercicios agregados)
+    // 4. Calorías & Agua
     const { data: datosCalorias } = await supabase.from('registro_calorias').select('*').eq('fecha', fechaSeleccionada).maybeSingle();
     if (datosCalorias) {
       setAguaMl(datosCalorias.agua_ml ?? 0);
@@ -396,12 +395,11 @@ export default function Home() {
       }
     } else {
       setAguaMl(0);
-      // Mantener la estructura de ejercicios y comidas guardadas anteriormente, pero reseteando calorías a 0
       setEjercicios((prev) => prev.map((e) => ({ ...e, calorias: 0 })));
       setComidas((prev) => (prev.length > 0 ? prev.map((c) => ({ ...c, calorias: 0 })) : COMIDAS_POR_DEFECTO));
     }
 
-    // 5. Sueño (Reseteo limpio si no hay registro para el día seleccionado)
+    // 5. Sueño
     const { data: datosSueno } = await supabase.from('registro_sueno').select('*').eq('fecha', fechaSeleccionada).maybeSingle();
     if (datosSueno) {
       setSuenoHoy(datosSueno);
@@ -546,18 +544,16 @@ export default function Home() {
     else alert('✅ Nota guardada correctamente');
   };
 
-  // Enviar reclamo/bug por correo + Supabase
+  // Enviar soporte
   const enviarSoporte = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mensajeSoporte.trim()) return;
 
     setEnviandoMensaje(true);
     try {
-      // Intenta guardar en Supabase si la tabla existe
       await supabase.from('mensajes_contacto').insert([{ tipo: tipoSoporte, mensaje: mensajeSoporte, email_remitente: emailContacto }]);
     } catch (err) {}
 
-    // Genera mailto para abrir directamente la app de correo
     const asunto = encodeURIComponent(`[App Personal - ${tipoSoporte.toUpperCase()}] Mensaje de usuario`);
     const cuerpo = encodeURIComponent(`Tipo: ${tipoSoporte}\nEmail Remitente: ${emailContacto || 'No especificado'}\n\nMensaje:\n${mensajeSoporte}`);
     window.location.href = `mailto:stefanopintos.contact@gmail.com?subject=${asunto}&body=${cuerpo}`;
@@ -640,6 +636,25 @@ export default function Home() {
     return mapa;
   }, [transacciones]);
 
+  // CÁLCULOS DINÁMICOS PARA EVOLUCIÓN DE PESO
+  const metaPeso = useMemo(() => {
+    if (perfil.objetivo === 'subir') return perfil.peso + (perfil.kilos_objetivo || 0);
+    if (perfil.objetivo === 'bajar') return perfil.peso - (perfil.kilos_objetivo || 0);
+    return perfil.peso;
+  }, [perfil.peso, perfil.objetivo, perfil.kilos_objetivo]);
+
+  const datosEvolucionPeso = useMemo(() => {
+    const totalMeses = Math.max(1, perfil.tiempo_objetivo_meses || 1);
+    const puntos = [];
+    const dif = metaPeso - perfil.peso;
+
+    for (let i = 1; i <= totalMeses; i++) {
+      const pesoEstimado = perfil.peso + (dif * (i / totalMeses));
+      puntos.push({ mes: `M${i}`, peso: pesoEstimado });
+    }
+    return puntos;
+  }, [perfil.peso, metaPeso, perfil.tiempo_objetivo_meses]);
+
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row font-sans">
       
@@ -673,9 +688,9 @@ export default function Home() {
               { id: 'habitos', label: 'Hábitos diarios', icon: '⚡' },
               { id: 'nutricion', label: 'Nutrición', icon: '🔥' },
               { id: 'extra', label: 'Extra', icon: '✨' },
-              { id: 'notas', label: 'Notas', icon: '📝' },
               { id: 'estadisticas', label: 'Estadísticas', icon: '📈' },
               { id: 'actualizaciones', label: 'Actualización', icon: '🚀' },
+              { id: 'notas', label: 'Notas', icon: '📝' }, // NOTAS UBICADO ABAJO DE ACTUALIZACIÓN
             ].map((item) => (
               <button
                 key={item.id}
@@ -693,7 +708,6 @@ export default function Home() {
 
         {sidebarAbierto && (
           <div className="p-4 border-t border-slate-800 bg-slate-900/80 space-y-3 mt-auto">
-            {/* ÚLTIMA ACTUALIZACIÓN SOLICITADA */}
             <div className="text-[11px] text-slate-400 font-semibold bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
               <span>🚀 Última actualización: </span>
               <span className="text-indigo-400 font-mono">24/07/2026 14:06</span>
@@ -766,6 +780,42 @@ export default function Home() {
             {/* 1. GENERAL */}
             {seccionActiva === 'general' && (
               <div className="space-y-6">
+
+                {/* 💡 AYUDA VISUAL DE COLORES DE LA BARRA */}
+                <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                  <span className="text-slate-300 font-semibold flex items-center gap-1.5">
+                    <span>💡</span> Guía de indicadores:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-3 text-[11px]">
+                    <span className="flex items-center gap-1.5 text-rose-400 font-medium">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>
+                      <strong>Rojo y bajo:</strong> Mal / Requiere atención
+                    </span>
+                    <span className="flex items-center gap-1.5 text-amber-400 font-medium">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+                      <strong>Naranja y medio:</strong> Regular / En progreso
+                    </span>
+                    <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                      <strong>Verde y llena:</strong> Excelente / Objetivo cumplido
+                    </span>
+                  </div>
+                </div>
+
+                {/* 💵 GASTO MENSUAL ACUMULADO (MOVIDO ARRIBA DEL TODO) */}
+                <div onClick={() => cambiarSeccion('finanzas')} className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl cursor-pointer hover:border-emerald-500/50 transition-all">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
+                      <span>💵 Gasto Mensual Acumulado</span>
+                      <span className="text-xs text-slate-400 font-normal">(${formatearMonto(totalGastosTotales)} / ${formatearMonto(totalIngresos)})</span>
+                    </h3>
+                    <span className={`text-xs font-bold font-mono ${pctGastoMensual >= 100 ? 'text-rose-400' : 'text-emerald-400'}`}>{pctGastoMensual}%</span>
+                  </div>
+                  <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
+                    <div className={`h-full rounded-full transition-all duration-500 ${pctGastoMensual >= 100 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${pctGastoMensual}%` }}></div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
                   
                   {/* CALORÍAS */}
@@ -864,20 +914,6 @@ export default function Home() {
                       <p className="text-xl font-extrabold text-indigo-300">{suenoHoy.horas_totales} <span className="text-sm font-normal">hrs</span></p>
                     </div>
                     <p className="text-[11px] font-normal text-slate-500 mt-2">Clic para Descanso</p>
-                  </div>
-                </div>
-
-                {/* NUEVA BARRA DE GASTO MENSUAL EN EL RESUMEN GENERAL */}
-                <div onClick={() => cambiarSeccion('finanzas')} className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl cursor-pointer hover:border-emerald-500/50 transition-all">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
-                      <span>💵 Gasto Mensual Acumulado</span>
-                      <span className="text-xs text-slate-400 font-normal">(${formatearMonto(totalGastosTotales)} / ${formatearMonto(totalIngresos)})</span>
-                    </h3>
-                    <span className={`text-xs font-bold font-mono ${pctGastoMensual >= 100 ? 'text-rose-400' : 'text-emerald-400'}`}>{pctGastoMensual}%</span>
-                  </div>
-                  <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
-                    <div className={`h-full rounded-full transition-all duration-500 ${pctGastoMensual >= 100 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${pctGastoMensual}%` }}></div>
                   </div>
                 </div>
 
@@ -1023,7 +1059,6 @@ export default function Home() {
                   </div>
                 </form>
 
-                {/* FILTRO Y HISTORIAL MEJORADO DE TRANSACCIONES */}
                 <div className="space-y-3 mt-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-semibold uppercase text-slate-400 tracking-wider">Historial de Transacciones</h3>
@@ -1240,7 +1275,7 @@ export default function Home() {
               </div>
             )}
 
-            {/* 7. NOTAS */}
+            {/* 7. NOTAS (UBICADO ABAJO DE ACTUALIZACIÓN) */}
             {seccionActiva === 'notas' && (
               <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
                 <h2 className="text-xl font-semibold text-indigo-400">📝 Notas del Día</h2>
@@ -1251,7 +1286,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* 8. NUEVA SECCIÓN: VISUALIZACIÓN Y ESTADÍSTICAS */}
+            {/* 8. VISUALIZACIÓN Y ESTADÍSTICAS */}
             {seccionActiva === 'estadisticas' && (
               <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                 <h2 className="text-xl font-semibold text-indigo-400 flex items-center gap-2">
@@ -1259,26 +1294,31 @@ export default function Home() {
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* GRÁFICO 1: EVOLUCIÓN DEL PESO */}
+                  {/* GRÁFICO 1: EVOLUCIÓN DEL PESO (CORREGIDO DINÁMICAMENTE) */}
                   <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-3">
                     <h3 className="text-sm font-bold text-indigo-300 uppercase tracking-wider flex items-center justify-between">
                       <span>📉 Evolución del Peso</span>
-                      <span className="text-xs font-mono text-emerald-400">Meta: {perfil.peso - perfil.kilos_objetivo} kg</span>
+                      <span className="text-xs font-mono text-emerald-400">Meta: {metaPeso} kg</span>
                     </h3>
-                    <p className="text-xs text-slate-400">Tendencia calculada para los próximos meses hacia tu objetivo.</p>
+                    <p className="text-xs text-slate-400">
+                      Proyección para los próximos {perfil.tiempo_objetivo_meses || 1} meses ({perfil.objetivo === 'subir' ? 'Aumento' : perfil.objetivo === 'bajar' ? 'Reducción' : 'Mantenimiento'} progresivo).
+                    </p>
                     
-                    {/* Gráfico SVG interactivo */}
+                    {/* Gráfico de barras corregido */}
                     <div className="h-44 w-full bg-slate-950 rounded-xl p-3 border border-slate-800 flex items-end justify-between gap-2 relative overflow-hidden">
                       <div className="absolute inset-x-0 top-1/2 border-b border-dashed border-slate-800"></div>
-                      {[perfil.peso, perfil.peso - 0.8, perfil.peso - 1.5, perfil.peso - 2.2, perfil.peso - (perfil.kilos_objetivo / 2), perfil.peso - perfil.kilos_objetivo].map((p, idx) => {
-                        const min = perfil.peso - perfil.kilos_objetivo - 2;
-                        const max = perfil.peso + 2;
-                        const pct = Math.max(10, Math.min(100, Math.round(((p - min) / (max - min)) * 100)));
+                      {datosEvolucionPeso.map((p, idx) => {
+                        const todosPesos = [perfil.peso, ...datosEvolucionPeso.map(d => d.peso)];
+                        const min = Math.min(...todosPesos) - 2;
+                        const max = Math.max(...todosPesos) + 2;
+                        const rango = max - min || 1;
+                        const pct = Math.max(15, Math.min(100, Math.round(((p.peso - min) / rango) * 100)));
+
                         return (
                           <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end z-10 group">
-                            <span className="text-[10px] text-indigo-300 font-mono mb-1 group-hover:scale-110 transition-transform">{p.toFixed(1)}k</span>
+                            <span className="text-[10px] text-indigo-300 font-mono mb-1 group-hover:scale-110 transition-transform">{p.peso.toFixed(1)}k</span>
                             <div className="w-full bg-indigo-600/80 hover:bg-indigo-500 rounded-t-md transition-all" style={{ height: `${pct}%` }}></div>
-                            <span className="text-[9px] text-slate-500 mt-1">M{idx + 1}</span>
+                            <span className="text-[9px] text-slate-500 mt-1">{p.mes}</span>
                           </div>
                         );
                       })}
@@ -1316,33 +1356,58 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* GRÁFICO 3: MAPA DE CALOR DE HÁBITOS */}
+                {/* GRÁFICO 3: MAPA DE CALOR DE HÁBITOS CON EXPLICACIÓN */}
                 <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-3">
                   <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">🗓️ Consistencia de Hábitos (Mapa de Calor)</h3>
-                  <p className="text-xs text-slate-400">Constancia registrada en los últimos días.</p>
+                  <p className="text-xs text-slate-400">Historial diario de los últimos 28 días.</p>
+                  
                   <div className="grid grid-cols-7 sm:grid-cols-14 gap-2 py-2">
                     {Array.from({ length: 28 }).map((_, i) => {
                       const d = new Date();
                       d.setDate(d.getDate() - (27 - i));
                       const strFecha = d.toISOString().split('T')[0];
                       const cantidadComp = todosLosRegistrosHabitos.filter((r) => r.fecha === strFecha && r.completado).length;
-                      let bg = 'bg-slate-950 border-slate-800';
-                      if (cantidadComp >= 3) bg = 'bg-emerald-500 border-emerald-400';
-                      else if (cantidadComp === 2) bg = 'bg-emerald-700 border-emerald-600';
-                      else if (cantidadComp === 1) bg = 'bg-emerald-900 border-emerald-800';
+                      let bg = 'bg-slate-950 border-slate-800 text-slate-600';
+                      if (cantidadComp >= 3) bg = 'bg-emerald-500 border-emerald-400 text-white font-bold';
+                      else if (cantidadComp === 2) bg = 'bg-emerald-700 border-emerald-600 text-slate-200';
+                      else if (cantidadComp === 1) bg = 'bg-emerald-900 border-emerald-800 text-emerald-300';
 
                       return (
-                        <div key={i} className={`h-8 rounded-lg border flex flex-col items-center justify-center text-[9px] font-mono transition-all hover:scale-110 cursor-pointer ${bg}`} title={`${strFecha}: ${cantidadComp} hábitos completados`}>
+                        <div key={i} className={`h-8 rounded-lg border flex flex-col items-center justify-center text-[10px] font-mono transition-all hover:scale-110 cursor-pointer ${bg}`} title={`${strFecha}: ${cantidadComp} hábitos completados`}>
                           <span>{d.getDate()}</span>
                         </div>
                       );
                     })}
                   </div>
+
+                  {/* EXPLICACIÓN DETALLADA PARA EL USUARIO */}
+                  <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs space-y-2 mt-3">
+                    <p className="text-slate-300 font-semibold flex items-center gap-1.5">
+                      <span>❓</span> ¿Cómo entender la consistencia de hábitos?
+                    </p>
+                    <p className="text-slate-400 text-[11px] leading-relaxed">
+                      Cada casilla representa un día de los últimos 28 días (el número adentro es el número de día del mes). El color refleja tu constancia diaria según cuántos hábitos completaste:
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] pt-1">
+                      <span className="flex items-center gap-1.5 text-slate-400">
+                        <span className="w-3.5 h-3.5 rounded bg-slate-950 border border-slate-800 inline-block"></span> 0 hábitos
+                      </span>
+                      <span className="flex items-center gap-1.5 text-emerald-300">
+                        <span className="w-3.5 h-3.5 rounded bg-emerald-900 border border-emerald-800 inline-block"></span> 1 hábito
+                      </span>
+                      <span className="flex items-center gap-1.5 text-emerald-200">
+                        <span className="w-3.5 h-3.5 rounded bg-emerald-700 border border-emerald-600 inline-block"></span> 2 hábitos
+                      </span>
+                      <span className="flex items-center gap-1.5 text-emerald-100 font-semibold">
+                        <span className="w-3.5 h-3.5 rounded bg-emerald-500 border border-emerald-400 inline-block"></span> 3+ hábitos
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </section>
             )}
 
-            {/* 9. NUEVA SECCIÓN: ACTUALIZACIÓN / NOVEDADES / SOPORTE */}
+            {/* 9. ACTUALIZACIÓN / NOVEDADES / SOPORTE */}
             {seccionActiva === 'actualizaciones' && (
               <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-8 max-w-4xl mx-auto">
                 <div>
@@ -1356,8 +1421,8 @@ export default function Home() {
                     <span className="text-[11px] font-mono bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded border border-indigo-800">v2.4.0</span>
                   </div>
                   <ul className="text-xs text-slate-300 space-y-2 list-disc list-inside leading-relaxed">
-                    <li><strong>🌙 Clima Nocturno Inteligente:</strong> Ahora detecta la hora local e ilumina la interfaz con íconos nocturnos como la luna (🌙) durante la noche.</li>
-                    <li><strong>📈 Módulo de Estadísticas y Gráficos:</strong> Gráficos de evolución de peso, mapa de calor de hábitos y distribución de gastos.</li>
+                    <li><strong>🌙 Clima Nocturno Inteligente:</strong> Detecta la hora local e ilumina la interfaz con íconos nocturnos como la luna (🌙) durante la noche.</li>
+                    <li><strong>📈 Módulo de Estadísticas y Gráficos:</strong> Gráficos de evolución de peso dinámicos (subida/bajada), mapa de calor de hábitos y distribución de gastos.</li>
                     <li><strong>💵 Corrección en Finanzas:</strong> Las transacciones de tipo "Ingreso" y "Gasto" cambian de categoría automáticamente sin mezclarse.</li>
                     <li><strong>🔥 Nutrición Optimizada:</strong> Al cambiar de día, se mantienen los nombres de tus comidas y ejercicios agregados reseteando solo las calorías a 0.</li>
                     <li><strong>😴 Corrección en Registro de Sueño:</strong> Limpieza y reseteo correcto para actualizar tu descanso diariamente.</li>
