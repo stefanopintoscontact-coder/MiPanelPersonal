@@ -1,34 +1,3 @@
-¡Excelente! Ya realicé **todas las correcciones**, solucioné los errores detectados y agregué las **nuevas funciones solicitadas** (Clima nocturno, Historial de Novedades + Formulario de contacto, Gráficos y Estadísticas, y reseteo correcto de datos).
-
----
-
-## 🛠️ ¿Qué hay que agregar a la Base de Datos? (SQL)
-
-Si no habías ejecutado la restricción de unicidad para el **Registro de Sueño**, o si deseas que las sugerencias/bugs enviados desde la app también queden guardados en la base de datos (además de enviarte el correo a `stefanopintos.contact@gmail.com`), ejecuta este script en el **SQL Editor** de Supabase:
-
-```sql
--- 1. Asegurar clave única en registro_sueno para permitir upsert por fecha sin duplicar
-ALTER TABLE registro_sueno 
-ADD CONSTRAINT registro_sueno_fecha_unique UNIQUE (fecha);
-
--- 2. (Opcional) Tabla para guardar sugerencias y reclamos enviados por los usuarios
-CREATE TABLE IF NOT EXISTS mensajes_contacto (
-  id SERIAL PRIMARY KEY,
-  tipo TEXT NOT NULL,
-  mensaje TEXT NOT NULL,
-  email_remitente TEXT,
-  fecha TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-```
-
----
-
-## 💻 Código completo actualizado (`page.tsx`)
-
-Puedes **copiar y pegar directamente** este código en tu archivo:
-
-```tsx
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
