@@ -103,6 +103,16 @@ const obtenerHora24 = (fechaISO?: string) => {
   return `${horas}:${minutos}`;
 };
 
+const formatearFechaHoraActual = () => {
+  const ahora = new Date();
+  const d = String(ahora.getDate()).padStart(2, '0');
+  const m = String(ahora.getMonth() + 1).padStart(2, '0');
+  const y = ahora.getFullYear();
+  const hh = String(ahora.getHours()).padStart(2, '0');
+  const mm = String(ahora.getMinutes()).padStart(2, '0');
+  return `${d}/${m}/${y} ${hh}:${mm}`;
+};
+
 const formatearFechaLarga = (fechaStr: string) => {
   if (!fechaStr) return '';
   const [year, month, day] = fechaStr.split('-').map(Number);
@@ -122,6 +132,13 @@ const getEstadoBarra = (pct: number) => {
   return { bar: 'bg-rose-500', text: 'text-rose-400' };
 };
 
+// Evaluador específico para Presupuesto / Gastos (tener >= 25% disponible es verde)
+const getEstadoGastos = (pctDisponible: number) => {
+  if (pctDisponible >= 25) return { bar: 'bg-emerald-500', text: 'text-emerald-400' };
+  if (pctDisponible > 0) return { bar: 'bg-amber-500', text: 'text-amber-400' };
+  return { bar: 'bg-rose-500', text: 'text-rose-400' };
+};
+
 export default function Home() {
   const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'finanzas' | 'habitos' | 'nutricion' | 'extra' | 'notas' | 'estadisticas' | 'actualizaciones'>('general');
   const [subSeccionExtra, setSubSeccionExtra] = useState<'agua' | 'sueno'>('agua');
@@ -130,6 +147,7 @@ export default function Home() {
   const [horaVivo, setHoraVivo] = useState<string>('');
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(obtenerFechaLogica());
   const [clima, setClima] = useState<ClimaData | null>(null);
+  const [ultimaActualizacion, setUltimaActualizacion] = useState<string>('');
 
   // Perfil del Usuario
   const [perfil, setPerfil] = useState<PerfilUsuario>({
@@ -356,6 +374,7 @@ export default function Home() {
 
   const cargarDatos = async () => {
     setCargando(true);
+    setUltimaActualizacion(formatearFechaHoraActual());
 
     // 0. Perfil de Usuario
     const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').limit(1).maybeSingle();
@@ -572,9 +591,14 @@ export default function Home() {
   const totalGastosTotales = transacciones.filter((t) => t.tipo === 'gasto').reduce((acc, t) => acc + Number(t.monto), 0);
   const balanceFinanciero = totalIngresos - totalGastosTotales;
 
-  let pctGastoMensual = 0;
-  if (totalIngresos > 0) pctGastoMensual = Math.min(100, Math.round((totalGastosTotales / totalIngresos) * 100));
-  else if (totalGastosTotales > 0) pctGastoMensual = 100;
+  // CÁLCULO DE FONDO MENSUAL DISPONIBLE (% DE DINERO RESTANTE DE TUS INGRESOS)
+  const balanceMensualRestante = totalIngresos - totalGastosTotales;
+  let pctFondoDisponible = 100;
+  if (totalIngresos > 0) {
+    pctFondoDisponible = Math.max(0, Math.min(100, Math.round((balanceMensualRestante / totalIngresos) * 100)));
+  } else if (totalGastosTotales > 0) {
+    pctFondoDisponible = 0;
+  }
 
   const presupuestoDiario = Math.max(0, (totalIngresos - totalGastosFijos) / 30);
   const gastosVariablesHoy = transaccionesDelDia.filter((t) => t.tipo === 'gasto' && !t.es_fijo).reduce((acc, t) => acc + Number(t.monto), 0);
@@ -582,6 +606,8 @@ export default function Home() {
   let pctGastoDiario = 0;
   if (presupuestoDiario > 0) pctGastoDiario = Math.min(100, Math.round((gastosVariablesHoy / presupuestoDiario) * 100));
   else if (gastosVariablesHoy > 0) pctGastoDiario = 100;
+
+  const pctGastosSaludables = Math.max(0, 100 - pctGastoDiario);
 
   // Hábitos
   const totalCompletados = habitos.filter((h) => registrosHoy[h.id]?.completado).length;
@@ -621,7 +647,6 @@ export default function Home() {
 
   const pctCalorias = evaluacionNutricion.nota * 10;
   const pctAgua = Math.min(100, Math.round((aguaMl / metaAguaMl) * 100));
-  const pctGastosSaludables = Math.max(0, 100 - pctGastoDiario);
   const pctSueño = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
 
   const diaNumero = parseInt(fechaSeleccionada.split('-')[2] || '1', 10);
@@ -690,7 +715,7 @@ export default function Home() {
               { id: 'extra', label: 'Extra', icon: '✨' },
               { id: 'estadisticas', label: 'Estadísticas', icon: '📈' },
               { id: 'actualizaciones', label: 'Actualización', icon: '🚀' },
-              { id: 'notas', label: 'Notas', icon: '📝' }, // NOTAS UBICADO ABAJO DE ACTUALIZACIÓN
+              { id: 'notas', label: 'Notas', icon: '📝' },
             ].map((item) => (
               <button
                 key={item.id}
@@ -710,7 +735,7 @@ export default function Home() {
           <div className="p-4 border-t border-slate-800 bg-slate-900/80 space-y-3 mt-auto">
             <div className="text-[11px] text-slate-400 font-semibold bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
               <span>🚀 Última actualización: </span>
-              <span className="text-indigo-400 font-mono">24/07/2026 14:06</span>
+              <span className="text-indigo-400 font-mono">{ultimaActualizacion || 'Cargando...'}</span>
             </div>
 
             <div>
@@ -802,17 +827,17 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* 💵 GASTO MENSUAL ACUMULADO (MOVIDO ARRIBA DEL TODO) */}
+                {/* 💵 FONDO MENSUAL DISPONIBLE (BARRA CORREGIDA A DISPONIBILIDAD RESTANTE) */}
                 <div onClick={() => cambiarSeccion('finanzas')} className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl cursor-pointer hover:border-emerald-500/50 transition-all">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
-                      <span>💵 Gasto Mensual Acumulado</span>
-                      <span className="text-xs text-slate-400 font-normal">(${formatearMonto(totalGastosTotales)} / ${formatearMonto(totalIngresos)})</span>
+                      <span>💵 Fondo Mensual Disponible</span>
+                      <span className="text-xs text-slate-400 font-normal">(${formatearMonto(Math.max(0, balanceMensualRestante))} restante de ${formatearMonto(totalIngresos)})</span>
                     </h3>
-                    <span className={`text-xs font-bold font-mono ${pctGastoMensual >= 100 ? 'text-rose-400' : 'text-emerald-400'}`}>{pctGastoMensual}%</span>
+                    <span className={`text-xs font-bold font-mono ${pctFondoDisponible <= 15 ? 'text-rose-400' : pctFondoDisponible <= 40 ? 'text-amber-400' : 'text-emerald-400'}`}>{pctFondoDisponible}%</span>
                   </div>
                   <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
-                    <div className={`h-full rounded-full transition-all duration-500 ${pctGastoMensual >= 100 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${pctGastoMensual}%` }}></div>
+                    <div className={`h-full rounded-full transition-all duration-500 ${pctFondoDisponible <= 15 ? 'bg-rose-500' : pctFondoDisponible <= 40 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pctFondoDisponible}%` }}></div>
                   </div>
                 </div>
 
@@ -868,16 +893,16 @@ export default function Home() {
                     <p className="text-[11px] font-normal text-slate-500 mt-2">Clic para Hábitos</p>
                   </div>
 
-                  {/* GASTOS HOY */}
+                  {/* GASTOS HOY (USANDO getEstadoGastos CORREGIDO) */}
                   <div onClick={() => cambiarSeccion('finanzas')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-emerald-500/50 transition-all flex flex-col justify-between">
                     <div>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-xs font-semibold uppercase text-slate-400">Gastos Hoy</span>
-                        <span className={`text-xs font-bold ${getEstadoBarra(pctGastosSaludables).text}`}>{pctGastosSaludables}%</span>
+                        <span className={`text-xs font-bold ${getEstadoGastos(pctGastosSaludables).text}`}>{pctGastosSaludables}%</span>
                         <span className="text-base ml-1">💵</span>
                       </div>
                       <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mb-3 border border-slate-800">
-                        <div className={`h-full rounded-full ${getEstadoBarra(pctGastosSaludables).bar}`} style={{ width: `${pctGastosSaludables}%` }}></div>
+                        <div className={`h-full rounded-full ${getEstadoGastos(pctGastosSaludables).bar}`} style={{ width: `${pctGastosSaludables}%` }}></div>
                       </div>
                       <p className="text-2xl font-extrabold text-emerald-400">${formatearMonto(gastosVariablesHoy)}</p>
                     </div>
@@ -1015,11 +1040,11 @@ export default function Home() {
                 <div className="space-y-3">
                   <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
                     <div className="flex justify-between items-center text-xs mb-1">
-                      <span className="text-slate-400 font-medium">Fondo Mensual Consumido:</span>
-                      <span className={`font-mono font-bold ${pctGastoMensual >= 100 ? 'text-rose-400' : 'text-slate-300'}`}>{pctGastoMensual}%</span>
+                      <span className="text-slate-400 font-medium">Fondo Mensual Disponible:</span>
+                      <span className={`font-mono font-bold ${pctFondoDisponible <= 15 ? 'text-rose-400' : 'text-slate-300'}`}>{pctFondoDisponible}% (${formatearMonto(Math.max(0, balanceMensualRestante))})</span>
                     </div>
                     <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
-                      <div className={`h-full rounded-full transition-all duration-500 ${pctGastoMensual >= 100 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${pctGastoMensual}%` }}></div>
+                      <div className={`h-full rounded-full transition-all duration-500 ${pctFondoDisponible <= 15 ? 'bg-rose-500' : pctFondoDisponible <= 40 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pctFondoDisponible}%` }}></div>
                     </div>
                   </div>
                   <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
@@ -1028,7 +1053,7 @@ export default function Home() {
                         <span className="text-slate-300 font-semibold block">Gastos Diarios (Variables)</span>
                         <span className="text-[10px] text-slate-400">Hoy: ${formatearMonto(gastosVariablesHoy)} / Disp: ${formatearMonto(presupuestoDiario)}</span>
                       </div>
-                      <span className={`font-mono font-bold ${pctGastoDiario >= 100 ? 'text-rose-400' : 'text-emerald-400'}`}>{pctGastoDiario}%</span>
+                      <span className={`font-mono font-bold ${pctGastoDiario >= 100 ? 'text-rose-400' : 'text-emerald-400'}`}>{pctGastoDiario}% gastado</span>
                     </div>
                     <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
                       <div className={`h-full rounded-full transition-all duration-500 ${pctGastoDiario >= 100 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${pctGastoDiario}%` }}></div>
@@ -1275,7 +1300,7 @@ export default function Home() {
               </div>
             )}
 
-            {/* 7. NOTAS (UBICADO ABAJO DE ACTUALIZACIÓN) */}
+            {/* 7. NOTAS */}
             {seccionActiva === 'notas' && (
               <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
                 <h2 className="text-xl font-semibold text-indigo-400">📝 Notas del Día</h2>
@@ -1294,7 +1319,7 @@ export default function Home() {
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* GRÁFICO 1: EVOLUCIÓN DEL PESO (CORREGIDO DINÁMICAMENTE) */}
+                  {/* GRÁFICO 1: EVOLUCIÓN DEL PESO */}
                   <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-3">
                     <h3 className="text-sm font-bold text-indigo-300 uppercase tracking-wider flex items-center justify-between">
                       <span>📉 Evolución del Peso</span>
@@ -1304,7 +1329,6 @@ export default function Home() {
                       Proyección para los próximos {perfil.tiempo_objetivo_meses || 1} meses ({perfil.objetivo === 'subir' ? 'Aumento' : perfil.objetivo === 'bajar' ? 'Reducción' : 'Mantenimiento'} progresivo).
                     </p>
                     
-                    {/* Gráfico de barras corregido */}
                     <div className="h-44 w-full bg-slate-950 rounded-xl p-3 border border-slate-800 flex items-end justify-between gap-2 relative overflow-hidden">
                       <div className="absolute inset-x-0 top-1/2 border-b border-dashed border-slate-800"></div>
                       {datosEvolucionPeso.map((p, idx) => {
@@ -1356,7 +1380,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* GRÁFICO 3: MAPA DE CALOR DE HÁBITOS CON EXPLICACIÓN */}
+                {/* GRÁFICO 3: MAPA DE CALOR DE HÁBITOS CORREGIDO POR PORCENTAJE */}
                 <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-3">
                   <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">🗓️ Consistencia de Hábitos (Mapa de Calor)</h3>
                   <p className="text-xs text-slate-400">Historial diario de los últimos 28 días.</p>
@@ -1367,39 +1391,55 @@ export default function Home() {
                       d.setDate(d.getDate() - (27 - i));
                       const strFecha = d.toISOString().split('T')[0];
                       const cantidadComp = todosLosRegistrosHabitos.filter((r) => r.fecha === strFecha && r.completado).length;
+                      const totalHab = habitos.length || 1;
+                      const pctComp = habitos.length > 0 ? (cantidadComp / habitos.length) : 0;
+
                       let bg = 'bg-slate-950 border-slate-800 text-slate-600';
-                      if (cantidadComp >= 3) bg = 'bg-emerald-500 border-emerald-400 text-white font-bold';
-                      else if (cantidadComp === 2) bg = 'bg-emerald-700 border-emerald-600 text-slate-200';
-                      else if (cantidadComp === 1) bg = 'bg-emerald-900 border-emerald-800 text-emerald-300';
+                      if (habitos.length > 0) {
+                        if (pctComp >= 0.8) {
+                          // Todos o casi todos completados
+                          bg = 'bg-emerald-500 border-emerald-400 text-white font-bold';
+                        } else if (pctComp >= 0.4) {
+                          // Cumplió aproximadamente la mitad
+                          bg = 'bg-amber-500 border-amber-400 text-slate-950 font-bold';
+                        } else if (cantidadComp > 0) {
+                          // Cumplió pocos
+                          bg = 'bg-rose-500/80 border-rose-400 text-white font-bold';
+                        } else {
+                          // No cumplió ninguno
+                          bg = 'bg-rose-950/50 border-rose-900/60 text-rose-400';
+                        }
+                      }
 
                       return (
-                        <div key={i} className={`h-8 rounded-lg border flex flex-col items-center justify-center text-[10px] font-mono transition-all hover:scale-110 cursor-pointer ${bg}`} title={`${strFecha}: ${cantidadComp} hábitos completados`}>
+                        <div 
+                          key={i} 
+                          className={`h-8 rounded-lg border flex flex-col items-center justify-center text-[10px] font-mono transition-all hover:scale-110 cursor-pointer ${bg}`} 
+                          title={`${strFecha}: ${cantidadComp}/${habitos.length} hábitos completados (${Math.round(pctComp * 100)}%)`}
+                        >
                           <span>{d.getDate()}</span>
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* EXPLICACIÓN DETALLADA PARA EL USUARIO */}
+                  {/* EXPLICACIÓN ACTUALIZADA DE CONSISTENCIA DE HÁBITOS */}
                   <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs space-y-2 mt-3">
                     <p className="text-slate-300 font-semibold flex items-center gap-1.5">
                       <span>❓</span> ¿Cómo entender la consistencia de hábitos?
                     </p>
                     <p className="text-slate-400 text-[11px] leading-relaxed">
-                      Cada casilla representa un día de los últimos 28 días (el número adentro es el número de día del mes). El color refleja tu constancia diaria según cuántos hábitos completaste:
+                      Cada casilla representa un día de los últimos 28 días. El color refleja tu nivel de cumplimiento según la proporción de hábitos completados respecto al total de hábitos activos:
                     </p>
                     <div className="flex flex-wrap items-center gap-3 text-[11px] pt-1">
-                      <span className="flex items-center gap-1.5 text-slate-400">
-                        <span className="w-3.5 h-3.5 rounded bg-slate-950 border border-slate-800 inline-block"></span> 0 hábitos
+                      <span className="flex items-center gap-1.5 text-rose-400 font-medium">
+                        <span className="w-3.5 h-3.5 rounded bg-rose-950 border border-rose-900 inline-block"></span> Ninguno / Pocos (&lt; 40%)
                       </span>
-                      <span className="flex items-center gap-1.5 text-emerald-300">
-                        <span className="w-3.5 h-3.5 rounded bg-emerald-900 border border-emerald-800 inline-block"></span> 1 hábito
+                      <span className="flex items-center gap-1.5 text-amber-400 font-medium">
+                        <span className="w-3.5 h-3.5 rounded bg-amber-500 border border-amber-400 inline-block"></span> La mitad (~50%)
                       </span>
-                      <span className="flex items-center gap-1.5 text-emerald-200">
-                        <span className="w-3.5 h-3.5 rounded bg-emerald-700 border border-emerald-600 inline-block"></span> 2 hábitos
-                      </span>
-                      <span className="flex items-center gap-1.5 text-emerald-100 font-semibold">
-                        <span className="w-3.5 h-3.5 rounded bg-emerald-500 border border-emerald-400 inline-block"></span> 3+ hábitos
+                      <span className="flex items-center gap-1.5 text-emerald-300 font-semibold">
+                        <span className="w-3.5 h-3.5 rounded bg-emerald-500 border border-emerald-400 inline-block"></span> Todos / Casi todos (&ge; 80%)
                       </span>
                     </div>
                   </div>
@@ -1418,15 +1458,13 @@ export default function Home() {
                 <div className="space-y-3 bg-slate-900/60 p-5 rounded-2xl border border-slate-800">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                     <span className="font-bold text-sm text-indigo-300">Versión Actual - Julio 2026</span>
-                    <span className="text-[11px] font-mono bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded border border-indigo-800">v2.4.0</span>
+                    <span className="text-[11px] font-mono bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded border border-indigo-800">v2.4.1</span>
                   </div>
                   <ul className="text-xs text-slate-300 space-y-2 list-disc list-inside leading-relaxed">
-                    <li><strong>🌙 Clima Nocturno Inteligente:</strong> Detecta la hora local e ilumina la interfaz con íconos nocturnos como la luna (🌙) durante la noche.</li>
-                    <li><strong>📈 Módulo de Estadísticas y Gráficos:</strong> Gráficos de evolución de peso dinámicos (subida/bajada), mapa de calor de hábitos y distribución de gastos.</li>
-                    <li><strong>💵 Corrección en Finanzas:</strong> Las transacciones de tipo "Ingreso" y "Gasto" cambian de categoría automáticamente sin mezclarse.</li>
-                    <li><strong>🔥 Nutrición Optimizada:</strong> Al cambiar de día, se mantienen los nombres de tus comidas y ejercicios agregados reseteando solo las calorías a 0.</li>
-                    <li><strong>😴 Corrección en Registro de Sueño:</strong> Limpieza y reseteo correcto para actualizar tu descanso diariamente.</li>
-                    <li><strong>📩 Buzón de Recomendaciones y Bugs:</strong> Envío de comentarios directamente al desarrollador.</li>
+                    <li><strong>⚡ Mapa de Calor de Hábitos Inteligente:</strong> Evaluado según el porcentaje total de hábitos completados (Verde: todos/casi todos, Naranja: mitad, Rojo: pocos o ninguno).</li>
+                    <li><strong>💵 Balance Mensual en Resumen General:</strong> La barra muestra la disponibilidad restante real de tu fondo mensual.</li>
+                    <li><strong>📊 Indicadores Financieros de Hoy:</strong> Ajustado el umbral del presupuesto diario para mostrar correctamente en verde al gastar dentro de los límites saludables.</li>
+                    <li><strong>🕒 Menú Dinámico:</strong> El timestamp de última actualización se sincroniza automáticamente cada vez que refrescas los datos.</li>
                   </ul>
                 </div>
 
