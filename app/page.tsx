@@ -3,6 +3,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
+// FECHA Y HORA REAL DE ÚLTIMA ACTUALIZACIÓN DEL CÓDIGO/PROGRAMA
+const ULTIMA_ACTUALIZACION_APP = '25/07/2026 21:00';
+
 // --- INTERFACES ---
 interface PerfilUsuario {
   nombre: string;
@@ -40,9 +43,21 @@ interface Transaccion {
   fecha: string;
 }
 
-interface ItemCalorico {
+interface ItemComida {
   id: string;
   nombre: string;
+  calorias: number;
+  proteinas?: number;
+  carbs?: number;
+  grasas?: number;
+}
+
+interface EjercicioGimnasio {
+  id: string;
+  nombre: string;
+  series?: number;
+  repeticiones?: number;
+  peso?: number; // en kg
   calorias: number;
 }
 
@@ -77,12 +92,12 @@ const FRASES_MOTIVACIONALES = [
   "«Haz hoy lo que otros no quieren para vivir mañana como otros no pueden.»"
 ];
 
-const COMIDAS_POR_DEFECTO: ItemCalorico[] = [
-  { id: '1', nombre: 'Desayuno', calorias: 0 },
-  { id: '2', nombre: 'Almuerzo', calorias: 0 },
-  { id: '3', nombre: 'Merienda', calorias: 0 },
-  { id: '4', nombre: 'Cena', calorias: 0 },
-  { id: '5', nombre: 'Extra', calorias: 0 },
+const COMIDAS_POR_DEFECTO: ItemComida[] = [
+  { id: '1', nombre: 'Desayuno', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
+  { id: '2', nombre: 'Almuerzo', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
+  { id: '3', nombre: 'Merienda', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
+  { id: '4', nombre: 'Cena', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
+  { id: '5', nombre: 'Extra', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
 ];
 
 // --- FUNCIONES AUXILIARES ---
@@ -101,16 +116,6 @@ const obtenerHora24 = (fechaISO?: string) => {
   const horas = String(d.getHours()).padStart(2, '0');
   const minutos = String(d.getMinutes()).padStart(2, '0');
   return `${horas}:${minutos}`;
-};
-
-const formatearFechaHoraActual = () => {
-  const ahora = new Date();
-  const d = String(ahora.getDate()).padStart(2, '0');
-  const m = String(ahora.getMonth() + 1).padStart(2, '0');
-  const y = ahora.getFullYear();
-  const hh = String(ahora.getHours()).padStart(2, '0');
-  const mm = String(ahora.getMinutes()).padStart(2, '0');
-  return `${d}/${m}/${y} ${hh}:${mm}`;
 };
 
 const formatearFechaLarga = (fechaStr: string) => {
@@ -132,7 +137,6 @@ const getEstadoBarra = (pct: number) => {
   return { bar: 'bg-rose-500', text: 'text-rose-400' };
 };
 
-// Evaluador específico para Presupuesto / Gastos (tener >= 25% disponible es verde)
 const getEstadoGastos = (pctDisponible: number) => {
   if (pctDisponible >= 25) return { bar: 'bg-emerald-500', text: 'text-emerald-400' };
   if (pctDisponible > 0) return { bar: 'bg-amber-500', text: 'text-amber-400' };
@@ -147,7 +151,6 @@ export default function Home() {
   const [horaVivo, setHoraVivo] = useState<string>('');
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(obtenerFechaLogica());
   const [clima, setClima] = useState<ClimaData | null>(null);
-  const [ultimaActualizacion, setUltimaActualizacion] = useState<string>('');
 
   // Perfil del Usuario
   const [perfil, setPerfil] = useState<PerfilUsuario>({
@@ -180,9 +183,10 @@ export default function Home() {
   const [esFijo, setEsFijo] = useState(false);
   const [filtroTransacciones, setFiltroTransacciones] = useState<'dia' | 'todas'>('dia');
 
-  // Nutrición / Calorías
-  const [ejercicios, setEjercicios] = useState<ItemCalorico[]>([]);
-  const [comidas, setComidas] = useState<ItemCalorico[]>(COMIDAS_POR_DEFECTO);
+  // Nutrición / Calorías / Gimnasio
+  const [ejercicios, setEjercicios] = useState<EjercicioGimnasio[]>([]);
+  const [comidas, setComidas] = useState<ItemComida[]>(COMIDAS_POR_DEFECTO);
+  const [bibliotecaComidas, setBibliotecaComidas] = useState<ItemComida[]>([]);
   const [guardandoCalorias, setGuardandoCalorias] = useState(false);
 
   // Hidratación
@@ -209,6 +213,14 @@ export default function Home() {
   const [enviandoMensaje, setEnviandoMensaje] = useState(false);
 
   const [cargando, setCargando] = useState(true);
+
+  // Cargar Biblioteca desde localStorage
+  useEffect(() => {
+    const bib = localStorage.getItem('biblioteca_comidas_user');
+    if (bib) {
+      try { setBibliotecaComidas(JSON.parse(bib)); } catch (e) {}
+    }
+  }, []);
 
   const cambiarSeccion = (id: typeof seccionActiva) => {
     setSeccionActiva(id);
@@ -267,8 +279,19 @@ export default function Home() {
     setPerfil(prev => ({ ...prev, porcentaje_probabilidad: probabilidadCalculada }));
   }, [probabilidadCalculada]);
 
-  // Clima
+  // Clima con caché local de 1 hora para evitar solicitudes de permiso repetidas
   const obtenerClimaYUbicacion = () => {
+    const cacheClima = localStorage.getItem('clima_cache');
+    const cacheTime = localStorage.getItem('clima_cache_time');
+    const ahora = Date.now();
+
+    if (cacheClima && cacheTime && (ahora - Number(cacheTime) < 3600000)) {
+      try {
+        setClima(JSON.parse(cacheClima));
+        return;
+      } catch (e) {}
+    }
+
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
@@ -328,22 +351,27 @@ export default function Home() {
               if (temp <= 14) rec = `Hace frío (${temp}°C). Podés salir pero abrigate bien.`;
               else if (temp >= 28) rec = `Hace calor (${temp}°C). Recordá mantenerte bien hidratado.`;
 
-              setClima({ temp, codigoClima: code, descripcion: desc, recomendacion: rec, ubicacion: textoUbicacion, icono });
+              const objClima = { temp, codigoClima: code, descripcion: desc, recomendacion: rec, ubicacion: textoUbicacion, icono };
+              setClima(objClima);
+              localStorage.setItem('clima_cache', JSON.stringify(objClima));
+              localStorage.setItem('clima_cache_time', String(Date.now()));
             }
           } catch (e) {}
         },
         () => {
           const hora = new Date().getHours();
           const esNoche = hora >= 20 || hora < 7;
-          setClima({ 
+          const objClimaFallback = { 
             temp: 18, 
             codigoClima: 0, 
             descripcion: esNoche ? 'Noche Templada' : 'Templado', 
             recomendacion: 'Temperatura agradable. Llevá abrigo liviano.', 
             ubicacion: 'Ubicación local', 
             icono: esNoche ? '🌙' : '🌤️' 
-          });
-        }
+          };
+          setClima(objClimaFallback);
+        },
+        { maximumAge: 3600000, timeout: 8000 }
       );
     }
   };
@@ -374,7 +402,6 @@ export default function Home() {
 
   const cargarDatos = async () => {
     setCargando(true);
-    setUltimaActualizacion(formatearFechaHoraActual());
 
     // 0. Perfil de Usuario
     const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').limit(1).maybeSingle();
@@ -402,7 +429,7 @@ export default function Home() {
     const { data: datosTransacciones } = await supabase.from('transacciones').select('*').order('fecha', { ascending: false });
     if (datosTransacciones) setTransacciones(datosTransacciones);
 
-    // 4. Calorías & Agua
+    // 4. Calorías & Agua (CORREGIDO PARA NO PERDER COMIDAS/EJERCICIOS)
     const { data: datosCalorias } = await supabase.from('registro_calorias').select('*').eq('fecha', fechaSeleccionada).maybeSingle();
     if (datosCalorias) {
       setAguaMl(datosCalorias.agua_ml ?? 0);
@@ -414,8 +441,31 @@ export default function Home() {
       }
     } else {
       setAguaMl(0);
-      setEjercicios((prev) => prev.map((e) => ({ ...e, calorias: 0 })));
-      setComidas((prev) => (prev.length > 0 ? prev.map((c) => ({ ...c, calorias: 0 })) : COMIDAS_POR_DEFECTO));
+      
+      // Si el día no tiene registros, recuperamos la estructura del último día con datos para no perder los ejercicios y comidas personalizados
+      const { data: ultimoRegistro } = await supabase
+        .from('registro_calorias')
+        .select('comidas, ejercicios')
+        .order('fecha', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (ultimoRegistro) {
+        if (ultimoRegistro.ejercicios && Array.isArray(ultimoRegistro.ejercicios)) {
+          setEjercicios(ultimoRegistro.ejercicios.map((e: EjercicioGimnasio) => ({ ...e, calorias: 0 })));
+        } else {
+          setEjercicios([]);
+        }
+
+        if (ultimoRegistro.comidas && Array.isArray(ultimoRegistro.comidas) && ultimoRegistro.comidas.length > 0) {
+          setComidas(ultimoRegistro.comidas.map((c: ItemComida) => ({ ...c, calorias: 0, proteinas: 0, carbs: 0, grasas: 0 })));
+        } else {
+          setComidas(COMIDAS_POR_DEFECTO);
+        }
+      } else {
+        setEjercicios([]);
+        setComidas(COMIDAS_POR_DEFECTO);
+      }
     }
 
     // 5. Sueño
@@ -513,14 +563,41 @@ export default function Home() {
     else alert('❌ Error: ' + error.message);
   };
 
-  // Nutrición & Agua
-  const agregarEjercicio = () => setEjercicios([...ejercicios, { id: Date.now().toString(), nombre: 'Nuevo Entrenamiento', calorias: 0 }]);
-  const actualizarEjercicio = (id: string, campo: 'nombre' | 'calorias', valor: any) => setEjercicios(ejercicios.map((item) => (item.id === id ? { ...item, [campo]: valor } : item)));
+  // Nutrición, Ejercicios y Biblioteca
+  const agregarEjercicio = () => setEjercicios([...ejercicios, { id: Date.now().toString(), nombre: 'Nuevo Ejercicio', series: 4, repeticiones: 10, peso: 0, calorias: 0 }]);
+  const actualizarEjercicio = (id: string, campo: keyof EjercicioGimnasio, valor: any) => setEjercicios(ejercicios.map((item) => (item.id === id ? { ...item, [campo]: valor } : item)));
   const eliminarEjercicio = (id: string) => setEjercicios(ejercicios.filter((item) => item.id !== id));
 
-  const agregarComida = () => setComidas([...comidas, { id: Date.now().toString(), nombre: 'Nueva Comida', calorias: 0 }]);
-  const actualizarComida = (id: string, campo: 'nombre' | 'calorias', valor: any) => setComidas(comidas.map((item) => (item.id === id ? { ...item, [campo]: valor } : item)));
+  const agregarComida = () => setComidas([...comidas, { id: Date.now().toString(), nombre: 'Nueva Comida', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 }]);
+  const actualizarComida = (id: string, campo: keyof ItemComida, valor: any) => setComidas(comidas.map((item) => (item.id === id ? { ...item, [campo]: valor } : item)));
   const eliminarComida = (id: string) => setComidas(comidas.filter((item) => item.id !== id));
+
+  const guardarEnBiblioteca = (comida: ItemComida) => {
+    if (!comida.nombre || comida.nombre.trim() === '') return;
+    const existe = bibliotecaComidas.some(b => b.nombre.toLowerCase() === comida.nombre.toLowerCase());
+    if (existe) {
+      alert('ℹ️ Este plato ya está en tu biblioteca de comidas frecuentes.');
+      return;
+    }
+    const nuevaBib = [...bibliotecaComidas, { ...comida, id: Date.now().toString() }];
+    setBibliotecaComidas(nuevaBib);
+    localStorage.setItem('biblioteca_comidas_user', JSON.stringify(nuevaBib));
+    alert(`⭐ "${comida.nombre}" se guardó en tu Biblioteca de Comidas Frecuentes.`);
+  };
+
+  const cargarDesdeBiblioteca = (comidaBib: ItemComida) => {
+    const nuevaComida: ItemComida = {
+      ...comidaBib,
+      id: Date.now().toString()
+    };
+    setComidas([...comidas, nuevaComida]);
+  };
+
+  const eliminarDeBiblioteca = (id: string) => {
+    const nuevaBib = bibliotecaComidas.filter(b => b.id !== id);
+    setBibliotecaComidas(nuevaBib);
+    localStorage.setItem('biblioteca_comidas_user', JSON.stringify(nuevaBib));
+  };
 
   const modificarAgua = async (deltaMl: number) => {
     const nuevaCantidad = Math.max(0, aguaMl + deltaMl);
@@ -534,7 +611,7 @@ export default function Home() {
     const { error } = await supabase.from('registro_calorias').upsert({ fecha: fechaSeleccionada, base: bmrCalculado, agua_ml: aguaMl, ejercicios, comidas }, { onConflict: 'fecha' });
     setGuardandoCalorias(false);
     if (error) alert('❌ Error al guardar calorías: ' + error.message);
-    else alert('✅ Nutrición y ejercicios guardados correctamente');
+    else alert('✅ Nutrición, macronutrientes y ejercicios guardados correctamente');
   };
 
   // Sueño & Notas
@@ -591,7 +668,6 @@ export default function Home() {
   const totalGastosTotales = transacciones.filter((t) => t.tipo === 'gasto').reduce((acc, t) => acc + Number(t.monto), 0);
   const balanceFinanciero = totalIngresos - totalGastosTotales;
 
-  // CÁLCULO DE FONDO MENSUAL DISPONIBLE (% DE DINERO RESTANTE DE TUS INGRESOS)
   const balanceMensualRestante = totalIngresos - totalGastosTotales;
   let pctFondoDisponible = 100;
   if (totalIngresos > 0) {
@@ -613,11 +689,15 @@ export default function Home() {
   const totalCompletados = habitos.filter((h) => registrosHoy[h.id]?.completado).length;
   const porcentajeHabitos = habitos.length > 0 ? Math.round((totalCompletados / habitos.length) * 100) : 0;
 
-  // Nutrición
+  // Nutrición y Macros
   const totalGastoEjercicios = ejercicios.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
   const totalGastadoCal = bmrCalculado + totalGastoEjercicios;
   const totalIngeridoCal = comidas.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
   const balanceCalorico = totalIngeridoCal - totalGastadoCal;
+
+  const totalProteinas = comidas.reduce((acc, item) => acc + Number(item.proteinas || 0), 0);
+  const totalCarbs = comidas.reduce((acc, item) => acc + Number(item.carbs || 0), 0);
+  const totalGrasas = comidas.reduce((acc, item) => acc + Number(item.grasas || 0), 0);
 
   const evaluacionNutricion = useMemo(() => {
     let nota = 0;
@@ -652,7 +732,6 @@ export default function Home() {
   const diaNumero = parseInt(fechaSeleccionada.split('-')[2] || '1', 10);
   const fraseDelDia = FRASES_MOTIVACIONALES[diaNumero % FRASES_MOTIVACIONALES.length];
 
-  // Agrupación de gastos por categoría para gráficos
   const gastosPorCategoria = useMemo(() => {
     const mapa: Record<string, number> = {};
     transacciones.filter((t) => t.tipo === 'gasto').forEach((t) => {
@@ -661,7 +740,6 @@ export default function Home() {
     return mapa;
   }, [transacciones]);
 
-  // CÁLCULOS DINÁMICOS PARA EVOLUCIÓN DE PESO
   const metaPeso = useMemo(() => {
     if (perfil.objetivo === 'subir') return perfil.peso + (perfil.kilos_objetivo || 0);
     if (perfil.objetivo === 'bajar') return perfil.peso - (perfil.kilos_objetivo || 0);
@@ -733,9 +811,10 @@ export default function Home() {
 
         {sidebarAbierto && (
           <div className="p-4 border-t border-slate-800 bg-slate-900/80 space-y-3 mt-auto">
+            {/* FECHA Y HORA REAL DE ACTUALIZACIÓN DEL PROGRAMA */}
             <div className="text-[11px] text-slate-400 font-semibold bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
               <span>🚀 Última actualización: </span>
-              <span className="text-indigo-400 font-mono">{ultimaActualizacion || 'Cargando...'}</span>
+              <span className="text-indigo-400 font-mono">{ULTIMA_ACTUALIZACION_APP}</span>
             </div>
 
             <div>
@@ -758,7 +837,7 @@ export default function Home() {
                 {seccionActiva === 'perfil' && '👤 Mi Perfil y Objetivos'}
                 {seccionActiva === 'finanzas' && '💵 Control Financiero'}
                 {seccionActiva === 'habitos' && '⚡ Hábitos Diarios'}
-                {seccionActiva === 'nutricion' && '🔥 Nutrición y Calorías'}
+                {seccionActiva === 'nutricion' && '🔥 Nutrición y Entrenamiento Profundo'}
                 {seccionActiva === 'extra' && '✨ Módulos Extra'}
                 {seccionActiva === 'notas' && '📝 Notas'}
                 {seccionActiva === 'estadisticas' && '📈 Visualización y Estadísticas'}
@@ -772,7 +851,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* CLIMA CON SOPORTE NOCTURNO */}
+          {/* CLIMA */}
           {clima && (
             <a 
               href={`https://www.google.com/search?q=clima+${clima.ubicacion}`} 
@@ -806,7 +885,6 @@ export default function Home() {
             {seccionActiva === 'general' && (
               <div className="space-y-6">
 
-                {/* 💡 AYUDA VISUAL DE COLORES DE LA BARRA */}
                 <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
                   <span className="text-slate-300 font-semibold flex items-center gap-1.5">
                     <span>💡</span> Guía de indicadores:
@@ -827,7 +905,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* 💵 FONDO MENSUAL DISPONIBLE (BARRA CORREGIDA A DISPONIBILIDAD RESTANTE) */}
                 <div onClick={() => cambiarSeccion('finanzas')} className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl cursor-pointer hover:border-emerald-500/50 transition-all">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
@@ -893,7 +970,7 @@ export default function Home() {
                     <p className="text-[11px] font-normal text-slate-500 mt-2">Clic para Hábitos</p>
                   </div>
 
-                  {/* GASTOS HOY (USANDO getEstadoGastos CORREGIDO) */}
+                  {/* GASTOS HOY */}
                   <div onClick={() => cambiarSeccion('finanzas')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-emerald-500/50 transition-all flex flex-col justify-between">
                     <div>
                       <div className="flex justify-between items-center mb-1">
@@ -909,7 +986,7 @@ export default function Home() {
                     <p className="text-[11px] font-normal text-slate-500 mt-2">Clic para Finanzas</p>
                   </div>
 
-                  {/* FÍSICO / LOGRO */}
+                  {/* FÍSICO */}
                   <div onClick={() => cambiarSeccion('perfil')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-slate-400/50 transition-all flex flex-col justify-between">
                     <div>
                       <div className="flex justify-between items-center mb-1">
@@ -1165,10 +1242,12 @@ export default function Home() {
               </section>
             )}
 
-            {/* 5. NUTRICIÓN */}
+            {/* 5. NUTRICIÓN Y ENTRENAMIENTO PROFUNDO */}
             {seccionActiva === 'nutricion' && (
              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                <h2 className="text-xl font-semibold text-amber-400">🔥 Nutrición y Balance Calórico</h2>
+                <h2 className="text-xl font-semibold text-amber-400 flex items-center gap-2">
+                  <span>🏋️ Nutrición y Entrenamiento Profundo</span>
+                </h2>
 
                 <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-700 flex flex-col md:flex-row items-center gap-4">
                   <div className="w-full md:w-auto flex flex-col items-center justify-center p-3 bg-slate-950 rounded-xl border border-slate-800 shrink-0">
@@ -1194,43 +1273,136 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* TARJETA DE RESUMEN DE MACRONUTRIENTES */}
+                <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">🥑 Resumen Total de Macronutrientes</h3>
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-rose-900/40">
+                      <span className="text-[10px] text-rose-400 font-bold uppercase block">Proteínas</span>
+                      <span className="text-lg font-mono font-bold text-rose-300">{totalProteinas}g</span>
+                    </div>
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-900/40">
+                      <span className="text-[10px] text-amber-400 font-bold uppercase block">Carbohidratos</span>
+                      <span className="text-lg font-mono font-bold text-amber-300">{totalCarbs}g</span>
+                    </div>
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-blue-900/40">
+                      <span className="text-[10px] text-blue-400 font-bold uppercase block">Grasas</span>
+                      <span className="text-lg font-mono font-bold text-blue-300">{totalGrasas}g</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BIBLIOTECA DE COMIDAS FRECUENTES */}
+                {bibliotecaComidas.length > 0 && (
+                  <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-2">
+                    <h3 className="text-xs font-semibold uppercase text-amber-400 tracking-wider">⭐ Biblioteca de Comidas Frecuentes</h3>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {bibliotecaComidas.map((item) => (
+                        <div key={item.id} className="bg-slate-950 border border-slate-800 hover:border-amber-500/50 px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs">
+                          <button onClick={() => cargarDesdeBiblioteca(item)} className="font-semibold text-slate-200 hover:text-amber-400 transition cursor-pointer">
+                            ➕ {item.nombre} <span className="text-[10px] text-slate-400 font-normal">({item.calorias} kcal)</span>
+                          </button>
+                          <button onClick={() => eliminarDeBiblioteca(item.id)} className="text-slate-500 hover:text-rose-400 text-[10px] cursor-pointer">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* LISTA DE COMIDAS CON DESGLOSE DE MACRONUTRIENTES */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-semibold uppercase text-slate-400 tracking-wider">🏃 Ejercicios (+Gasto)</h3>
-                    <button onClick={agregarEjercicio} className="text-xs text-amber-400 hover:text-amber-300 font-medium cursor-pointer">+ Agregar Ejercicio</button>
+                    <h3 className="text-xs font-semibold uppercase text-slate-400 tracking-wider">🥗 Comidas e Ingesta Diaria</h3>
+                    <button onClick={agregarComida} className="text-xs text-amber-400 hover:text-amber-300 font-medium cursor-pointer">+ Agregar Comida</button>
                   </div>
-                  {ejercicios.map((item) => (
-                    <div key={item.id} className="flex gap-1.5 sm:gap-2 items-center w-full">
-                      <input type="text" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className="min-w-0 flex-1 bg-slate-900/80 border border-slate-700 rounded-xl px-2 sm:px-3 py-1.5 text-xs text-white" />
-                      <input type="number" value={item.calorias} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className="w-16 sm:w-20 bg-slate-900/80 border border-slate-700 rounded-xl px-2 sm:px-3 py-1.5 text-xs text-white text-right" />
-                      <span className="text-[11px] sm:text-xs text-slate-400 shrink-0">kcal</span>
-                      <button onClick={() => eliminarEjercicio(item.id)} className="text-slate-500 hover:text-rose-400 shrink-0 p-1 cursor-pointer">🗑️</button>
+                  
+                  {comidas.map((item) => (
+                    <div key={item.id} className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 space-y-2">
+                      <div className="flex gap-2 items-center">
+                        <input 
+                          type="text" 
+                          value={item.nombre} 
+                          onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} 
+                          className="min-w-0 flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white font-semibold" 
+                          placeholder="Nombre de la comida"
+                        />
+                        <button onClick={() => guardarEnBiblioteca(item)} className="text-xs text-amber-400 hover:text-amber-300 font-medium px-2 py-1 bg-amber-950/40 border border-amber-800/50 rounded-lg cursor-pointer" title="Guardar en biblioteca frecuente">
+                          ⭐ Guardar
+                        </button>
+                        <button onClick={() => eliminarComida(item.id)} className="text-slate-500 hover:text-rose-400 shrink-0 p-1 cursor-pointer">🗑️</button>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-0.5">Calorías (kcal)</label>
+                          <input type="number" value={item.calorias} onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-rose-400 block mb-0.5">Proteínas (g)</label>
+                          <input type="number" value={item.proteinas || 0} onChange={(e) => actualizarComida(item.id, 'proteinas', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-amber-400 block mb-0.5">Carbs (g)</label>
+                          <input type="number" value={item.carbs || 0} onChange={(e) => actualizarComida(item.id, 'carbs', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-blue-400 block mb-0.5">Grasas (g)</label>
+                          <input type="number" value={item.grasas || 0} onChange={(e) => actualizarComida(item.id, 'grasas', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white" />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="space-y-3">
+                {/* BITÁCORA DE GIMNASIO Y RUTINAS (SOBRECARGA PROGRESIVA) */}
+                <div className="space-y-3 pt-2">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-semibold uppercase text-slate-400 tracking-wider">🥗 Comidas del día (+Ingesta)</h3>
-                    <button onClick={agregarComida} className="text-xs text-amber-400 hover:text-amber-300 font-medium cursor-pointer">+ Agregar Comida</button>
+                    <h3 className="text-xs font-semibold uppercase text-slate-400 tracking-wider">🏋️ Bitácora de Gimnasio / Sobrecarga Progresiva</h3>
+                    <button onClick={agregarEjercicio} className="text-xs text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer">+ Agregar Ejercicio</button>
                   </div>
-                  {comidas.map((item) => (
-                    <div key={item.id} className="flex gap-1.5 sm:gap-2 items-center w-full">
-                      <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className="min-w-0 flex-1 bg-slate-900/80 border border-slate-700 rounded-xl px-2 sm:px-3 py-1.5 text-xs text-white" />
-                      <input type="number" value={item.calorias} onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))} className="w-16 sm:w-20 bg-slate-900/80 border border-slate-700 rounded-xl px-2 sm:px-3 py-1.5 text-xs text-white text-right" />
-                      <span className="text-[11px] sm:text-xs text-slate-400 shrink-0">kcal</span>
-                      <button onClick={() => eliminarComida(item.id)} className="text-slate-500 hover:text-rose-400 shrink-0 p-1 cursor-pointer">🗑️</button>
+
+                  {ejercicios.map((item) => (
+                    <div key={item.id} className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 space-y-2">
+                      <div className="flex gap-2 items-center">
+                        <input 
+                          type="text" 
+                          value={item.nombre} 
+                          onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} 
+                          className="min-w-0 flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white font-semibold" 
+                          placeholder="Nombre del ejercicio (ej. Press Banca)"
+                        />
+                        <button onClick={() => eliminarEjercicio(item.id)} className="text-slate-500 hover:text-rose-400 shrink-0 p-1 cursor-pointer">🗑️</button>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <div>
+                          <label className="text-[10px] text-indigo-300 block mb-0.5">Series</label>
+                          <input type="number" value={item.series || 0} onChange={(e) => actualizarEjercicio(item.id, 'series', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-indigo-300 block mb-0.5">Repeticiones</label>
+                          <input type="number" value={item.repeticiones || 0} onChange={(e) => actualizarEjercicio(item.id, 'repeticiones', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-indigo-300 block mb-0.5">Peso (kg)</label>
+                          <input type="number" step="0.5" value={item.peso || 0} onChange={(e) => actualizarEjercicio(item.id, 'peso', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-amber-400 block mb-0.5">Calorías Quemadas</label>
+                          <input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white" />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
 
                 <button onClick={guardarCalorias} disabled={guardandoCalorias} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium text-sm py-2.5 rounded-xl transition cursor-pointer disabled:opacity-50">
-                  {guardandoCalorias ? 'Guardando...' : '💾 Guardar Registro Calórico y Ejercicios'}
+                  {guardandoCalorias ? 'Guardando...' : '💾 Guardar Registro de Nutrición, Macros y Rutinas'}
                 </button>
               </section>
             )}
 
-            {/* 6. EXTRA */}
+            {/* 6. EXTRA (HIDRATACIÓN CON TRAGO DE AGUA AGREGADO) */}
             {seccionActiva === 'extra' && (
               <div className="space-y-6">
                 <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
@@ -1259,10 +1431,14 @@ export default function Home() {
                     <div className="w-full bg-slate-950 rounded-full h-4 overflow-hidden border border-slate-800">
                       <div className={`h-full rounded-full transition-all duration-300 ${getEstadoBarra(pctAgua).bar}`} style={{ width: `${pctAgua}%` }}></div>
                     </div>
+
+                    {/* BOTONES DE SUMA Y RESTA INCLUYENDO TRAGO DE AGUA (~50 ML) */}
                     <div className="flex flex-wrap gap-2.5 justify-center">
-                      <button onClick={() => modificarAgua(250)} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer">➕ 🥤 +250 ml</button>
-                      <button onClick={() => modificarAgua(500)} className="bg-cyan-700 hover:bg-cyan-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer">➕ 🍾 +500 ml</button>
-                      <button onClick={() => modificarAgua(-250)} className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer">➖ 250 ml</button>
+                      <button onClick={() => modificarAgua(50)} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer">➕ 👄 +50 ml (Trago)</button>
+                      <button onClick={() => modificarAgua(250)} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer">➕ 🥤 +250 ml (Vaso)</button>
+                      <button onClick={() => modificarAgua(500)} className="bg-cyan-700 hover:bg-cyan-600 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer">➕ 🍾 +500 ml (Botella)</button>
+                      <button onClick={() => modificarAgua(-50)} className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer">➖ 50 ml (Quitar trago)</button>
+                      <button onClick={() => modificarAgua(-250)} className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer">➖ 250 ml (Quitar vaso)</button>
                     </div>
                   </div>
                 )}
@@ -1380,7 +1556,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* GRÁFICO 3: MAPA DE CALOR DE HÁBITOS CORREGIDO POR PORCENTAJE */}
+                {/* GRÁFICO 3: MAPA DE CALOR DE HÁBITOS */}
                 <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-3">
                   <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">🗓️ Consistencia de Hábitos (Mapa de Calor)</h3>
                   <p className="text-xs text-slate-400">Historial diario de los últimos 28 días.</p>
@@ -1391,22 +1567,17 @@ export default function Home() {
                       d.setDate(d.getDate() - (27 - i));
                       const strFecha = d.toISOString().split('T')[0];
                       const cantidadComp = todosLosRegistrosHabitos.filter((r) => r.fecha === strFecha && r.completado).length;
-                      const totalHab = habitos.length || 1;
                       const pctComp = habitos.length > 0 ? (cantidadComp / habitos.length) : 0;
 
                       let bg = 'bg-slate-950 border-slate-800 text-slate-600';
                       if (habitos.length > 0) {
                         if (pctComp >= 0.8) {
-                          // Todos o casi todos completados
                           bg = 'bg-emerald-500 border-emerald-400 text-white font-bold';
                         } else if (pctComp >= 0.4) {
-                          // Cumplió aproximadamente la mitad
                           bg = 'bg-amber-500 border-amber-400 text-slate-950 font-bold';
                         } else if (cantidadComp > 0) {
-                          // Cumplió pocos
                           bg = 'bg-rose-500/80 border-rose-400 text-white font-bold';
                         } else {
-                          // No cumplió ninguno
                           bg = 'bg-rose-950/50 border-rose-900/60 text-rose-400';
                         }
                       }
@@ -1423,7 +1594,6 @@ export default function Home() {
                     })}
                   </div>
 
-                  {/* EXPLICACIÓN ACTUALIZADA DE CONSISTENCIA DE HÁBITOS */}
                   <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs space-y-2 mt-3">
                     <p className="text-slate-300 font-semibold flex items-center gap-1.5">
                       <span>❓</span> ¿Cómo entender la consistencia de hábitos?
@@ -1458,17 +1628,16 @@ export default function Home() {
                 <div className="space-y-3 bg-slate-900/60 p-5 rounded-2xl border border-slate-800">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                     <span className="font-bold text-sm text-indigo-300">Versión Actual - Julio 2026</span>
-                    <span className="text-[11px] font-mono bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded border border-indigo-800">v2.4.1</span>
+                    <span className="text-[11px] font-mono bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded border border-indigo-800">v2.5.0</span>
                   </div>
                   <ul className="text-xs text-slate-300 space-y-2 list-disc list-inside leading-relaxed">
-                    <li><strong>⚡ Mapa de Calor de Hábitos Inteligente:</strong> Evaluado según el porcentaje total de hábitos completados (Verde: todos/casi todos, Naranja: mitad, Rojo: pocos o ninguno).</li>
-                    <li><strong>💵 Balance Mensual en Resumen General:</strong> La barra muestra la disponibilidad restante real de tu fondo mensual.</li>
-                    <li><strong>📊 Indicadores Financieros de Hoy:</strong> Ajustado el umbral del presupuesto diario para mostrar correctamente en verde al gastar dentro de los límites saludables.</li>
-                    <li><strong>🕒 Menú Dinámico:</strong> El timestamp de última actualización se sincroniza automáticamente cada vez que refrescas los datos.</li>
+                    <li><strong>🏋️ Nutrición y Entrenamiento Profundo:</strong> Registro de macronutrientes (Proteínas, Carbs, Grasas), biblioteca de comidas frecuentes y bitácora de gimnasio con sobrecarga progresiva (Series, Reps, Peso kg).</li>
+                    <li><strong>💧 Hidratación Rápida:</strong> Añadido botón para sumar/restar por "trago de agua" (50 ml).</li>
+                    <li><strong>🔒 Persistencia de Nutrición:</strong> Corregido el fallo por el cual se borraban comidas o ejercicios al cambiar de fecha.</li>
+                    <li><strong>🕒 Timestamp Fijo del Programa:</strong> El menú muestra la fecha exacta de despliegue del programa sin alterarse en cada refresco.</li>
                   </ul>
                 </div>
 
-                {/* FORMULARIO DE RECLAMOS / BUGS / RECOMENDACIONES */}
                 <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
                   <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">💬 Reportar Bug, Reclamo o Recomendación</h3>
                   <p className="text-xs text-slate-400">¿Encontraste un problema o tenés una sugerencia? Escribila acá y me llegará directamente a mi correo personal (<strong>stefanopintos.contact@gmail.com</strong>).</p>
