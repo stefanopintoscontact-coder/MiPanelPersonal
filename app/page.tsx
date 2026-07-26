@@ -190,6 +190,7 @@ export default function Home() {
   const [ejercicios, setEjercicios] = useState<EjercicioGimnasio[]>([]);
   const [comidas, setComidas] = useState<ItemComida[]>(COMIDAS_POR_DEFECTO);
   const [bibliotecaComidas, setBibliotecaComidas] = useState<ItemComida[]>([]);
+  const [busquedaBiblioteca, setBusquedaBiblioteca] = useState('');
   const [guardandoCalorias, setGuardandoCalorias] = useState(false);
 
   // Modal IA Comidas
@@ -561,7 +562,7 @@ export default function Home() {
     else alert('❌ Error: ' + error.message);
   };
 
-  // --- NUTRICIÓN, EJERCICIOS Y BIBLIOTECA CON BÚSQUEDA / ACTUALIZACIÓN E IA ---
+  // --- NUTRICIÓN Y ENTRENAMIENTO ---
   const agregarEjercicio = () => setEjercicios([...ejercicios, { 
     id: Date.now().toString(), 
     nombre: 'Nuevo Ejercicio', 
@@ -590,7 +591,6 @@ export default function Home() {
     setEjercicios(copia);
   };
 
-  // Cálculo de Calorías por IA para Ejercicios
   const calcularCaloriasEjercicioIA = (item: EjercicioGimnasio) => {
     const pesoUser = perfil.peso || 70;
     let cal = 0;
@@ -660,7 +660,6 @@ export default function Home() {
     alert(`⭐ "${comida.nombre}" se guardó en tu Biblioteca de Comidas Frecuentes.`);
   };
 
-  // ACTUALIZACIÓN SOLICITADA: Cargar desde Biblioteca actualiza el plato si existe
   const cargarDesdeBiblioteca = (comidaBib: ItemComida) => {
     const nombreNormalizado = comidaBib.nombre.trim().toLowerCase();
     const indexExistente = comidas.findIndex(c => c.nombre.trim().toLowerCase() === nombreNormalizado);
@@ -693,7 +692,7 @@ export default function Home() {
     localStorage.setItem('biblioteca_comidas_user', JSON.stringify(nuevaBib));
   };
 
-  // --- ESTIMADOR DE IA CON CÁMARA Y TEXTO ---
+  // ESTIMADOR CON IA
   const abrirModalIaComida = (comida: ItemComida) => {
     setComidaIaModal(comida);
     setTextoIaInput(comida.nombre !== 'Nueva Comida' ? comida.nombre : '');
@@ -719,7 +718,6 @@ export default function Home() {
       let cal = 0, p = 0, c = 0, g = 0;
       const t = (textoIaInput || comidaIaModal.nombre).toLowerCase();
 
-      // Diccionario inteligente para estimación por gramos y alimentos
       const baseAlimentos: Record<string, { cal: number, p: number, c: number, g: number }> = {
         'pollo': { cal: 165, p: 31, c: 0, g: 3.6 },
         'carne': { cal: 250, p: 26, c: 0, g: 15 },
@@ -845,7 +843,39 @@ export default function Home() {
     alert('📧 Se ha preparado tu mensaje para enviarlo a stefanopintos.contact@gmail.com');
   };
 
-  // Cálculos financieros
+  const exportarCSV = () => {
+    if (transacciones.length === 0) {
+      alert('⚠️ No hay transacciones para exportar.');
+      return;
+    }
+    let csvContent = 'data:text/csv;charset=utf-8,Fecha,Tipo,Descripcion,Categoria,Monto,Es Fijo\n';
+    transacciones.forEach((t) => {
+      csvContent += `"${t.fecha}","${t.tipo}","${t.descripcion}","${t.categoria}",${t.monto},"${t.es_fijo ? 'Sí' : 'No'}"\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `transacciones_${fechaSeleccionada}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const copiarResumenAlPortapapeles = () => {
+    const resumenText = `📊 RESUMEN DIARIO (${fechaSeleccionada})
+👤 Usuario: ${perfil.nombre || 'Sin nombre'} (${perfil.peso} kg)
+⚡ Hábitos: ${totalCompletados}/${habitos.length} completados (${porcentajeHabitos}%)
+🔥 Balance Calórico: ${balanceCalorico} kcal (Ingerido: ${totalIngeridoCal} kcal | Quemado: ${totalGastadoCal} kcal)
+💧 Agua: ${aguaMl} / ${metaAguaMl} ml
+😴 Sueño: ${suenoHoy.horas_totales} hrs
+💵 Gastos hoy: $${formatearMonto(gastosVariablesHoy)}
+📝 Nota: ${notaDiaria || 'Sin notas'}`;
+
+    navigator.clipboard.writeText(resumenText);
+    alert('📋 ¡Resumen diario copiado al portapapeles!');
+  };
+
+  // CÁLCULOS FINANCIEROS
   const transaccionesDelDia = transacciones.filter((t) => t.fecha && t.fecha.startsWith(fechaSeleccionada));
   const transaccionesAMostrar = filtroTransacciones === 'dia' ? transaccionesDelDia : transacciones;
 
@@ -871,11 +901,11 @@ export default function Home() {
 
   const pctGastosSaludables = Math.max(0, 100 - pctGastoDiario);
 
-  // Hábitos
+  // HÁBITOS
   const totalCompletados = habitos.filter((h) => registrosHoy[h.id]?.completado).length;
   const porcentajeHabitos = habitos.length > 0 ? Math.round((totalCompletados / habitos.length) * 100) : 0;
 
-  // Nutrición y Macros
+  // NUTRICIÓN Y MACROS
   const totalGastoEjercicios = ejercicios.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
   const totalGastadoCal = bmrCalculado + totalGastoEjercicios;
   const totalIngeridoCal = comidas.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
@@ -947,7 +977,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row font-sans">
       
-      {/* BARRA LATERAL / NAVEGACIÓN */}
+      {/* BARRA LATERAL */}
       <aside className={`bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:inset-auto md:w-64 md:h-auto overflow-y-auto' : 'w-full md:w-16'}`}>
         <div>
           <div className="p-3 sm:p-4 flex items-center justify-between border-b border-slate-800">
@@ -1013,7 +1043,7 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-3.5 sm:p-6 md:p-8 overflow-y-auto">
         
-        {/* HEADER DE LA SECCIÓN */}
+        {/* HEADER */}
         <header className="flex flex-col gap-4 mb-6 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
             <div>
@@ -1428,7 +1458,7 @@ export default function Home() {
 
             {/* 5. NUTRICIÓN Y ENTRENAMIENTO PROFUNDO */}
             {seccionActiva === 'nutricion' && (
-             <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                 <h2 className="text-xl font-semibold text-amber-400 flex items-center gap-2">
                   <span>🏋️ Nutrición y Entrenamiento Profundo</span>
                 </h2>
@@ -1476,20 +1506,31 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* BIBLIOTECA DE COMIDAS FRECUENTES */}
+                {/* BIBLIOTECA DE COMIDAS FRECUENTES CON BÚSQUEDA */}
                 {bibliotecaComidas.length > 0 && (
-                  <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-2">
-                    <h3 className="text-xs font-semibold uppercase text-amber-400 tracking-wider">⭐ Biblioteca de Comidas Frecuentes</h3>
+                  <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <h3 className="text-xs font-semibold uppercase text-amber-400 tracking-wider">⭐ Biblioteca de Comidas Frecuentes</h3>
+                      <input
+                        type="text"
+                        placeholder="🔍 Buscar en biblioteca..."
+                        value={busquedaBiblioteca}
+                        onChange={(e) => setBusquedaBiblioteca(e.target.value)}
+                        className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-amber-500 w-full sm:w-48"
+                      />
+                    </div>
                     <p className="text-[11px] text-slate-400">Toca un plato para cargar o actualizar tus comidas de hoy directamente.</p>
                     <div className="flex flex-wrap gap-2 pt-1">
-                      {bibliotecaComidas.map((item) => (
-                        <div key={item.id} className="bg-slate-950 border border-slate-800 hover:border-amber-500/50 px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs">
-                          <button onClick={() => cargarDesdeBiblioteca(item)} className="font-semibold text-slate-200 hover:text-amber-400 transition cursor-pointer">
-                            ⚡ {item.nombre} <span className="text-[10px] text-slate-400 font-normal">({item.calorias} kcal)</span>
-                          </button>
-                          <button onClick={() => eliminarDeBiblioteca(item.id)} className="text-slate-500 hover:text-rose-400 text-[10px] cursor-pointer">✕</button>
-                        </div>
-                      ))}
+                      {bibliotecaComidas
+                        .filter((b) => b.nombre.toLowerCase().includes(busquedaBiblioteca.toLowerCase()))
+                        .map((item) => (
+                          <div key={item.id} className="bg-slate-950 border border-slate-800 hover:border-amber-500/50 px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs">
+                            <button onClick={() => cargarDesdeBiblioteca(item)} className="font-semibold text-slate-200 hover:text-amber-400 transition cursor-pointer">
+                              ⚡ {item.nombre} <span className="text-[10px] text-slate-400 font-normal">({item.calorias} kcal)</span>
+                            </button>
+                            <button onClick={() => eliminarDeBiblioteca(item.id)} className="text-slate-500 hover:text-rose-400 text-[10px] cursor-pointer">✕</button>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}
@@ -1504,7 +1545,6 @@ export default function Home() {
                   {comidas.map((item, idx) => (
                     <div key={item.id} className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 space-y-2">
                       <div className="flex gap-2 items-center">
-                        {/* REORDENAR */}
                         <div className="flex flex-col gap-0.5 shrink-0">
                           <button onClick={() => moverComida(idx, 'arriba')} disabled={idx === 0} className="text-[10px] text-slate-400 hover:text-amber-400 disabled:opacity-20 cursor-pointer">▲</button>
                           <button onClick={() => moverComida(idx, 'abajo')} disabled={idx === comidas.length - 1} className="text-[10px] text-slate-400 hover:text-amber-400 disabled:opacity-20 cursor-pointer">▼</button>
@@ -1518,7 +1558,6 @@ export default function Home() {
                           placeholder="Nombre de la comida"
                         />
                         
-                        {/* BOTÓN IA Y CÁMARA */}
                         <button onClick={() => abrirModalIaComida(item)} className="text-xs text-cyan-300 bg-cyan-950/60 border border-cyan-800/80 px-2.5 py-1 rounded-lg hover:bg-cyan-900/60 transition cursor-pointer flex items-center gap-1 shrink-0 font-medium">
                           📷 IA
                         </button>
@@ -1551,10 +1590,10 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* BITÁCORA DE ENTRENAMIENTO MULTIDISCIPLINA CON CÁLCULO DE CALORÍAS POR IA */}
+                {/* BITÁCORA DE ENTRENAMIENTO MULTIDISCIPLINA */}
                 <div className="space-y-3 pt-2">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-semibold uppercase text-slate-400 tracking-wider">🏋️ Bitácora de Entrenamiento (Gimnasio, Running, Ciclismo, Boxeo)</h3>
+                    <h3 className="text-xs font-semibold uppercase text-slate-400 tracking-wider">🏋️ Bitácora de Entrenamiento (Gym, Running, Ciclismo, Boxeo)</h3>
                     <button onClick={agregarEjercicio} className="text-xs text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer">+ Agregar Actividad</button>
                   </div>
 
@@ -1595,7 +1634,6 @@ export default function Home() {
                         <button onClick={() => eliminarEjercicio(item.id)} className="text-slate-500 hover:text-rose-400 shrink-0 p-1 cursor-pointer">🗑️</button>
                       </div>
 
-                      {/* CAMPOS DINÁMICOS SEGÚN EL TIPO DE ACTIVIDAD */}
                       {item.tipo === 'gimnasio' || !item.tipo ? (
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                           <div>
@@ -1724,231 +1762,182 @@ export default function Home() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="text-xs text-slate-400 block mb-1">Hora de acostarse</label>
-                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_acostarse: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white" />
+                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_acostarse: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer" />
                       </div>
                       <div>
                         <label className="text-xs text-slate-400 block mb-1">Hora de levantarse</label>
-                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_levantarse: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white" />
+                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_levantarse: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer" />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Calidad (1-5 ⭐)</label>
-                        <select value={suenoHoy.calidad} onChange={(e) => setSuenoHoy({ ...suenoHoy, calidad: Number(e.target.value) })} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white cursor-pointer">
-                          <option value={1}>⭐ 1 - Muy malo</option>
-                          <option value={2}>⭐⭐ 2 - Regular</option>
-                          <option value={3}>⭐⭐⭐ 3 - Aceptable</option>
-                          <option value={4}>⭐⭐⭐⭐ 4 - Bueno</option>
-                          <option value={5}>⭐⭐⭐⭐⭐ 5 - Reparador</option>
+                        <label className="text-xs text-slate-400 block mb-1">Calidad del sueño (1-5)</label>
+                        <select value={suenoHoy.calidad} onChange={(e) => setSuenoHoy({ ...suenoHoy, calidad: Number(e.target.value) })} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
+                          <option value={1}>⭐ Mala</option>
+                          <option value={2}>⭐⭐ Regular</option>
+                          <option value={3}>⭐⭐⭐ Buena</option>
+                          <option value={4}>⭐⭐⭐⭐ Muy Buena</option>
+                          <option value={5}>⭐⭐⭐⭐⭐ Excelente</option>
                         </select>
                       </div>
                     </div>
-                    <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
-                      <span className="text-slate-400">Total Sueño Calculado:</span>
-                      <span className="text-base font-bold text-indigo-300">{suenoHoy.horas_totales || 0} Horas</span>
+                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <span className="text-xs text-slate-400 font-medium">Horas Totales Calculadas:</span>
+                      <span className="text-lg font-mono font-bold text-indigo-400">{suenoHoy.horas_totales} hrs</span>
                     </div>
-                    <button onClick={guardarSueno} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm py-2.5 rounded-xl transition cursor-pointer">💾 Guardar Sueño</button>
+                    <button onClick={guardarSueno} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl transition text-xs cursor-pointer">
+                      💾 Guardar Registro de Sueño
+                    </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* 7. NOTAS */}
-            {seccionActiva === 'notas' && (
-              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
-                <h2 className="text-xl font-semibold text-indigo-400">📝 Notas del Día</h2>
-                <textarea value={notaDiaria} onChange={(e) => setNotaDiaria(e.target.value)} placeholder="Escribe tus reflexiones, recordatorios o pendientes para hoy..." rows={8} className="w-full bg-slate-900/80 border border-slate-700 rounded-xl p-4 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 leading-relaxed resize-none" />
-                <button onClick={guardarNota} disabled={guardandoNota} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer disabled:opacity-50">
-                  {guardandoNota ? 'Guardando...' : '💾 Guardar Nota'}
-                </button>
-              </section>
-            )}
-
-            {/* 8. VISUALIZACIÓN Y ESTADÍSTICAS */}
+            {/* 7. ESTADÍSTICAS */}
             {seccionActiva === 'estadisticas' && (
               <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                <h2 className="text-xl font-semibold text-indigo-400 flex items-center gap-2">
-                  <span>📈 Visualización y Estadísticas</span>
-                </h2>
+                <div className="flex justify-between items-center flex-wrap gap-2">
+                  <h2 className="text-xl font-semibold text-slate-200">📈 Estadísticas y Métricas Generales</h2>
+                  <button onClick={copiarResumenAlPortapapeles} className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-xl font-medium transition cursor-pointer">
+                    📋 Copiar Resumen
+                  </button>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* GRÁFICO 1: EVOLUCIÓN DEL PESO */}
-                  <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-3">
-                    <h3 className="text-sm font-bold text-indigo-300 uppercase tracking-wider flex items-center justify-between">
-                      <span>📉 Evolución del Peso</span>
-                      <span className="text-xs font-mono text-emerald-400">Meta: {metaPeso} kg</span>
-                    </h3>
-                    <p className="text-xs text-slate-400">
-                      Proyección para los próximos {perfil.tiempo_objetivo_meses || 1} meses ({perfil.objetivo === 'subir' ? 'Aumento' : perfil.objetivo === 'bajar' ? 'Reducción' : 'Mantenimiento'} progresivo).
-                    </p>
-                    
-                    <div className="h-44 w-full bg-slate-950 rounded-xl p-3 border border-slate-800 flex items-end justify-between gap-2 relative overflow-hidden">
-                      <div className="absolute inset-x-0 top-1/2 border-b border-dashed border-slate-800"></div>
-                      {datosEvolucionPeso.map((p, idx) => {
-                        const todosPesos = [perfil.peso, ...datosEvolucionPeso.map(d => d.peso)];
-                        const min = Math.min(...todosPesos) - 2;
-                        const max = Math.max(...todosPesos) + 2;
-                        const rango = max - min || 1;
-                        const pct = Math.max(15, Math.min(100, Math.round(((p.peso - min) / rango) * 100)));
+                {/* EVOLUCIÓN DEL PESO */}
+                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">🎯 Proyección y Meta de Peso</h3>
+                  <div className="flex justify-between items-center text-xs text-slate-300">
+                    <span>Peso Actual: <strong className="text-white">{perfil.peso} kg</strong></span>
+                    <span>Meta: <strong className="text-amber-400">{metaPeso} kg</strong></span>
+                    <span>Plazo: <strong className="text-indigo-400">{perfil.tiempo_objetivo_meses} meses</strong></span>
+                  </div>
+                  
+                  <div className="space-y-2 pt-2">
+                    {datosEvolucionPeso.map((pt, idx) => (
+                      <div key={idx} className="flex items-center gap-3 text-xs">
+                        <span className="w-10 font-mono text-slate-400 font-bold">{pt.mes}</span>
+                        <div className="flex-1 bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800">
+                          <div className="bg-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.max(10, (pt.peso / (metaPeso || 1)) * 100))}%` }}></div>
+                        </div>
+                        <span className="font-mono text-slate-200 font-semibold w-16 text-right">{pt.peso.toFixed(1)} kg</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
+                {/* DISTRIBUCIÓN DE GASTOS */}
+                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-wider">📊 Gastos por Categoría</h3>
+                  {Object.keys(gastosPorCategoria).length === 0 ? (
+                    <p className="text-xs text-slate-500 italic">No hay gastos registrados aún.</p>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {Object.entries(gastosPorCategoria).map(([cat, total]) => {
+                        const pct = totalGastosTotales > 0 ? Math.round((total / totalGastosTotales) * 100) : 0;
                         return (
-                          <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end z-10 group">
-                            <span className="text-[10px] text-indigo-300 font-mono mb-1 group-hover:scale-110 transition-transform">{p.peso.toFixed(1)}k</span>
-                            <div className="w-full bg-indigo-600/80 hover:bg-indigo-500 rounded-t-md transition-all" style={{ height: `${pct}%` }}></div>
-                            <span className="text-[9px] text-slate-500 mt-1">{p.mes}</span>
+                          <div key={cat} className="space-y-1">
+                            <div className="flex justify-between text-xs text-slate-300">
+                              <span className="font-medium">{cat}</span>
+                              <span className="font-mono text-emerald-400">${formatearMonto(total)} ({pct}%)</span>
+                            </div>
+                            <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                              <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${pct}%` }}></div>
+                            </div>
                           </div>
                         );
                       })}
                     </div>
-                  </div>
-
-                  {/* GRÁFICO 2: CONTROL DE GASTOS POR CATEGORÍA */}
-                  <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-3">
-                    <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
-                      <span>🍕 Control de Gastos por Categoría</span>
-                      <span className="text-xs font-mono text-slate-300">${formatearMonto(totalGastosTotales)}</span>
-                    </h3>
-                    <p className="text-xs text-slate-400">Distribución acumulada de tus gastos.</p>
-
-                    <div className="space-y-2.5 max-h-44 overflow-y-auto pr-1">
-                      {Object.keys(gastosPorCategoria).length === 0 ? (
-                        <p className="text-xs text-slate-500 italic py-8 text-center">No hay gastos registrados para analizar.</p>
-                      ) : (
-                        Object.entries(gastosPorCategoria).map(([cat, val]) => {
-                          const pct = totalGastosTotales > 0 ? Math.round((val / totalGastosTotales) * 100) : 0;
-                          return (
-                            <div key={cat} className="space-y-1">
-                              <div className="flex justify-between text-xs">
-                                <span className="text-slate-300 font-medium">{cat}</span>
-                                <span className="text-slate-400 font-mono">${formatearMonto(val)} ({pct}%)</span>
-                              </div>
-                              <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
-                                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }}></div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* GRÁFICO 3: MAPA DE CALOR DE HÁBITOS */}
+                {/* RACHAS DE HÁBITOS */}
                 <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-3">
-                  <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">🗓️ Consistencia de Hábitos (Mapa de Calor)</h3>
-                  <p className="text-xs text-slate-400">Historial diario de los últimos 28 días.</p>
-                  
-                  <div className="grid grid-cols-7 sm:grid-cols-14 gap-2 py-2">
-                    {Array.from({ length: 28 }).map((_, i) => {
-                      const d = new Date();
-                      d.setDate(d.getDate() - (27 - i));
-                      const strFecha = d.toISOString().split('T')[0];
-                      const cantidadComp = todosLosRegistrosHabitos.filter((r) => r.fecha === strFecha && r.completado).length;
-                      const pctComp = habitos.length > 0 ? (cantidadComp / habitos.length) : 0;
-
-                      let bg = 'bg-slate-950 border-slate-800 text-slate-600';
-                      if (habitos.length > 0) {
-                        if (pctComp >= 0.8) {
-                          bg = 'bg-emerald-500 border-emerald-400 text-white font-bold';
-                        } else if (pctComp >= 0.4) {
-                          bg = 'bg-amber-500 border-amber-400 text-slate-950 font-bold';
-                        } else if (cantidadComp > 0) {
-                          bg = 'bg-rose-500/80 border-rose-400 text-white font-bold';
-                        } else {
-                          bg = 'bg-rose-950/50 border-rose-900/60 text-rose-400';
-                        }
-                      }
-
-                      return (
-                        <div 
-                          key={i} 
-                          className={`h-8 rounded-lg border flex flex-col items-center justify-center text-[10px] font-mono transition-all hover:scale-110 cursor-pointer ${bg}`} 
-                          title={`${strFecha}: ${cantidadComp}/${habitos.length} hábitos completados (${Math.round(pctComp * 100)}%)`}
-                        >
-                          <span>{d.getDate()}</span>
+                  <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">⚡ Rachas de Hábitos Activas</h3>
+                  {habitos.length === 0 ? (
+                    <p className="text-xs text-slate-500 italic">No tienes hábitos creados.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {habitos.map((h) => (
+                        <div key={h.id} className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
+                          <span className="font-medium text-slate-300 truncate">{h.texto}</span>
+                          <span className="font-bold text-amber-400 font-mono flex items-center gap-1 shrink-0 ml-2">🔥 {rachasHabitos[h.id] || 0} días</span>
                         </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs space-y-2 mt-3">
-                    <p className="text-slate-300 font-semibold flex items-center gap-1.5">
-                      <span>❓</span> ¿Cómo entender la consistencia de hábitos?
-                    </p>
-                    <p className="text-slate-400 text-[11px] leading-relaxed">
-                      Cada casilla representa un día de los últimos 28 días. El color refleja tu nivel de cumplimiento según la proporción de hábitos completados respecto al total de hábitos activos:
-                    </p>
-                    <div className="flex flex-wrap items-center gap-3 text-[11px] pt-1">
-                      <span className="flex items-center gap-1.5 text-rose-400 font-medium">
-                        <span className="w-3.5 h-3.5 rounded bg-rose-950 border border-rose-900 inline-block"></span> Ninguno / Pocos (&lt; 40%)
-                      </span>
-                      <span className="flex items-center gap-1.5 text-amber-400 font-medium">
-                        <span className="w-3.5 h-3.5 rounded bg-amber-500 border border-amber-400 inline-block"></span> La mitad (~50%)
-                      </span>
-                      <span className="flex items-center gap-1.5 text-emerald-300 font-semibold">
-                        <span className="w-3.5 h-3.5 rounded bg-emerald-500 border border-emerald-400 inline-block"></span> Todos / Casi todos (&ge; 80%)
-                      </span>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </div>
               </section>
             )}
 
-            {/* 9. ACTUALIZACIÓN / NOVEDADES / SOPORTE */}
+            {/* 8. ACTUALIZACIONES Y SOPORTE */}
             {seccionActiva === 'actualizaciones' && (
-              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-8 max-w-4xl mx-auto">
-                <div>
-                  <h2 className="text-xl font-semibold text-indigo-400 mb-1">🚀 Novedades y Soporte</h2>
-                  <p className="text-xs text-slate-400">Enterate de todas las últimas mejoras y funciones agregadas a tu app.</p>
+              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <h2 className="text-xl font-semibold text-indigo-400">🚀 Novedades, Exportación y Soporte</h2>
+                  <span className="text-xs font-mono bg-indigo-950 text-indigo-300 px-3 py-1 rounded-xl border border-indigo-800">
+                    Versión Actual: {ULTIMA_ACTUALIZACION_APP}
+                  </span>
                 </div>
 
-                <div className="space-y-3 bg-slate-900/60 p-5 rounded-2xl border border-slate-800">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span className="font-bold text-sm text-indigo-300">Versión Actual - Julio 2026</span>
-                    <span className="text-[11px] font-mono bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded border border-indigo-800">v2.6.0</span>
-                  </div>
-                  <ul className="text-xs text-slate-300 space-y-2 list-disc list-inside leading-relaxed">
-                    <li><strong>📷 Estimación Nutricional con IA:</strong> Botón de cámara y texto para estimar automáticamente calorías y macros (Proteínas, Carbs, Grasas) con pesos en gramos.</li>
-                    <li><strong>⚡ Biblioteca Inteligente:</strong> Cargar un plato de tu biblioteca actualiza el horario existente (ej: Desayuno) notificándote la acción.</li>
-                    <li><strong>🏃 Multidisciplina y Calorías Quemadas con IA:</strong> Registro de Running, Ciclismo, Boxeo, Natación y Gym con cálculo automático de calorías por IA según peso, intensidad y volumen.</li>
-                    <li><strong>🔒 Confirmaciones de Seguridad:</strong> Diálogo de confirmación antes de eliminar cualquier registro.</li>
-                    <li><strong>↕️ Reordenamiento de Comidas y Ejercicios:</strong> Mueve tus comidas o ejercicios arriba o abajo según tu orden preferido.</li>
-                    <li><strong>🔥 Trago de Agua (+50 ml):</strong> Opción rápida en Hidratación para sumar o restar un sorbo.</li>
-                    <li><strong>🤖 Calculadora Automática de BMR:</strong> Cálculo metabólico dinámico por edad, peso, altura y sexo.</li>
-                  </ul>
-                </div>
-
-                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
-                  <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">💬 Reportar Bug, Reclamo o Recomendación</h3>
-                  <p className="text-xs text-slate-400">¿Encontraste un problema o tenés una sugerencia? Escribila acá y me llegará directamente a mi correo personal (<strong>stefanopintos.contact@gmail.com</strong>).</p>
-
-                  <form onSubmit={enviarSoporte} className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">Tipo de Mensaje</label>
-                        <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value as any)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 cursor-pointer">
-                          <option value="bug">🐛 Reportar un Bug / Error</option>
-                          <option value="reclamo">⚠️ Reclamo</option>
-                          <option value="recomendacion">💡 Recomendación / Idea</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">Tu Email de contacto (Opcional)</label>
-                        <input type="email" placeholder="tu-email@ejemplo.com" value={emailContacto} onChange={(e) => setEmailContacto(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Escribe tu mensaje aquí</label>
-                      <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Describe en detalle qué sucedió o qué te gustaría mejorar..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500 leading-relaxed resize-none" />
-                    </div>
-
-                    <button type="submit" disabled={enviandoMensaje} className="bg-amber-600 hover:bg-amber-500 text-white font-medium px-5 py-2.5 rounded-xl text-xs transition cursor-pointer disabled:opacity-50">
-                      {enviandoMensaje ? 'Enviando...' : '📧 Enviar Mensaje'}
+                {/* EXPORTACIÓN DE DATOS */}
+                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-3">
+                  <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">📤 Exportación de Datos</h3>
+                  <p className="text-xs text-slate-400">Descarga tu información o copia un resumen ejecutivo al portapapeles.</p>
+                  <div className="flex flex-wrap gap-2.5">
+                    <button onClick={exportarCSV} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer">
+                      📊 Exportar Transacciones (CSV)
                     </button>
-                  </form>
+                    <button onClick={copiarResumenAlPortapapeles} className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer">
+                      📋 Copiar Resumen del Día
+                    </button>
+                  </div>
                 </div>
+
+                {/* FORMULARIO DE SOPORTE */}
+                <form onSubmit={enviarSoporte} className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">📧 Contacto, Reportes y Recomendaciones</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Tipo de mensaje</label>
+                      <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value as any)} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
+                        <option value="bug">🐛 Reporte de Bug / Error</option>
+                        <option value="recomendacion">💡 Sugerencia / Idea</option>
+                        <option value="reclamo">📢 Reclamo o Consulta</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Tu Email de contacto (Opcional)</label>
+                      <input type="email" placeholder="ejemplo@correo.com" value={emailContacto} onChange={(e) => setEmailContacto(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Mensaje</label>
+                    <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Escribe aquí tu duda, sugerencia o problema..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500" />
+                  </div>
+                  <button type="submit" disabled={enviandoMensaje} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl transition text-xs cursor-pointer disabled:opacity-50">
+                    {enviandoMensaje ? 'Enviando...' : '✉️ Enviar Mensaje a Soporte'}
+                  </button>
+                </form>
               </section>
             )}
 
+            {/* 9. NOTAS */}
+            {seccionActiva === 'notas' && (
+              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-amber-400">📝 Notas Diarias y Apuntes</h2>
+                  <span className="text-xs text-slate-400 font-mono">{fechaSeleccionada}</span>
+                </div>
+                <textarea
+                  rows={8}
+                  value={notaDiaria}
+                  onChange={(e) => setNotaDiaria(e.target.value)}
+                  placeholder="Escribe tus reflexiones, tareas pendientes, ideas o aprendizajes del día..."
+                  className="w-full bg-slate-950 border border-slate-700 rounded-2xl p-4 text-sm text-slate-100 focus:outline-none focus:border-amber-500 resize-y"
+                />
+                <button onClick={guardarNota} disabled={guardandoNota} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium py-2.5 rounded-xl transition text-xs cursor-pointer disabled:opacity-50">
+                  {guardandoNota ? 'Guardando...' : '💾 Guardar Nota Diaria'}
+                </button>
+              </section>
+            )}
           </div>
         )}
       </main>
