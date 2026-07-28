@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
 // FECHA Y HORA REAL DE ÚLTIMA ACTUALIZACIÓN DEL CÓDIGO/PROGRAMA
-const ULTIMA_ACTUALIZACION_APP = '26/07/2026 15:00';
+const ULTIMA_ACTUALIZACION_APP = '28/07/2026 19:30';
 
 // --- INTERFACES ---
 interface PerfilUsuario {
@@ -31,16 +31,6 @@ interface RegistroHabito {
   completado: boolean;
   hora_completado?: string;
   fecha?: string;
-}
-
-interface Transaccion {
-  id: number;
-  monto: number;
-  tipo: 'ingreso' | 'gasto';
-  descripcion: string;
-  categoria: string;
-  es_fijo: boolean;
-  fecha: string;
 }
 
 interface ItemComida {
@@ -82,9 +72,6 @@ interface RegistroSueno {
   calidad: number;
 }
 
-const CATEGORIAS_GASTO = ['Comida', 'Gimnasio', 'Luz', 'Agua', 'WiFi', 'Alquiler', 'Salud', 'Educación', 'Entretenimiento', 'Varios'];
-const CATEGORIAS_INGRESO = ['Sueldo', 'Ventas', 'Inversiones', 'Varios'];
-
 const FRASES_MOTIVACIONALES = [
   "«El éxito es la suma de pequeños esfuerzos repetidos día tras día.»",
   "«La disciplina es construir el puente entre tus metas y tus logros.»",
@@ -108,10 +95,6 @@ const obtenerFechaLogica = () => {
   const ahora = new Date();
   const fechaAjustada = new Date(ahora.getTime() - 4 * 60 * 60 * 1000);
   return fechaAjustada.toISOString().split('T')[0];
-};
-
-const formatearMonto = (monto: number) => {
-  return Math.round(monto).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
 const obtenerHora24 = (fechaISO?: string) => {
@@ -140,14 +123,8 @@ const getEstadoBarra = (pct: number) => {
   return { bar: 'bg-rose-500', text: 'text-rose-400' };
 };
 
-const getEstadoGastos = (pctDisponible: number) => {
-  if (pctDisponible >= 25) return { bar: 'bg-emerald-500', text: 'text-emerald-400' };
-  if (pctDisponible > 0) return { bar: 'bg-amber-500', text: 'text-amber-400' };
-  return { bar: 'bg-rose-500', text: 'text-rose-400' };
-};
-
 export default function Home() {
-  const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'finanzas' | 'habitos' | 'nutricion' | 'extra' | 'notas' | 'estadisticas' | 'actualizaciones'>('general');
+  const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'habitos' | 'nutricion' | 'extra' | 'notas' | 'estadisticas' | 'actualizaciones'>('general');
   const [subSeccionExtra, setSubSeccionExtra] = useState<'agua' | 'sueno'>('agua');
   
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
@@ -176,15 +153,6 @@ export default function Home() {
   const [rachasHabitos, setRachasHabitos] = useState<Record<number, number>>({});
   const [nuevoHabito, setNuevoHabito] = useState('');
   const [horaObjetivo, setHoraObjetivo] = useState('18:00');
-
-  // Finanzas
-  const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
-  const [monto, setMonto] = useState('');
-  const [descripcion, setDescripcion] = useState('');
-  const [tipo, setTipo] = useState<'ingreso' | 'gasto'>('gasto');
-  const [categoria, setCategoria] = useState(CATEGORIAS_GASTO[0]);
-  const [esFijo, setEsFijo] = useState(false);
-  const [filtroTransacciones, setFiltroTransacciones] = useState<'dia' | 'todas'>('dia');
 
   // Nutrición / Calorías / Gimnasio
   const [ejercicios, setEjercicios] = useState<EjercicioGimnasio[]>([]);
@@ -235,16 +203,6 @@ export default function Home() {
   const cambiarSeccion = (id: typeof seccionActiva) => {
     setSeccionActiva(id);
     setSidebarAbierto(false);
-  };
-
-  const cambiarTipoTransaccion = (nuevoTipo: 'ingreso' | 'gasto') => {
-    setTipo(nuevoTipo);
-    if (nuevoTipo === 'ingreso') {
-      setCategoria(CATEGORIAS_INGRESO[0]);
-      setEsFijo(false);
-    } else {
-      setCategoria(CATEGORIAS_GASTO[0]);
-    }
   };
 
   // Reloj en vivo
@@ -328,7 +286,7 @@ export default function Home() {
               
               let desc = esNoche ? 'Noche Despejada' : 'Despejado';
               let icono = esNoche ? '🌙' : '☀️';
-              let rec = 'Día ideal para realizar tus actividades.';
+              let rec = 'Día ideal para realizar tus actividades físicas.';
 
               if (code === 0) { 
                 desc = esNoche ? 'Noche Despejada' : 'Despejado / Sol'; 
@@ -342,11 +300,11 @@ export default function Home() {
               } else if (code >= 51 && code <= 67) { 
                 desc = 'Lluvia / Llovizna'; 
                 icono = '🌧️'; 
-                rec = '⚠️ Lluvia en tu zona. Llevá paraguas si salís.'; 
+                rec = '⚠️ Lluvia en tu zona. Entrená en interiores hoy.'; 
               } else if (code >= 71 && code <= 77) { 
                 desc = 'Nieve'; 
                 icono = '❄️'; 
-                rec = '⚠️ Nieve. Abrigate muy bien.'; 
+                rec = '⚠️ Nieve. Abrigate muy bien al entrenar.'; 
               } else if (code >= 80 && code <= 82) { 
                 desc = 'Chaparrones'; 
                 icono = '🌦️'; 
@@ -357,8 +315,8 @@ export default function Home() {
                 rec = '⚠️ Alerta de tormenta. Mantenete a resguardo.'; 
               }
 
-              if (temp <= 14) rec = `Hace frío (${temp}°C). Podés salir pero abrigate bien.`;
-              else if (temp >= 28) rec = `Hace calor (${temp}°C). Recordá mantenerte bien hidratado.`;
+              if (temp <= 14) rec = `Hace frío (${temp}°C). Entrená con ropa de abrigo.`;
+              else if (temp >= 28) rec = `Hace calor (${temp}°C). Hidratate frecuentemente.`;
 
               const objClima = { temp, codigoClima: code, descripcion: desc, recomendacion: rec, ubicacion: textoUbicacion, icono };
               setClima(objClima);
@@ -374,7 +332,7 @@ export default function Home() {
             temp: 18, 
             codigoClima: 0, 
             descripcion: esNoche ? 'Noche Templada' : 'Templado', 
-            recomendacion: 'Temperatura agradable. Llevá abrigo liviano.', 
+            recomendacion: 'Temperatura agradable para entrenar.', 
             ubicacion: 'Ubicación local', 
             icono: esNoche ? '🌙' : '🌤️' 
           };
@@ -430,9 +388,6 @@ export default function Home() {
     const mapaRegistros: Record<number, RegistroHabito> = {};
     if (datosRegistros) datosRegistros.forEach((reg) => { mapaRegistros[reg.habito_id] = reg; });
     setRegistrosHoy(mapaRegistros);
-
-    const { data: datosTransacciones } = await supabase.from('transacciones').select('*').order('fecha', { ascending: false });
-    if (datosTransacciones) setTransacciones(datosTransacciones);
 
     const { data: datosCalorias } = await supabase.from('registro_calorias').select('*').eq('fecha', fechaSeleccionada).maybeSingle();
     if (datosCalorias) {
@@ -538,30 +493,6 @@ export default function Home() {
     else alert('❌ Error: ' + error.message);
   };
 
-  const agregarTransaccion = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const numMonto = parseFloat(monto);
-    if (isNaN(numMonto) || numMonto <= 0 || !descripcion.trim()) return;
-
-    const fechaHora = new Date(`${fechaSeleccionada}T${obtenerHora24()}:00`).toISOString();
-    const { data, error } = await supabase.from('transacciones').insert([{ descripcion, monto: numMonto, tipo, categoria, es_fijo: esFijo, fecha: fechaHora }]).select();
-    if (error) alert('❌ Error: ' + error.message);
-    else if (data) { 
-      setTransacciones([data[0], ...transacciones]); 
-      setMonto(''); 
-      setDescripcion(''); 
-      setEsFijo(false); 
-      setCategoria(tipo === 'gasto' ? CATEGORIAS_GASTO[0] : CATEGORIAS_INGRESO[0]);
-    }
-  };
-
-  const eliminarTransaccion = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar esta transacción?')) return;
-    const { error } = await supabase.from('transacciones').delete().eq('id', id);
-    if (!error) setTransacciones(transacciones.filter((t) => t.id !== id));
-    else alert('❌ Error: ' + error.message);
-  };
-
   // --- NUTRICIÓN Y ENTRENAMIENTO ---
   const agregarEjercicio = () => setEjercicios([...ejercicios, { 
     id: Date.now().toString(), 
@@ -582,13 +513,22 @@ export default function Home() {
     setEjercicios(ejercicios.filter((item) => item.id !== id));
   };
 
-  const moverEjercicio = (index: number, direccion: 'arriba' | 'abajo') => {
+  const moverEjercicio = async (index: number, direccion: 'arriba' | 'abajo') => {
     const nuevoIndice = direccion === 'arriba' ? index - 1 : index + 1;
     if (nuevoIndice < 0 || nuevoIndice >= ejercicios.length) return;
     const copia = [...ejercicios];
     const [removido] = copia.splice(index, 1);
     copia.splice(nuevoIndice, 0, removido);
     setEjercicios(copia);
+
+    // Guardado automático en DB al reordenar ejercicios
+    await supabase.from('registro_calorias').upsert({
+      fecha: fechaSeleccionada,
+      base: bmrCalculado,
+      agua_ml: aguaMl,
+      ejercicios: copia,
+      comidas
+    }, { onConflict: 'fecha' });
   };
 
   const calcularCaloriasEjercicioIA = (item: EjercicioGimnasio) => {
@@ -638,13 +578,23 @@ export default function Home() {
     setComidas(comidas.filter((item) => item.id !== id));
   };
 
-  const moverComida = (index: number, direccion: 'arriba' | 'abajo') => {
+  // REORDENAMIENTO DE COMIDAS CON GUARDADO DE NATIVO EN SUPABASE
+  const moverComida = async (index: number, direccion: 'arriba' | 'abajo') => {
     const nuevoIndice = direccion === 'arriba' ? index - 1 : index + 1;
     if (nuevoIndice < 0 || nuevoIndice >= comidas.length) return;
     const copia = [...comidas];
     const [removido] = copia.splice(index, 1);
     copia.splice(nuevoIndice, 0, removido);
     setComidas(copia);
+
+    // Guardado persistente automático del orden en la BD
+    await supabase.from('registro_calorias').upsert({
+      fecha: fechaSeleccionada,
+      base: bmrCalculado,
+      agua_ml: aguaMl,
+      ejercicios,
+      comidas: copia
+    }, { onConflict: 'fecha' });
   };
 
   const guardarEnBiblioteca = (comida: ItemComida) => {
@@ -692,7 +642,7 @@ export default function Home() {
     localStorage.setItem('biblioteca_comidas_user', JSON.stringify(nuevaBib));
   };
 
-  // ESTIMADOR CON IA
+  // ESTIMADOR CON IA (FOTO / CÁMARA / GALERÍA)
   const abrirModalIaComida = (comida: ItemComida) => {
     setComidaIaModal(comida);
     setTextoIaInput(comida.nombre !== 'Nueva Comida' ? comida.nombre : '');
@@ -834,7 +784,7 @@ export default function Home() {
       await supabase.from('mensajes_contacto').insert([{ tipo: tipoSoporte, mensaje: mensajeSoporte, email_remitente: emailContacto }]);
     } catch (err) {}
 
-    const asunto = encodeURIComponent(`[App Personal - ${tipoSoporte.toUpperCase()}] Mensaje de usuario`);
+    const asunto = encodeURIComponent(`[App Personal Fitness - ${tipoSoporte.toUpperCase()}] Mensaje de usuario`);
     const cuerpo = encodeURIComponent(`Tipo: ${tipoSoporte}\nEmail Remitente: ${emailContacto || 'No especificado'}\n\nMensaje:\n${mensajeSoporte}`);
     window.location.href = `mailto:stefanopintos.contact@gmail.com?subject=${asunto}&body=${cuerpo}`;
 
@@ -843,63 +793,18 @@ export default function Home() {
     alert('📧 Se ha preparado tu mensaje para enviarlo a stefanopintos.contact@gmail.com');
   };
 
-  const exportarCSV = () => {
-    if (transacciones.length === 0) {
-      alert('⚠️ No hay transacciones para exportar.');
-      return;
-    }
-    let csvContent = 'data:text/csv;charset=utf-8,Fecha,Tipo,Descripcion,Categoria,Monto,Es Fijo\n';
-    transacciones.forEach((t) => {
-      csvContent += `"${t.fecha}","${t.tipo}","${t.descripcion}","${t.categoria}",${t.monto},"${t.es_fijo ? 'Sí' : 'No'}"\n`;
-    });
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `transacciones_${fechaSeleccionada}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const copiarResumenAlPortapapeles = () => {
-    const resumenText = `📊 RESUMEN DIARIO (${fechaSeleccionada})
+    const resumenText = `📊 RESUMEN FITNESS DIARIO (${fechaSeleccionada})
 👤 Usuario: ${perfil.nombre || 'Sin nombre'} (${perfil.peso} kg)
 ⚡ Hábitos: ${totalCompletados}/${habitos.length} completados (${porcentajeHabitos}%)
 🔥 Balance Calórico: ${balanceCalorico} kcal (Ingerido: ${totalIngeridoCal} kcal | Quemado: ${totalGastadoCal} kcal)
 💧 Agua: ${aguaMl} / ${metaAguaMl} ml
 😴 Sueño: ${suenoHoy.horas_totales} hrs
-💵 Gastos hoy: $${formatearMonto(gastosVariablesHoy)}
 📝 Nota: ${notaDiaria || 'Sin notas'}`;
 
     navigator.clipboard.writeText(resumenText);
     alert('📋 ¡Resumen diario copiado al portapapeles!');
   };
-
-  // CÁLCULOS FINANCIEROS
-  const transaccionesDelDia = transacciones.filter((t) => t.fecha && t.fecha.startsWith(fechaSeleccionada));
-  const transaccionesAMostrar = filtroTransacciones === 'dia' ? transaccionesDelDia : transacciones;
-
-  const totalIngresos = transacciones.filter((t) => t.tipo === 'ingreso').reduce((acc, t) => acc + Number(t.monto), 0);
-  const totalGastosFijos = transacciones.filter((t) => t.tipo === 'gasto' && t.es_fijo).reduce((acc, t) => acc + Number(t.monto), 0);
-  const totalGastosTotales = transacciones.filter((t) => t.tipo === 'gasto').reduce((acc, t) => acc + Number(t.monto), 0);
-  const balanceFinanciero = totalIngresos - totalGastosTotales;
-
-  const balanceMensualRestante = totalIngresos - totalGastosTotales;
-  let pctFondoDisponible = 100;
-  if (totalIngresos > 0) {
-    pctFondoDisponible = Math.max(0, Math.min(100, Math.round((balanceMensualRestante / totalIngresos) * 100)));
-  } else if (totalGastosTotales > 0) {
-    pctFondoDisponible = 0;
-  }
-
-  const presupuestoDiario = Math.max(0, (totalIngresos - totalGastosFijos) / 30);
-  const gastosVariablesHoy = transaccionesDelDia.filter((t) => t.tipo === 'gasto' && !t.es_fijo).reduce((acc, t) => acc + Number(t.monto), 0);
-
-  let pctGastoDiario = 0;
-  if (presupuestoDiario > 0) pctGastoDiario = Math.min(100, Math.round((gastosVariablesHoy / presupuestoDiario) * 100));
-  else if (gastosVariablesHoy > 0) pctGastoDiario = 100;
-
-  const pctGastosSaludables = Math.max(0, 100 - pctGastoDiario);
 
   // HÁBITOS
   const totalCompletados = habitos.filter((h) => registrosHoy[h.id]?.completado).length;
@@ -948,31 +853,11 @@ export default function Home() {
   const diaNumero = parseInt(fechaSeleccionada.split('-')[2] || '1', 10);
   const fraseDelDia = FRASES_MOTIVACIONALES[diaNumero % FRASES_MOTIVACIONALES.length];
 
-  const gastosPorCategoria = useMemo(() => {
-    const mapa: Record<string, number> = {};
-    transacciones.filter((t) => t.tipo === 'gasto').forEach((t) => {
-      mapa[t.categoria] = (mapa[t.categoria] || 0) + Number(t.monto);
-    });
-    return mapa;
-  }, [transacciones]);
-
   const metaPeso = useMemo(() => {
     if (perfil.objetivo === 'subir') return perfil.peso + (perfil.kilos_objetivo || 0);
     if (perfil.objetivo === 'bajar') return perfil.peso - (perfil.kilos_objetivo || 0);
     return perfil.peso;
   }, [perfil.peso, perfil.objetivo, perfil.kilos_objetivo]);
-
-  const datosEvolucionPeso = useMemo(() => {
-    const totalMeses = Math.max(1, perfil.tiempo_objetivo_meses || 1);
-    const puntos = [];
-    const dif = metaPeso - perfil.peso;
-
-    for (let i = 1; i <= totalMeses; i++) {
-      const pesoEstimado = perfil.peso + (dif * (i / totalMeses));
-      puntos.push({ mes: `M${i}`, peso: pesoEstimado });
-    }
-    return puntos;
-  }, [perfil.peso, metaPeso, perfil.tiempo_objetivo_meses]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row font-sans">
@@ -1003,7 +888,6 @@ export default function Home() {
             {[
               { id: 'general', label: 'General', icon: '📊' },
               { id: 'perfil', label: 'Mi Perfil', icon: '👤' },
-              { id: 'finanzas', label: 'Finanzas', icon: '💵' },
               { id: 'habitos', label: 'Hábitos diarios', icon: '⚡' },
               { id: 'nutricion', label: 'Nutrición', icon: '🔥' },
               { id: 'extra', label: 'Extra', icon: '✨' },
@@ -1048,9 +932,8 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
             <div>
               <h2 className="text-lg sm:text-2xl font-bold text-slate-100">
-                {seccionActiva === 'general' && '📊 Resumen General'}
+                {seccionActiva === 'general' && '📊 Resumen General Fitness'}
                 {seccionActiva === 'perfil' && '👤 Mi Perfil y Objetivos'}
-                {seccionActiva === 'finanzas' && '💵 Control Financiero'}
                 {seccionActiva === 'habitos' && '⚡ Hábitos Diarios'}
                 {seccionActiva === 'nutricion' && '🔥 Nutrición y Entrenamiento Profundo'}
                 {seccionActiva === 'extra' && '✨ Módulos Extra'}
@@ -1119,20 +1002,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div onClick={() => cambiarSeccion('finanzas')} className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl cursor-pointer hover:border-emerald-500/50 transition-all">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
-                      <span>💵 Fondo Mensual Disponible</span>
-                      <span className="text-xs text-slate-400 font-normal">(${formatearMonto(Math.max(0, balanceMensualRestante))} restante de ${formatearMonto(totalIngresos)})</span>
-                    </h3>
-                    <span className={`text-xs font-bold font-mono ${pctFondoDisponible <= 15 ? 'text-rose-400' : pctFondoDisponible <= 40 ? 'text-amber-400' : 'text-emerald-400'}`}>{pctFondoDisponible}%</span>
-                  </div>
-                  <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
-                    <div className={`h-full rounded-full transition-all duration-500 ${pctFondoDisponible <= 15 ? 'bg-rose-500' : pctFondoDisponible <= 40 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pctFondoDisponible}%` }}></div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
                   
                   {/* CALORÍAS */}
                   <div onClick={() => cambiarSeccion('nutricion')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-amber-500/50 transition-all flex flex-col justify-between">
@@ -1184,22 +1054,6 @@ export default function Home() {
                     <p className="text-[11px] font-normal text-slate-500 mt-2">Clic para Hábitos</p>
                   </div>
 
-                  {/* GASTOS HOY */}
-                  <div onClick={() => cambiarSeccion('finanzas')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-emerald-500/50 transition-all flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-semibold uppercase text-slate-400">Gastos Hoy</span>
-                        <span className={`text-xs font-bold ${getEstadoGastos(pctGastosSaludables).text}`}>{pctGastosSaludables}%</span>
-                        <span className="text-base ml-1">💵</span>
-                      </div>
-                      <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mb-3 border border-slate-800">
-                        <div className={`h-full rounded-full ${getEstadoGastos(pctGastosSaludables).bar}`} style={{ width: `${pctGastosSaludables}%` }}></div>
-                      </div>
-                      <p className="text-2xl font-extrabold text-emerald-400">${formatearMonto(gastosVariablesHoy)}</p>
-                    </div>
-                    <p className="text-[11px] font-normal text-slate-500 mt-2">Clic para Finanzas</p>
-                  </div>
-
                   {/* FÍSICO */}
                   <div onClick={() => cambiarSeccion('perfil')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-slate-400/50 transition-all flex flex-col justify-between">
                     <div>
@@ -1243,7 +1097,7 @@ export default function Home() {
             {/* 2. PERFIL */}
             {seccionActiva === 'perfil' && (
               <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6 max-w-4xl mx-auto">
-                <h2 className="text-xl font-semibold text-slate-200">👤 Datos Personales y Objetivos</h2>
+                <h2 className="text-xl font-semibold text-slate-200">👤 Datos Personales y Objetivos Físicos</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4 bg-slate-900/50 p-5 rounded-xl border border-slate-800">
@@ -1318,100 +1172,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* 3. FINANZAS */}
-            {seccionActiva === 'finanzas' && (
-              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                <h2 className="text-lg sm:text-xl font-semibold text-emerald-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span>💵 Resumen Financiero</span>
-                  <span className="text-xs sm:text-sm font-mono font-bold text-slate-300">
-                    Balance: <span className={balanceFinanciero < 0 ? 'text-rose-400' : 'text-emerald-400'}>${formatearMonto(balanceFinanciero)}</span>
-                  </span>
-                </h2>
-
-                <div className="space-y-3">
-                  <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
-                    <div className="flex justify-between items-center text-xs mb-1">
-                      <span className="text-slate-400 font-medium">Fondo Mensual Disponible:</span>
-                      <span className={`font-mono font-bold ${pctFondoDisponible <= 15 ? 'text-rose-400' : 'text-slate-300'}`}>{pctFondoDisponible}% (${formatearMonto(Math.max(0, balanceMensualRestante))})</span>
-                    </div>
-                    <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
-                      <div className={`h-full rounded-full transition-all duration-500 ${pctFondoDisponible <= 15 ? 'bg-rose-500' : pctFondoDisponible <= 40 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pctFondoDisponible}%` }}></div>
-                    </div>
-                  </div>
-                  <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
-                    <div className="flex justify-between items-center text-xs">
-                      <div>
-                        <span className="text-slate-300 font-semibold block">Gastos Diarios (Variables)</span>
-                        <span className="text-[10px] text-slate-400">Hoy: ${formatearMonto(gastosVariablesHoy)} / Disp: ${formatearMonto(presupuestoDiario)}</span>
-                      </div>
-                      <span className={`font-mono font-bold ${pctGastoDiario >= 100 ? 'text-rose-400' : 'text-emerald-400'}`}>{pctGastoDiario}% gastado</span>
-                    </div>
-                    <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
-                      <div className={`h-full rounded-full transition-all duration-500 ${pctGastoDiario >= 100 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${pctGastoDiario}%` }}></div>
-                    </div>
-                  </div>
-                </div>
-
-                <form onSubmit={agregarTransaccion} className="space-y-3">
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input type="text" placeholder="Descripción..." value={descripcion} onChange={(e) => setDescripcion(e.target.value)} className="min-w-0 flex-1 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
-                    <input type="number" placeholder="Monto" value={monto} onChange={(e) => setMonto(e.target.value)} className="w-full sm:w-32 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
-                    <select value={tipo} onChange={(e) => cambiarTipoTransaccion(e.target.value as 'ingreso' | 'gasto')} className="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                      <option value="gasto">Gasto 🔻</option>
-                      <option value="ingreso">Ingreso 🟢</option>
-                    </select>
-                    <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                      {(tipo === 'gasto' ? CATEGORIAS_GASTO : CATEGORIAS_INGRESO).map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-                    </select>
-                    {tipo === 'gasto' && (
-                      <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-700">
-                        <input type="checkbox" checked={esFijo} onChange={(e) => setEsFijo(e.target.checked)} className="accent-emerald-500 rounded cursor-pointer"/>
-                        <span>📌 Gasto Fijo</span>
-                      </label>
-                    )}
-                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl font-medium text-sm transition cursor-pointer flex items-center justify-center">➕ Agregar</button>
-                  </div>
-                </form>
-
-                <div className="space-y-3 mt-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-semibold uppercase text-slate-400 tracking-wider">Historial de Transacciones</h3>
-                    <div className="flex gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                      <button onClick={() => setFiltroTransacciones('dia')} className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition cursor-pointer ${filtroTransacciones === 'dia' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Solo este día</button>
-                      <button onClick={() => setFiltroTransacciones('todas')} className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition cursor-pointer ${filtroTransacciones === 'todas' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todas</button>
-                    </div>
-                  </div>
-
-                  {transaccionesAMostrar.length === 0 ? <p className="text-xs text-slate-500 italic">No hay transacciones para esta vista.</p> : (
-                    <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-                      {transaccionesAMostrar.map((t) => (
-                        <div key={t.id} className="bg-slate-900/70 p-3 rounded-xl border border-slate-800 flex items-center justify-between text-xs gap-2">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="text-base shrink-0">{t.tipo === 'ingreso' ? '🟢' : '🔻'}</span>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-slate-200 truncate">{t.descripcion}</p>
-                              <p className="text-[10px] text-slate-400">
-                                {t.categoria} {t.es_fijo && '• 📌 Fijo'} • <span className="text-slate-500">{t.fecha?.split('T')[0]}</span>
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 shrink-0">
-                            <span className={`font-mono font-bold text-sm ${t.tipo === 'ingreso' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                              {t.tipo === 'ingreso' ? '+' : '-'}${formatearMonto(t.monto)}
-                            </span>
-                            <button onClick={() => eliminarTransaccion(t.id)} className="text-slate-500 hover:text-rose-400 transition cursor-pointer">🗑️</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </section>
-            )}
-
-            {/* 4. HÁBITOS */}
+            {/* 3. HÁBITOS */}
             {seccionActiva === 'habitos' && (
               <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1456,7 +1217,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* 5. NUTRICIÓN Y ENTRENAMIENTO PROFUNDO */}
+            {/* 4. NUTRICIÓN Y ENTRENAMIENTO PROFUNDO */}
             {seccionActiva === 'nutricion' && (
               <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                 <h2 className="text-xl font-semibold text-amber-400 flex items-center gap-2">
@@ -1679,7 +1440,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* MODAL IA ESTIMADOR DE COMIDAS CON FOTO O TEXTO */}
+            {/* MODAL IA ESTIMADOR DE COMIDAS CON CÁMARA O GALERÍA */}
             {comidaIaModal && (
               <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl max-w-md w-full space-y-4">
@@ -1691,15 +1452,28 @@ export default function Home() {
                   </div>
 
                   <p className="text-xs text-slate-300">
-                    Sacá una foto o ingresá una descripción detallada indicando alimentos y gramos (ej. <em>"150g pechuga de pollo, 200g arroz integral"</em>).
+                    Saca una foto directa, seleccionala de tu galería o ingresa la descripción indicando alimentos y gramos (ej. <em>"150g pechuga de pollo, 200g arroz integral"</em>).
                   </p>
 
                   <div className="space-y-3">
                     <div>
-                      <label className="text-[11px] text-slate-400 block mb-1">📷 Foto del plato / etiqueta</label>
-                      <input type="file" accept="image/*" capture="environment" onChange={procesarFotoIA} className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-cyan-300 hover:file:bg-slate-700 cursor-pointer" />
+                      <label className="text-[11px] text-slate-400 block mb-1.5">📷 Imagen del plato / alimento</label>
+                      <div className="flex gap-2">
+                        <label className="flex-1 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-800/60 rounded-xl py-2 px-3 text-xs font-semibold text-center cursor-pointer transition">
+                          📸 Tomar Foto
+                          <input type="file" accept="image/*" capture="environment" onChange={procesarFotoIA} className="hidden" />
+                        </label>
+                        <label className="flex-1 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-800/60 rounded-xl py-2 px-3 text-xs font-semibold text-center cursor-pointer transition">
+                          🖼️ Abrir Galería
+                          <input type="file" accept="image/*" onChange={procesarFotoIA} className="hidden" />
+                        </label>
+                      </div>
+
                       {imagenIaInput && (
-                        <img src={imagenIaInput} alt="Preview" className="mt-2 h-28 w-full object-cover rounded-xl border border-slate-700" />
+                        <div className="relative mt-2">
+                          <img src={imagenIaInput} alt="Preview" className="h-28 w-full object-cover rounded-xl border border-slate-700" />
+                          <button onClick={() => setImagenIaInput(null)} className="absolute top-1 right-1 bg-slate-900/80 text-rose-400 p-1 rounded-full text-xs hover:bg-slate-900">✕</button>
+                        </div>
                       )}
                     </div>
 
@@ -1716,7 +1490,7 @@ export default function Home() {
               </div>
             )}
 
-            {/* 6. EXTRA */}
+            {/* 5. EXTRA */}
             {seccionActiva === 'extra' && (
               <div className="space-y-6">
                 <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
@@ -1747,159 +1521,111 @@ export default function Home() {
                     </div>
 
                     <div className="flex flex-wrap gap-2.5 justify-center">
-                      <button onClick={() => modificarAgua(50)} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer">➕ 👄 +50 ml (Trago)</button>
-                      <button onClick={() => modificarAgua(250)} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer">➕ 🥛 +250 ml (Vaso)</button>
-                      <button onClick={() => modificarAgua(500)} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer">➕ 🍾 +500 ml (Botella)</button>
-                      <button onClick={() => modificarAgua(-250)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer">➖ 250 ml</button>
-                      <button onClick={() => setAguaMl(0)} className="bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer">🔄 Reiniciar</button>
+                      <button onClick={() => modificarAgua(250)} className="bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800 text-cyan-200 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer">+250ml 🥛</button>
+                      <button onClick={() => modificarAgua(500)} className="bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800 text-cyan-200 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer">+500ml 🥤</button>
+                      <button onClick={() => modificarAgua(-250)} className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400 px-3 py-2 rounded-xl text-xs font-medium transition cursor-pointer">-250ml</button>
                     </div>
                   </div>
                 )}
 
                 {subSeccionExtra === 'sueno' && (
                   <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                    <h3 className="text-lg font-semibold text-indigo-300 flex justify-between items-center">
-                      <span>😴 Registro de Sueño y Descanso</span>
-                      <span className="text-sm font-mono font-bold text-slate-300">{suenoHoy.horas_totales} hrs</span>
-                    </h3>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <h3 className="text-lg font-semibold text-indigo-300">😴 Control de Sueño y Descanso</h3>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Hora de Acostarse</label>
+                        <label className="text-xs text-slate-400 block mb-1">Hora de acostarse</label>
                         <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_acostarse: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer" />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Hora de Levantarse</label>
+                        <label className="text-xs text-slate-400 block mb-1">Hora de levantarse</label>
                         <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_levantarse: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer" />
                       </div>
                     </div>
 
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Calidad del Sueño (1 a 5 estrellas)</label>
-                      <div className="flex gap-2">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button key={star} onClick={() => setSuenoHoy({ ...suenoHoy, calidad: star })} className={`text-xl p-2 rounded-xl transition cursor-pointer ${suenoHoy.calidad >= star ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-slate-950 text-slate-600 border border-slate-800'}`}>
-                            ⭐
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <button onClick={guardarSueno} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl transition text-xs cursor-pointer">
-                      💾 Guardar Sueño
+                    <button onClick={guardarSueno} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm transition cursor-pointer">
+                      💾 Guardar Registro de Sueño
                     </button>
                   </div>
                 )}
               </div>
             )}
 
+            {/* 6. ESTADÍSTICAS Y VISUALIZACIÓN */}
+            {seccionActiva === 'estadisticas' && (
+              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                <h2 className="text-xl font-semibold text-slate-200">📈 Proyección y Evolución Física</h2>
+
+                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Objetivo Físico Estimado</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Peso Inicial</span>
+                      <span className="text-xl font-black text-slate-200">{perfil.peso} kg</span>
+                    </div>
+                    <div className="bg-slate-950 p-3 rounded-xl border border-amber-900/40">
+                      <span className="text-[10px] text-amber-400 uppercase font-bold block">Meta ({perfil.tiempo_objetivo_meses} meses)</span>
+                      <span className="text-xl font-black text-amber-300">{metaPeso} kg</span>
+                    </div>
+                    <div className="bg-slate-950 p-3 rounded-xl border border-emerald-900/40">
+                      <span className="text-[10px] text-emerald-400 uppercase font-bold block">Diferencia</span>
+                      <span className="text-xl font-black text-emerald-300">{perfil.objetivo === 'mantener' ? '0 kg' : `${perfil.objetivo === 'bajar' ? '-' : '+'}${perfil.kilos_objetivo} kg`}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button onClick={copiarResumenAlPortapapeles} className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2">
+                    📋 Copiar Resumen Diario al Portapapeles
+                  </button>
+                </div>
+              </section>
+            )}
+
             {/* 7. NOTAS */}
             {seccionActiva === 'notas' && (
-              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
-                <h2 className="text-xl font-semibold text-amber-400">📝 Notas Diarias y Reflexiones</h2>
+              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
+                <h2 className="text-xl font-semibold text-amber-400">📝 Notas del Día</h2>
                 <textarea
                   rows={8}
                   value={notaDiaria}
                   onChange={(e) => setNotaDiaria(e.target.value)}
-                  placeholder="Escribí acá tus reflexiones, ideas, recordatorios o avances del día..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-2xl p-4 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+                  placeholder="Escribí tus notas sobre entrenamientos, sensaciones o planes..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-amber-500"
                 />
                 <button onClick={guardarNota} disabled={guardandoNota} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium py-3 rounded-xl transition cursor-pointer disabled:opacity-50">
-                  {guardandoNota ? 'Guardando...' : '💾 Guardar Nota del Día'}
+                  {guardandoNota ? 'Guardando...' : '💾 Guardar Nota Diaria'}
                 </button>
               </section>
             )}
 
-            {/* 8. ESTADÍSTICAS */}
-            {seccionActiva === 'estadisticas' && (
-              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                <h2 className="text-xl font-semibold text-indigo-400">📈 Visualización y Estadísticas</h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Gastos por categoría */}
-                  <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-3">
-                    <h3 className="text-sm font-bold text-slate-200">📊 Gastos por Categoría</h3>
-                    {Object.keys(gastosPorCategoria).length === 0 ? (
-                      <p className="text-xs text-slate-500 italic">No hay gastos registrados.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {Object.entries(gastosPorCategoria).map(([cat, montoCat]) => {
-                          const pct = totalGastosTotales > 0 ? Math.round((montoCat / totalGastosTotales) * 100) : 0;
-                          return (
-                            <div key={cat} className="space-y-1">
-                              <div className="flex justify-between text-xs">
-                                <span className="text-slate-300 font-medium">{cat}</span>
-                                <span className="font-mono text-emerald-400">${formatearMonto(montoCat)} ({pct}%)</span>
-                              </div>
-                              <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
-                                <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${pct}%` }}></div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Evolución Físico Proyectada */}
-                  <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-3">
-                    <h3 className="text-sm font-bold text-slate-200">🎯 Meta Físico ({perfil.objetivo.toUpperCase()})</h3>
-                    <p className="text-xs text-slate-400">
-                      Peso Actual: <strong className="text-white">{perfil.peso} kg</strong> | Meta: <strong className="text-amber-400">{metaPeso.toFixed(1)} kg</strong>
-                    </p>
-                    <div className="space-y-2 pt-2">
-                      {datosEvolucionPeso.map((p) => (
-                        <div key={p.mes} className="flex justify-between items-center text-xs bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                          <span className="font-bold text-indigo-400">{p.mes}</span>
-                          <span className="font-mono text-slate-200">{p.peso.toFixed(1)} kg</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* 9. ACTUALIZACIONES Y SOPORTE */}
+            {/* 8. NOVEDADES Y SOPORTE */}
             {seccionActiva === 'actualizaciones' && (
-              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-indigo-950/40 p-4 rounded-2xl border border-indigo-800/60">
-                  <div>
-                    <h2 className="text-xl font-bold text-indigo-300">🚀 Novedades y Herramientas</h2>
-                    <p className="text-xs text-slate-400 mt-1">Versión actual y soporte integrado.</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button onClick={copiarResumenAlPortapapeles} className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer">
-                      📋 Copiar Resumen Diario
-                    </button>
-                    <button onClick={exportarCSV} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer">
-                      📥 Exportar CSV
-                    </button>
-                  </div>
-                </div>
+              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6 max-w-3xl mx-auto">
+                <h2 className="text-xl font-semibold text-indigo-400">🚀 Soporte y Feedback</h2>
 
                 <form onSubmit={enviarSoporte} className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
-                  <h3 className="text-sm font-bold text-slate-200">📬 Enviar Recomendación o Reportar Bug</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Tipo de mensaje</label>
-                      <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value as any)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
-                        <option value="bug">🐛 Reporte de Bug / Error</option>
-                        <option value="recomendacion">💡 Idea / Recomendación</option>
-                        <option value="reclamo">📢 Reclamo / Sugerencia</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Tu Email (Opcional)</label>
-                      <input type="email" value={emailContacto} onChange={(e) => setEmailContacto(e.target.value)} placeholder="tuemail@ejemplo.com" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" />
-                    </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Tipo de Mensaje</label>
+                    <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value as any)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
+                      <option value="bug">🐛 Reportar Error / Bug</option>
+                      <option value="recomendacion">💡 Sugerencia de mejora</option>
+                      <option value="reclamo">⚠️ Consulta General</option>
+                    </select>
                   </div>
+
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Tu Email de contacto (Opcional)</label>
+                    <input type="email" value={emailContacto} onChange={(e) => setEmailContacto(e.target.value)} placeholder="ejemplo@email.com" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                  </div>
+
                   <div>
                     <label className="text-xs text-slate-400 block mb-1">Mensaje</label>
-                    <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Escribí acá tu sugerencia o detalle del problema..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500" />
+                    <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Describí tu sugerencia o problema..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500" />
                   </div>
+
                   <button type="submit" disabled={enviandoMensaje} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl transition text-xs cursor-pointer disabled:opacity-50">
-                    {enviandoMensaje ? 'Enviando...' : '✉️ Enviar Mensaje'}
+                    {enviandoMensaje ? 'Enviando...' : '📧 Enviar Mensaje de Soporte'}
                   </button>
                 </form>
               </section>
