@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
 // FECHA Y HORA REAL DE ÚLTIMA ACTUALIZACIÓN DEL CÓDIGO/PROGRAMA
-const ULTIMA_ACTUALIZACION_APP = '28/07/2026 19:30';
+const ULTIMA_ACTUALIZACION_APP = '28/07/2026 20:30';
 
 // --- INTERFACES ---
 interface PerfilUsuario {
@@ -141,6 +141,9 @@ export default function Home() {
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(obtenerFechaLogica());
   const [clima, setClima] = useState<ClimaData | null>(null);
 
+  // Modal de datos iniciales u Onboarding
+  const [mostrarModalOnboarding, setMostrarModalOnboarding] = useState(false);
+
   // Perfil del Usuario
   const [perfil, setPerfil] = useState<PerfilUsuario>({
     nombre: '',
@@ -262,12 +265,16 @@ export default function Home() {
 
     try {
       if (esRegistro) {
+        const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
         const { error } = await supabase.auth.signUp({
           email: emailAuth,
           password: passwordAuth,
+          options: {
+            emailRedirectTo: redirectUrl,
+          },
         });
         if (error) throw error;
-        alert('✅ Registro exitoso. Si tienes confirmación de email activada, revisa tu casilla.');
+        alert('✅ Registro exitoso. Se envió un correo de confirmación a tu casilla. Revisa tu e-mail para validar el enlace.');
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: emailAuth,
@@ -432,11 +439,17 @@ export default function Home() {
     setCargando(true);
 
     const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').eq('user_id', user.id).maybeSingle();
-    if (datosPerfil) {
+    if (datosPerfil && datosPerfil.nombre && datosPerfil.nombre.trim() !== '') {
       setPerfil({
         ...datosPerfil,
         tiempo_objetivo_meses: datosPerfil.tiempo_objetivo_meses || 3
       });
+    } else {
+      // Si el perfil no tiene nombre o está incompleto, activamos el onboarding
+      setMostrarModalOnboarding(true);
+      if (datosPerfil) {
+        setPerfil((prev) => ({ ...prev, ...datosPerfil }));
+      }
     }
 
     const { data: datosHabitos } = await supabase.from('habitos').select('*').eq('user_id', user.id).order('id', { ascending: true });
@@ -593,7 +606,6 @@ export default function Home() {
     copia.splice(nuevoIndice, 0, removido);
     setEjercicios(copia);
 
-    // Guardado automático en DB al reordenar ejercicios
     await supabase.from('registro_calorias').upsert({
       user_id: user.id,
       fecha: fechaSeleccionada,
@@ -651,7 +663,6 @@ export default function Home() {
     setComidas(comidas.filter((item) => item.id !== id));
   };
 
-  // REORDENAMIENTO DE COMIDAS CON GUARDADO NATIVO EN SUPABASE
   const moverComida = async (index: number, direccion: 'arriba' | 'abajo') => {
     const user = session?.user;
     const nuevoIndice = direccion === 'arriba' ? index - 1 : index + 1;
@@ -661,7 +672,6 @@ export default function Home() {
     copia.splice(nuevoIndice, 0, removido);
     setComidas(copia);
 
-    // Guardado persistente automático del orden en la BD
     await supabase.from('registro_calorias').upsert({
       user_id: user.id,
       fecha: fechaSeleccionada,
@@ -717,7 +727,7 @@ export default function Home() {
     localStorage.setItem('biblioteca_comidas_user', JSON.stringify(nuevaBib));
   };
 
-  // ESTIMADOR CON IA (FOTO / CÁMARA / GALERÍA)
+  // ESTIMADOR CON IA
   const abrirModalIaComida = (comida: ItemComida) => {
     setComidaIaModal(comida);
     setTextoIaInput(comida.nombre !== 'Nueva Comida' ? comida.nombre : '');
@@ -1071,7 +1081,7 @@ export default function Home() {
           <div className="p-4 border-t border-slate-800 bg-slate-900/80 space-y-3 mt-auto">
             <button
               onClick={cerrarSesion}
-              className="w-full bg-rose-950/60 hover:bg-rose-900 border border-rose-800/80 text-rose-300 font-bold py-2 rounded-xl text-xs transition cursor-pointer"
+              className="w-full bg-rose-950/60 hover:bg-rose-900 border border-rose-800/80 text-rose-300 font-bold py-2 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
             >
               🚪 Cerrar Sesión
             </button>
@@ -1092,7 +1102,7 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-3.5 sm:p-6 md:p-8 overflow-y-auto">
         
-        {/* HEADER */}
+        {/* HEADER SIN EL BOTÓN REPETIDO DE CERRAR SESIÓN */}
         <header className="flex flex-col gap-4 mb-6 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
             <div>
@@ -1112,13 +1122,6 @@ export default function Home() {
                 <span className="text-xs font-mono font-bold bg-indigo-950 text-indigo-300 px-2.5 py-0.5 rounded-md border border-indigo-800 flex items-center gap-1"><span>🕒</span> {horaVivo || '00:00:00'}</span>
               </div>
             </div>
-
-            <button
-              onClick={cerrarSesion}
-              className="self-end md:self-auto bg-slate-800 hover:bg-rose-950/80 border border-slate-700 hover:border-rose-800 text-slate-300 hover:text-rose-300 text-xs font-bold px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1"
-            >
-              <span>🚪</span> Cerrar Sesión
-            </button>
           </div>
 
           {clima && (
@@ -1468,7 +1471,7 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* LISTA DE COMIDAS CON CÁMARA, IA Y REORDENAMIENTO */}
+                {/* LISTA DE COMIDAS */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xs font-semibold uppercase text-slate-400 tracking-wider">🥗 Comidas e Ingesta Diaria</h3>
@@ -1612,7 +1615,109 @@ export default function Home() {
               </section>
             )}
 
-            {/* MODAL IA ESTIMADOR DE COMIDAS CON CÁMARA O GALERÍA */}
+            {/* MODAL ONBOARDING / DATOS PERSONALES INICIALES */}
+            {mostrarModalOnboarding && (
+              <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-indigo-500/40 p-6 sm:p-8 rounded-2xl max-w-lg w-full space-y-5 shadow-2xl">
+                  <div className="text-center space-y-2">
+                    <span className="text-4xl">👋</span>
+                    <h3 className="text-xl font-bold text-white">¡Bienvenido a Personal Fitness!</h3>
+                    <p className="text-xs text-slate-300">
+                      Ingresa tus datos personales y objetivos físicos para que podamos calcular tu metabolismo basal y probabilidades de éxito.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Tu Nombre</label>
+                      <input 
+                        type="text" 
+                        placeholder="Ej. Juan" 
+                        value={perfil.nombre} 
+                        onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} 
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-slate-400 block mb-1">Peso (kg)</label>
+                        <input 
+                          type="number" 
+                          step="0.1" 
+                          value={perfil.peso} 
+                          onChange={(e) => setPerfil({...perfil, peso: Number(e.target.value)})} 
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 block mb-1">Altura (cm)</label>
+                        <input 
+                          type="number" 
+                          value={perfil.altura} 
+                          onChange={(e) => setPerfil({...perfil, altura: Number(e.target.value)})} 
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Objetivo Principal</label>
+                      <select 
+                        value={perfil.objetivo} 
+                        onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} 
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer"
+                      >
+                        <option value="bajar">Bajar de peso (Déficit)</option>
+                        <option value="mantener">Mantener peso / Recomposición</option>
+                        <option value="subir">Subir de peso (Masa muscular)</option>
+                      </select>
+                    </div>
+
+                    {perfil.objetivo !== 'mantener' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-slate-400 block mb-1">Kilos Objetivo</label>
+                          <input 
+                            type="number" 
+                            step="0.1" 
+                            value={perfil.kilos_objetivo} 
+                            onChange={(e) => setPerfil({...perfil, kilos_objetivo: Number(e.target.value)})} 
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-slate-400 block mb-1">Plazo (Meses)</label>
+                          <input 
+                            type="number" 
+                            min="1" 
+                            value={perfil.tiempo_objetivo_meses} 
+                            onChange={(e) => setPerfil({...perfil, tiempo_objetivo_meses: Number(e.target.value)})} 
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      if (!perfil.nombre.trim()) {
+                        alert('Por favor ingresa tu nombre');
+                        return;
+                      }
+                      await guardarPerfil();
+                      setMostrarModalOnboarding(false);
+                    }}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition text-sm cursor-pointer shadow-lg shadow-indigo-600/30 font-bold"
+                  >
+                    🚀 Guardar Mis Datos y Empezar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* MODAL IA ESTIMADOR DE COMIDAS */}
             {comidaIaModal && (
               <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl max-w-md w-full space-y-4">
