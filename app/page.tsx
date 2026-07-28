@@ -124,6 +124,15 @@ const getEstadoBarra = (pct: number) => {
 };
 
 export default function Home() {
+  // ESTADOS DE AUTENTICACIÓN
+  const [session, setSession] = useState<any>(null);
+  const [esRegistro, setEsRegistro] = useState(false);
+  const [emailAuth, setEmailAuth] = useState('');
+  const [passwordAuth, setPasswordAuth] = useState('');
+  const [cargandoAuth, setCargandoAuth] = useState(false);
+  const [errorAuth, setErrorAuth] = useState('');
+
+  // ESTADOS DE LA APP
   const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'habitos' | 'nutricion' | 'extra' | 'notas' | 'estadisticas' | 'actualizaciones'>('general');
   const [subSeccionExtra, setSubSeccionExtra] = useState<'agua' | 'sueno'>('agua');
   
@@ -192,6 +201,19 @@ export default function Home() {
 
   const [cargando, setCargando] = useState(true);
 
+  // ESCUCHAR SESIÓN DE AUTENTICACIÓN
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   // Cargar Biblioteca desde localStorage
   useEffect(() => {
     const bib = localStorage.getItem('biblioteca_comidas_user');
@@ -227,8 +249,42 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    cargarDatos();
-  }, [fechaSeleccionada]);
+    if (session?.user) {
+      cargarDatos();
+    }
+  }, [fechaSeleccionada, session]);
+
+  // AUTENTICACIÓN: LOGIN Y REGISTRO
+  const manejarAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorAuth('');
+    setCargandoAuth(true);
+
+    try {
+      if (esRegistro) {
+        const { error } = await supabase.auth.signUp({
+          email: emailAuth,
+          password: passwordAuth,
+        });
+        if (error) throw error;
+        alert('✅ Registro exitoso. Si tienes confirmación de email activada, revisa tu casilla.');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: emailAuth,
+          password: passwordAuth,
+        });
+        if (error) throw error;
+      }
+    } catch (err: any) {
+      setErrorAuth(err.message || 'Error al autenticar');
+    } finally {
+      setCargandoAuth(false);
+    }
+  };
+
+  const cerrarSesion = async () => {
+    await supabase.auth.signOut();
+  };
 
   // Probabilidad de éxito calculada
   const probabilidadCalculada = useMemo(() => {
@@ -344,7 +400,10 @@ export default function Home() {
   };
 
   const calcularRachas = async (listaHabitos: Habito[]) => {
-    const { data: historial } = await supabase.from('registro_habitos').select('habito_id, fecha, completado').eq('completado', true).order('fecha', { ascending: false });
+    const user = session?.user;
+    if (!user) return;
+
+    const { data: historial } = await supabase.from('registro_habitos').select('habito_id, fecha, completado').eq('user_id', user.id).eq('completado', true).order('fecha', { ascending: false });
     if (!historial) return;
 
     setTodosLosRegistrosHabitos(historial);
@@ -368,28 +427,30 @@ export default function Home() {
   };
 
   const cargarDatos = async () => {
+    const user = session?.user;
+    if (!user) return;
     setCargando(true);
 
-    const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').limit(1).maybeSingle();
+    const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').eq('user_id', user.id).maybeSingle();
     if (datosPerfil) {
       setPerfil({
         ...datosPerfil,
-        tiempo_objetivo_meses: datosPerfil.tiempo_objetivo_meses || datosPerfil.tiempo_objetivo_semanas || 3
+        tiempo_objetivo_meses: datosPerfil.tiempo_objetivo_meses || 3
       });
     }
 
-    const { data: datosHabitos } = await supabase.from('habitos').select('*').order('id', { ascending: true });
+    const { data: datosHabitos } = await supabase.from('habitos').select('*').eq('user_id', user.id).order('id', { ascending: true });
     if (datosHabitos) {
       setHabitos(datosHabitos);
       calcularRachas(datosHabitos);
     }
 
-    const { data: datosRegistros } = await supabase.from('registro_habitos').select('*').eq('fecha', fechaSeleccionada);
+    const { data: datosRegistros } = await supabase.from('registro_habitos').select('*').eq('user_id', user.id).eq('fecha', fechaSeleccionada);
     const mapaRegistros: Record<number, RegistroHabito> = {};
     if (datosRegistros) datosRegistros.forEach((reg) => { mapaRegistros[reg.habito_id] = reg; });
     setRegistrosHoy(mapaRegistros);
 
-    const { data: datosCalorias } = await supabase.from('registro_calorias').select('*').eq('fecha', fechaSeleccionada).maybeSingle();
+    const { data: datosCalorias } = await supabase.from('registro_calorias').select('*').eq('user_id', user.id).eq('fecha', fechaSeleccionada).maybeSingle();
     if (datosCalorias) {
       setAguaMl(datosCalorias.agua_ml ?? 0);
       setEjercicios(datosCalorias.ejercicios && Array.isArray(datosCalorias.ejercicios) ? datosCalorias.ejercicios : []);
@@ -404,6 +465,7 @@ export default function Home() {
       const { data: ultimoRegistro } = await supabase
         .from('registro_calorias')
         .select('comidas, ejercicios')
+        .eq('user_id', user.id)
         .order('fecha', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -426,14 +488,14 @@ export default function Home() {
       }
     }
 
-    const { data: datosSueno } = await supabase.from('registro_sueno').select('*').eq('fecha', fechaSeleccionada).maybeSingle();
+    const { data: datosSueno } = await supabase.from('registro_sueno').select('*').eq('user_id', user.id).eq('fecha', fechaSeleccionada).maybeSingle();
     if (datosSueno) {
       setSuenoHoy(datosSueno);
     } else {
       setSuenoHoy({ fecha: fechaSeleccionada, hora_acostarse: '23:00', hora_levantarse: '07:00', horas_totales: 0, calidad: 3 });
     }
 
-    const { data: datosNota } = await supabase.from('notas_diarias').select('contenido').eq('fecha', fechaSeleccionada).maybeSingle();
+    const { data: datosNota } = await supabase.from('notas_diarias').select('contenido').eq('user_id', user.id).eq('fecha', fechaSeleccionada).maybeSingle();
     setNotaDiaria(datosNota?.contenido || '');
 
     setCargando(false);
@@ -452,8 +514,11 @@ export default function Home() {
   }, [perfil]);
 
   const guardarPerfil = async () => {
+    const user = session?.user;
+    if (!user) return;
+
     setGuardandoPerfil(true);
-    const { error } = await supabase.from('perfil_usuario').upsert({ id: 1, ...perfil });
+    const { error } = await supabase.from('perfil_usuario').upsert({ user_id: user.id, ...perfil }, { onConflict: 'user_id' });
     setGuardandoPerfil(false);
     if (error) alert('❌ Error al guardar perfil: ' + error.message);
     else alert('✅ Perfil guardado correctamente');
@@ -461,24 +526,29 @@ export default function Home() {
 
   const agregarHabito = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nuevoHabito.trim()) return;
-    const { data, error } = await supabase.from('habitos').insert([{ texto: nuevoHabito, hora_objetivo: horaObjetivo }]).select();
+    const user = session?.user;
+    if (!nuevoHabito.trim() || !user) return;
+
+    const { data, error } = await supabase.from('habitos').insert([{ user_id: user.id, texto: nuevoHabito, hora_objetivo: horaObjetivo }]).select();
     if (error) alert('❌ Error al agregar hábito: ' + error.message);
     else if (data) { setHabitos([...habitos, data[0]]); setNuevoHabito(''); }
   };
 
   const alternarHabito = async (habitoId: number) => {
+    const user = session?.user;
+    if (!user) return;
+
     const estaCompletado = !!registrosHoy[habitoId]?.completado;
     const horaActual = obtenerHora24();
 
     if (!estaCompletado) {
-      const { error } = await supabase.from('registro_habitos').upsert({ habito_id: habitoId, fecha: fechaSeleccionada, completado: true, hora_completado: horaActual });
+      const { error } = await supabase.from('registro_habitos').upsert({ user_id: user.id, habito_id: habitoId, fecha: fechaSeleccionada, completado: true, hora_completado: horaActual }, { onConflict: 'user_id,habito_id,fecha' });
       if (!error) {
         setRegistrosHoy((prev) => ({ ...prev, [habitoId]: { habito_id: habitoId, completado: true, hora_completado: horaActual } }));
         calcularRachas(habitos);
       } else alert('❌ Error: ' + error.message);
     } else {
-      const { error } = await supabase.from('registro_habitos').delete().eq('habito_id', habitoId).eq('fecha', fechaSeleccionada);
+      const { error } = await supabase.from('registro_habitos').delete().eq('user_id', user.id).eq('habito_id', habitoId).eq('fecha', fechaSeleccionada);
       if (!error) {
         setRegistrosHoy((prev) => { const copia = { ...prev }; delete copia[habitoId]; return copia; });
         calcularRachas(habitos);
@@ -487,8 +557,9 @@ export default function Home() {
   };
 
   const eliminarHabito = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este hábito?')) return;
-    const { error } = await supabase.from('habitos').delete().eq('id', id);
+    const user = session?.user;
+    if (!user || !window.confirm('¿Estás seguro de que deseas eliminar este hábito?')) return;
+    const { error } = await supabase.from('habitos').delete().eq('user_id', user.id).eq('id', id);
     if (!error) setHabitos(habitos.filter((h) => h.id !== id));
     else alert('❌ Error: ' + error.message);
   };
@@ -514,8 +585,9 @@ export default function Home() {
   };
 
   const moverEjercicio = async (index: number, direccion: 'arriba' | 'abajo') => {
+    const user = session?.user;
     const nuevoIndice = direccion === 'arriba' ? index - 1 : index + 1;
-    if (nuevoIndice < 0 || nuevoIndice >= ejercicios.length) return;
+    if (nuevoIndice < 0 || nuevoIndice >= ejercicios.length || !user) return;
     const copia = [...ejercicios];
     const [removido] = copia.splice(index, 1);
     copia.splice(nuevoIndice, 0, removido);
@@ -523,12 +595,13 @@ export default function Home() {
 
     // Guardado automático en DB al reordenar ejercicios
     await supabase.from('registro_calorias').upsert({
+      user_id: user.id,
       fecha: fechaSeleccionada,
       base: bmrCalculado,
       agua_ml: aguaMl,
       ejercicios: copia,
       comidas
-    }, { onConflict: 'fecha' });
+    }, { onConflict: 'user_id,fecha' });
   };
 
   const calcularCaloriasEjercicioIA = (item: EjercicioGimnasio) => {
@@ -578,10 +651,11 @@ export default function Home() {
     setComidas(comidas.filter((item) => item.id !== id));
   };
 
-  // REORDENAMIENTO DE COMIDAS CON GUARDADO DE NATIVO EN SUPABASE
+  // REORDENAMIENTO DE COMIDAS CON GUARDADO NATIVO EN SUPABASE
   const moverComida = async (index: number, direccion: 'arriba' | 'abajo') => {
+    const user = session?.user;
     const nuevoIndice = direccion === 'arriba' ? index - 1 : index + 1;
-    if (nuevoIndice < 0 || nuevoIndice >= comidas.length) return;
+    if (nuevoIndice < 0 || nuevoIndice >= comidas.length || !user) return;
     const copia = [...comidas];
     const [removido] = copia.splice(index, 1);
     copia.splice(nuevoIndice, 0, removido);
@@ -589,12 +663,13 @@ export default function Home() {
 
     // Guardado persistente automático del orden en la BD
     await supabase.from('registro_calorias').upsert({
+      user_id: user.id,
       fecha: fechaSeleccionada,
       base: bmrCalculado,
       agua_ml: aguaMl,
       ejercicios,
       comidas: copia
-    }, { onConflict: 'fecha' });
+    }, { onConflict: 'user_id,fecha' });
   };
 
   const guardarEnBiblioteca = (comida: ItemComida) => {
@@ -736,21 +811,30 @@ export default function Home() {
   };
 
   const modificarAgua = async (deltaMl: number) => {
+    const user = session?.user;
+    if (!user) return;
+
     const nuevaCantidad = Math.max(0, aguaMl + deltaMl);
     setAguaMl(nuevaCantidad);
-    const { error } = await supabase.from('registro_calorias').upsert({ fecha: fechaSeleccionada, agua_ml: nuevaCantidad, base: bmrCalculado, ejercicios, comidas }, { onConflict: 'fecha' });
+    const { error } = await supabase.from('registro_calorias').upsert({ user_id: user.id, fecha: fechaSeleccionada, agua_ml: nuevaCantidad, base: bmrCalculado, ejercicios, comidas }, { onConflict: 'user_id,fecha' });
     if (error) alert('❌ Error al actualizar agua: ' + error.message);
   };
 
   const guardarCalorias = async () => {
+    const user = session?.user;
+    if (!user) return;
+
     setGuardandoCalorias(true);
-    const { error } = await supabase.from('registro_calorias').upsert({ fecha: fechaSeleccionada, base: bmrCalculado, agua_ml: aguaMl, ejercicios, comidas }, { onConflict: 'fecha' });
+    const { error } = await supabase.from('registro_calorias').upsert({ user_id: user.id, fecha: fechaSeleccionada, base: bmrCalculado, agua_ml: aguaMl, ejercicios, comidas }, { onConflict: 'user_id,fecha' });
     setGuardandoCalorias(false);
     if (error) alert('❌ Error al guardar calorías: ' + error.message);
     else alert('✅ Nutrición, macronutrientes y ejercicios guardados correctamente');
   };
 
   const guardarSueno = async () => {
+    const user = session?.user;
+    if (!user) return;
+
     const [hA, mA] = suenoHoy.hora_acostarse.split(':').map(Number);
     const [hL, mL] = suenoHoy.hora_levantarse.split(':').map(Number);
     let minAcostado = hA * 60 + mA;
@@ -758,8 +842,8 @@ export default function Home() {
     if (minLevantado < minAcostado) minLevantado += 24 * 60;
     const duracionHoras = parseFloat(((minLevantado - minAcostado) / 60).toFixed(1));
 
-    const datosGuardar = { ...suenoHoy, fecha: fechaSeleccionada, horas_totales: duracionHoras };
-    const { error } = await supabase.from('registro_sueno').upsert(datosGuardar, { onConflict: 'fecha' });
+    const datosGuardar = { ...suenoHoy, user_id: user.id, fecha: fechaSeleccionada, horas_totales: duracionHoras };
+    const { error } = await supabase.from('registro_sueno').upsert(datosGuardar, { onConflict: 'user_id,fecha' });
     if (error) alert('❌ Error al guardar sueño: ' + error.message);
     else {
       setSuenoHoy(datosGuardar);
@@ -768,8 +852,11 @@ export default function Home() {
   };
 
   const guardarNota = async () => {
+    const user = session?.user;
+    if (!user) return;
+
     setGuardandoNota(true);
-    const { error } = await supabase.from('notas_diarias').upsert({ fecha: fechaSeleccionada, contenido: notaDiaria }, { onConflict: 'fecha' });
+    const { error } = await supabase.from('notas_diarias').upsert({ user_id: user.id, fecha: fechaSeleccionada, contenido: notaDiaria }, { onConflict: 'user_id,fecha' });
     setGuardandoNota(false);
     if (error) alert('❌ Error al guardar nota: ' + error.message);
     else alert('✅ Nota guardada correctamente');
@@ -779,13 +866,15 @@ export default function Home() {
     e.preventDefault();
     if (!mensajeSoporte.trim()) return;
 
+    const user = session?.user;
+
     setEnviandoMensaje(true);
     try {
-      await supabase.from('mensajes_contacto').insert([{ tipo: tipoSoporte, mensaje: mensajeSoporte, email_remitente: emailContacto }]);
+      await supabase.from('mensajes_contacto').insert([{ user_id: user?.id, tipo: tipoSoporte, mensaje: mensajeSoporte, email_remitente: emailContacto || user?.email }]);
     } catch (err) {}
 
     const asunto = encodeURIComponent(`[App Personal Fitness - ${tipoSoporte.toUpperCase()}] Mensaje de usuario`);
-    const cuerpo = encodeURIComponent(`Tipo: ${tipoSoporte}\nEmail Remitente: ${emailContacto || 'No especificado'}\n\nMensaje:\n${mensajeSoporte}`);
+    const cuerpo = encodeURIComponent(`Tipo: ${tipoSoporte}\nEmail Remitente: ${emailContacto || user?.email || 'No especificado'}\n\nMensaje:\n${mensajeSoporte}`);
     window.location.href = `mailto:stefanopintos.contact@gmail.com?subject=${asunto}&body=${cuerpo}`;
 
     setEnviandoMensaje(false);
@@ -795,7 +884,7 @@ export default function Home() {
 
   const copiarResumenAlPortapapeles = () => {
     const resumenText = `📊 RESUMEN FITNESS DIARIO (${fechaSeleccionada})
-👤 Usuario: ${perfil.nombre || 'Sin nombre'} (${perfil.peso} kg)
+👤 Usuario: ${perfil.nombre || session?.user?.email || 'Sin nombre'} (${perfil.peso} kg)
 ⚡ Hábitos: ${totalCompletados}/${habitos.length} completados (${porcentajeHabitos}%)
 🔥 Balance Calórico: ${balanceCalorico} kcal (Ingerido: ${totalIngeridoCal} kcal | Quemado: ${totalGastadoCal} kcal)
 💧 Agua: ${aguaMl} / ${metaAguaMl} ml
@@ -859,6 +948,75 @@ export default function Home() {
     return perfil.peso;
   }, [perfil.peso, perfil.objetivo, perfil.kilos_objetivo]);
 
+  // PANTALLA DE INICIO DE SESIÓN / REGISTRO
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4 font-sans">
+        <div className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl max-w-md w-full space-y-6 shadow-2xl">
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-black text-indigo-400">💪 Personal Fitness App</h1>
+            <p className="text-xs text-slate-400">
+              {esRegistro ? 'Crea tu cuenta para comenzar tu seguimiento' : 'Ingresa tus credenciales para acceder'}
+            </p>
+          </div>
+
+          {errorAuth && (
+            <div className="bg-rose-950/80 border border-rose-800 text-rose-200 text-xs p-3 rounded-xl">
+              ⚠️ {errorAuth}
+            </div>
+          )}
+
+          <form onSubmit={manejarAuth} className="space-y-4">
+            <div>
+              <label className="text-xs text-slate-400 block mb-1 font-semibold">Correo Electrónico</label>
+              <input
+                type="email"
+                required
+                value={emailAuth}
+                onChange={(e) => setEmailAuth(e.target.value)}
+                placeholder="tu@email.com"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-400 block mb-1 font-semibold">Contraseña</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={passwordAuth}
+                onChange={(e) => setPasswordAuth(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={cargandoAuth}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition cursor-pointer text-sm disabled:opacity-50 shadow-lg shadow-indigo-600/30"
+            >
+              {cargandoAuth ? 'Procesando...' : esRegistro ? '🚀 Crear Cuenta' : '🔑 Iniciar Sesión'}
+            </button>
+          </form>
+
+          <div className="text-center pt-2 border-t border-slate-800">
+            <button
+              onClick={() => {
+                setEsRegistro(!esRegistro);
+                setErrorAuth('');
+              }}
+              className="text-xs text-slate-400 hover:text-indigo-400 transition cursor-pointer"
+            >
+              {esRegistro ? '¿Ya tienes cuenta? Inicia Sesión' : '¿No tienes cuenta? Regístrate aquí'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row font-sans">
       
@@ -870,7 +1028,7 @@ export default function Home() {
               <span className="text-xs font-bold uppercase tracking-wider">{sidebarAbierto ? '✕ Cerrar' : '☰ Menú'}</span>
             </button>
 
-            {perfil.nombre && (
+            {session?.user && (
               <button 
                 onClick={() => cambiarSeccion('perfil')}
                 className="flex items-center gap-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 px-3.5 py-2 rounded-xl transition-all cursor-pointer shadow-sm group"
@@ -878,7 +1036,7 @@ export default function Home() {
               >
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden sm:inline">Perfil</span>
                 <span className="text-xs sm:text-sm font-extrabold text-indigo-400 group-hover:text-indigo-300 flex items-center gap-1">
-                  {perfil.nombre} 👋
+                  {perfil.nombre || session.user.email?.split('@')[0]} 👋
                 </span>
               </button>
             )}
@@ -911,6 +1069,13 @@ export default function Home() {
 
         {sidebarAbierto && (
           <div className="p-4 border-t border-slate-800 bg-slate-900/80 space-y-3 mt-auto">
+            <button
+              onClick={cerrarSesion}
+              className="w-full bg-rose-950/60 hover:bg-rose-900 border border-rose-800/80 text-rose-300 font-bold py-2 rounded-xl text-xs transition cursor-pointer"
+            >
+              🚪 Cerrar Sesión
+            </button>
+
             <div className="text-[11px] text-slate-400 font-semibold bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
               <span>🚀 Última actualización: </span>
               <span className="text-indigo-400 font-mono">{ULTIMA_ACTUALIZACION_APP}</span>
@@ -947,6 +1112,13 @@ export default function Home() {
                 <span className="text-xs font-mono font-bold bg-indigo-950 text-indigo-300 px-2.5 py-0.5 rounded-md border border-indigo-800 flex items-center gap-1"><span>🕒</span> {horaVivo || '00:00:00'}</span>
               </div>
             </div>
+
+            <button
+              onClick={cerrarSesion}
+              className="self-end md:self-auto bg-slate-800 hover:bg-rose-950/80 border border-slate-700 hover:border-rose-800 text-slate-300 hover:text-rose-300 text-xs font-bold px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1"
+            >
+              <span>🚪</span> Cerrar Sesión
+            </button>
           </div>
 
           {clima && (
