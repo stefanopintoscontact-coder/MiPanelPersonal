@@ -125,19 +125,12 @@ const formatearFechaLarga = (fechaStr: string) => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
-const getEstadoBarra = (pct: number) => {
-  if (pct >= 80) return { bar: 'bg-emerald-500', text: 'text-emerald-400' };
-  if (pct >= 50) return { bar: 'bg-amber-500', text: 'text-amber-400' };
-  return { bar: 'bg-rose-500', text: 'text-rose-400' };
-};
-
 export default function Home() {
   // ESTADOS DE AUTENTICACIÓN
   const [session, setSession] = useState<any>(null);
   const [esRegistro, setEsRegistro] = useState(false);
   const [emailAuth, setEmailAuth] = useState('');
   const [passwordAuth, setPasswordAuth] = useState('');
-  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [cargandoAuth, setCargandoAuth] = useState(false);
   const [errorAuth, setErrorAuth] = useState('');
 
@@ -186,7 +179,6 @@ export default function Home() {
   const [ejercicios, setEjercicios] = useState<EjercicioGimnasio[]>([]);
   const [comidas, setComidas] = useState<ItemComida[]>(COMIDAS_POR_DEFECTO);
   const [bibliotecaComidas, setBibliotecaComidas] = useState<ItemComida[]>([]);
-  const [busquedaBiblioteca, setBusquedaBiblioteca] = useState('');
   const [guardandoCalorias, setGuardandoCalorias] = useState(false);
 
   // Modal IA Comidas
@@ -212,12 +204,6 @@ export default function Home() {
   // Notas
   const [notaDiaria, setNotaDiaria] = useState('');
   const [guardandoNota, setGuardandoNota] = useState(false);
-
-  // Formulario Soporte
-  const [tipoSoporte, setTipoSoporte] = useState<'bug' | 'reclamo' | 'recomendacion'>('bug');
-  const [mensajeSoporte, setMensajeSoporte] = useState('');
-  const [emailContacto, setEmailContacto] = useState('');
-  const [enviandoMensaje, setEnviandoMensaje] = useState(false);
 
   const [cargando, setCargando] = useState(true);
 
@@ -498,7 +484,6 @@ export default function Home() {
     return Math.round(perfil.sexo === 'masculino' ? bmr + 5 : bmr - 161);
   }, [perfil]);
 
-  // AUTOGUARDADO AUTOMÁTICO DE COMIDAS Y ENTRENAMIENTO SIN BORRAR DATOS
   useEffect(() => {
     if (!session?.user || cargando) return;
     const timer = setTimeout(() => {
@@ -591,7 +576,6 @@ export default function Home() {
     if (!error) setHabitos(habitos.filter((h) => h.id !== id));
   };
 
-  // --- NUTRICIÓN Y ENTRENAMIENTO ---
   const agregarEjercicio = () => setEjercicios([...ejercicios, { 
     id: Date.now().toString(), 
     nombre: 'Nuevo Ejercicio', 
@@ -609,15 +593,6 @@ export default function Home() {
   const eliminarEjercicio = (id: string) => {
     if (!window.confirm('¿Eliminar ejercicio?')) return;
     setEjercicios(ejercicios.filter((item) => item.id !== id));
-  };
-
-  const moverEjercicio = async (index: number, direccion: 'arriba' | 'abajo') => {
-    const nuevoIndice = direccion === 'arriba' ? index - 1 : index + 1;
-    if (nuevoIndice < 0 || nuevoIndice >= ejercicios.length) return;
-    const copia = [...ejercicios];
-    const [removido] = copia.splice(index, 1);
-    copia.splice(nuevoIndice, 0, removido);
-    setEjercicios(copia);
   };
 
   const calcularCaloriasEjercicioIA = (item: EjercicioGimnasio) => {
@@ -646,41 +621,12 @@ export default function Home() {
     setComidas(comidas.filter((item) => item.id !== id));
   };
 
-  const moverComida = async (index: number, direccion: 'arriba' | 'abajo') => {
-    const nuevoIndice = direccion === 'arriba' ? index - 1 : index + 1;
-    if (nuevoIndice < 0 || nuevoIndice >= comidas.length) return;
-    const copia = [...comidas];
-    const [removido] = copia.splice(index, 1);
-    copia.splice(nuevoIndice, 0, removido);
-    setComidas(copia);
-  };
-
   const guardarEnBiblioteca = (comida: ItemComida) => {
     if (!comida.nombre || comida.nombre.trim() === '') return;
     const nuevaBib = [...bibliotecaComidas.filter(b => b.nombre.toLowerCase() !== comida.nombre.toLowerCase()), { ...comida, id: Date.now().toString() }];
     setBibliotecaComidas(nuevaBib);
     localStorage.setItem('biblioteca_comidas_user', JSON.stringify(nuevaBib));
     alert(`⭐ Guardado en Biblioteca.`);
-  };
-
-  const cargarDesdeBiblioteca = (comidaBib: ItemComida) => {
-    const nombreNormalizado = comidaBib.nombre.trim().toLowerCase();
-    const indexExistente = comidas.findIndex(c => c.nombre.trim().toLowerCase() === nombreNormalizado);
-
-    if (indexExistente !== -1) {
-      const nuevasComidas = [...comidas];
-      nuevasComidas[indexExistente] = { ...nuevasComidas[indexExistente], calorias: comidaBib.calorias, proteinas: comidaBib.proteinas || 0, carbs: comidaBib.carbs || 0, grasas: comidaBib.grasas || 0 };
-      setComidas(nuevasComidas);
-    } else {
-      setComidas([...comidas, { ...comidaBib, id: Date.now().toString() }]);
-    }
-    alert(`⚡ Cargado en tu menú.`);
-  };
-
-  const eliminarDeBiblioteca = (id: string) => {
-    const nuevaBib = bibliotecaComidas.filter(b => b.id !== id);
-    setBibliotecaComidas(nuevaBib);
-    localStorage.setItem('biblioteca_comidas_user', JSON.stringify(nuevaBib));
   };
 
   const abrirModalIaComida = (comida: ItemComida) => {
@@ -704,7 +650,6 @@ export default function Home() {
     e.target.value = '';
   };
 
-  // ESTIMADOR CON IA CALIBRADO Y GUARDADO AUTOMÁTICO INMEDIATO
   const estimarComidaConIA = async () => {
     if (!comidaIaModal) return;
     setProcesandoIa(true);
@@ -767,7 +712,6 @@ export default function Home() {
     setProcesandoIa(false);
     setComidaIaModal(null);
 
-    // Guardado automático inmediato en Supabase tras calcular con IA
     if (session?.user) {
       await supabase.from('registro_calorias').upsert({
         user_id: session.user.id,
@@ -993,7 +937,7 @@ export default function Home() {
           <div className="text-center py-16 text-slate-400 font-medium">Cargando datos... ⏳</div>
         ) : (
           <div>
-            {/* GENERAL CON BARRAS DE PORCENTAJE RESTAURADAS */}
+            {/* GENERAL CON BARRAS DE PORCENTAJE */}
             {seccionActiva === 'general' && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
@@ -1094,7 +1038,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* HÁBITOS (BOTÓN CORREGIDO DENTRO DEL RECUADRO) */}
+            {/* HÁBITOS */}
             {seccionActiva === 'habitos' && (
               <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6">
                 <div className="flex justify-between items-center">
@@ -1151,21 +1095,19 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* MACROS */}
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="bg-slate-900 p-3 rounded-xl border border-slate-800"><span className="text-xs text-rose-400 font-bold block">Proteínas</span><span className="text-lg font-bold text-rose-300">{totalProteinas}g</span></div>
                   <div className="bg-slate-900 p-3 rounded-xl border border-slate-800"><span className="text-xs text-amber-400 font-bold block">Carbs</span><span className="text-lg font-bold text-amber-300">{totalCarbs}g</span></div>
                   <div className="bg-slate-900 p-3 rounded-xl border border-slate-800"><span className="text-xs text-blue-400 font-bold block">Grasas</span><span className="text-lg font-bold text-blue-300">{totalGrasas}g</span></div>
                 </div>
 
-                {/* COMIDAS */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-semibold uppercase text-slate-400">🥗 Comidas del Día (Desayuno, Almuerzo, etc.)</h3>
+                    <h3 className="text-xs font-semibold uppercase text-slate-400">🥗 Comidas del Día</h3>
                     <button onClick={agregarComida} className="text-xs text-amber-400 cursor-pointer">+ Agregar Comida</button>
                   </div>
                   
-                  {comidas.map((item, idx) => (
+                  {comidas.map((item) => (
                     <div key={item.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
                       <div className="flex gap-2 items-center">
                         <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold" />
@@ -1183,7 +1125,6 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* ENTRENAMIENTO */}
                 <div className="space-y-3 pt-2">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xs font-semibold uppercase text-slate-400">🏋️ Actividad Física</h3>
@@ -1212,7 +1153,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* SECCIÓN EXTRA (AGUA Y SUEÑO CON INPUTS ACOMODADOS PARA EVITAR SOLAPAMIENTO) */}
+            {/* SECCIÓN EXTRA */}
             {seccionActiva === 'extra' && (
               <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 max-w-xl mx-auto">
                 <div className="flex border-b border-slate-700 pb-3 gap-4">
@@ -1271,7 +1212,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* ESTADÍSTICAS Y VISUALIZACIÓN MEJORADA */}
+            {/* ESTADÍSTICAS */}
             {seccionActiva === 'estadisticas' && (
               <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 max-w-4xl mx-auto">
                 <h2 className="text-xl font-semibold text-indigo-400">📈 Visualización y Estadísticas Comparativas</h2>
