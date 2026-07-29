@@ -8,11 +8,10 @@ const obtenerFechaUltimaActualizacion = () => {
   if (typeof window === 'undefined') return '29/07/2026 18:00';
   const ahora = new Date();
   const fecha = ahora.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const hora = meAhora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const hora = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   return `${fecha} ${hora}`;
 };
 
-const meAhora = new Date();
 const ULTIMA_ACTUALIZACION_APP = obtenerFechaUltimaActualizacion();
 
 // --- INTERFACES ---
@@ -176,6 +175,15 @@ export default function Home() {
   const [nuevoHabito, setNuevoHabito] = useState('');
   const [horaObjetivo, setHoraObjetivo] = useState('18:00');
 
+  // Hábitos ordenados cronológicamente por hora_objetivo
+  const habitosOrdenados = useMemo(() => {
+    return [...habitos].sort((a, b) => {
+      const hA = a.hora_objetivo || '00:00';
+      const hB = b.hora_objetivo || '00:00';
+      return hA.localeCompare(hB);
+    });
+  }, [habitos]);
+
   // Nutrición / Calorías / Gimnasio
   const [ejercicios, setEjercicios] = useState<EjercicioGimnasio[]>([]);
   const [comidas, setComidas] = useState<ItemComida[]>(COMIDAS_POR_DEFECTO);
@@ -185,6 +193,7 @@ export default function Home() {
 
   // Modal IA Comidas
   const [comidaIaModal, setComidaIaModal] = useState<ItemComida | null>(null);
+  const [nombreIaModalInput, setNombreIaModalInput] = useState('');
   const [textoIaInput, setTextoIaInput] = useState('');
   const [imagenesIaInput, setImagenesIaInput] = useState<string[]>([]);
   const [procesandoIa, setProcesandoIa] = useState(false);
@@ -489,7 +498,7 @@ export default function Home() {
       setMostrarModalOnboarding(true);
     }
 
-    const { data: datosHabitos } = await supabase.from('habitos').select('*').eq('user_id', user.id).order('id', { ascending: true });
+    const { data: datosHabitos } = await supabase.from('habitos').select('*').eq('user_id', user.id);
     if (datosHabitos) {
       setHabitos(datosHabitos);
       calcularRachas(datosHabitos);
@@ -604,7 +613,10 @@ export default function Home() {
 
     const { data, error } = await supabase.from('habitos').insert([{ user_id: user.id, texto: nuevoHabito, hora_objetivo: horaObjetivo }]).select();
     if (error) alert('❌ Error al agregar hábito: ' + error.message);
-    else if (data) { setHabitos([...habitos, data[0]]); setNuevoHabito(''); }
+    else if (data) { 
+      setHabitos([...habitos, data[0]]); 
+      setNuevoHabito(''); 
+    }
   };
 
   const alternarHabito = async (habitoId: number) => {
@@ -777,7 +789,8 @@ export default function Home() {
   // ESTIMADOR CON GEMINI IA & PARSER LOCAL DE RESPALDO CORREGIDO
   const abrirModalIaComida = (comida: ItemComida) => {
     setComidaIaModal(comida);
-    setTextoIaInput(''); // Se deja vacío para visualizar el placeholder con el ejemplo
+    setNombreIaModalInput(comida.nombre);
+    setTextoIaInput('');
     setImagenesIaInput([]);
   };
 
@@ -854,54 +867,79 @@ export default function Home() {
       }
     }
 
-    // Algoritmo local inteligente de respaldo que evalúa unidades vs gramos/ml
+    // Algoritmo local inteligente de respaldo corregido a base de gramaje/ml
     if (!exitoGemini) {
+      const baseAlimentos: {
+        nombres: string[];
+        calPerGram: number;
+        pPerGram: number;
+        cPerGram: number;
+        gPerGram: number;
+        weightPerUnit?: number;
+      }[] = [
+        { nombres: ['avena'], calPerGram: 3.89, pPerGram: 0.169, cPerGram: 0.66, gPerGram: 0.069, weightPerUnit: 40 },
+        { nombres: ['chía', 'chia'], calPerGram: 4.86, pPerGram: 0.165, cPerGram: 0.42, gPerGram: 0.307, weightPerUnit: 15 },
+        { nombres: ['almendra', 'almendras'], calPerGram: 5.79, pPerGram: 0.21, cPerGram: 0.22, gPerGram: 0.50, weightPerUnit: 1.2 },
+        { nombres: ['banana', 'bananas', 'plátano', 'platano'], calPerGram: 0.89, pPerGram: 0.011, cPerGram: 0.23, gPerGram: 0.003, weightPerUnit: 100 },
+        { nombres: ['leche descremada', 'leche desnatada'], calPerGram: 0.35, pPerGram: 0.034, cPerGram: 0.048, gPerGram: 0.002, weightPerUnit: 200 },
+        { nombres: ['leche entera', 'leche'], calPerGram: 0.60, pPerGram: 0.032, cPerGram: 0.047, gPerGram: 0.032, weightPerUnit: 200 },
+        { nombres: ['copos de maiz', 'copos de maíz', 'cereal de maiz', 'cereal de maíz', 'maiz', 'maíz'], calPerGram: 3.80, pPerGram: 0.07, cPerGram: 0.84, gPerGram: 0.004, weightPerUnit: 30 },
+        { nombres: ['huevo', 'huevos'], calPerGram: 1.43, pPerGram: 0.12, cPerGram: 0.008, gPerGram: 0.095, weightPerUnit: 50 },
+        { nombres: ['pollo', 'pechuga'], calPerGram: 1.65, pPerGram: 0.31, cPerGram: 0, gPerGram: 0.036, weightPerUnit: 150 },
+        { nombres: ['carne', 'vacuna', 'lomo', 'bife'], calPerGram: 2.20, pPerGram: 0.26, cPerGram: 0, gPerGram: 0.13, weightPerUnit: 200 },
+        { nombres: ['arroz'], calPerGram: 1.30, pPerGram: 0.027, cPerGram: 0.28, gPerGram: 0.003, weightPerUnit: 150 },
+        { nombres: ['fideos', 'pasta', 'tallarines'], calPerGram: 1.31, pPerGram: 0.05, cPerGram: 0.25, gPerGram: 0.011, weightPerUnit: 150 },
+        { nombres: ['manzana', 'manzanas'], calPerGram: 0.52, pPerGram: 0.003, cPerGram: 0.14, gPerGram: 0.002, weightPerUnit: 150 },
+        { nombres: ['queso'], calPerGram: 3.00, pPerGram: 0.22, cPerGram: 0.02, gPerGram: 0.22, weightPerUnit: 30 },
+        { nombres: ['yogur', 'yogurt'], calPerGram: 0.60, pPerGram: 0.04, cPerGram: 0.07, gPerGram: 0.015, weightPerUnit: 125 },
+        { nombres: ['pan integral', 'pan'], calPerGram: 2.50, pPerGram: 0.09, cPerGram: 0.45, gPerGram: 0.03, weightPerUnit: 30 },
+        { nombres: ['proteina', 'proteína', 'whey'], calPerGram: 3.80, pPerGram: 0.80, cPerGram: 0.05, gPerGram: 0.03, weightPerUnit: 30 },
+        { nombres: ['galleta de arroz', 'galletas de arroz'], calPerGram: 3.80, pPerGram: 0.08, cPerGram: 0.80, gPerGram: 0.03, weightPerUnit: 10 },
+        { nombres: ['atun', 'atún'], calPerGram: 1.30, pPerGram: 0.26, cPerGram: 0, gPerGram: 0.01, weightPerUnit: 120 },
+        { nombres: ['dulce de leche'], calPerGram: 3.15, pPerGram: 0.06, cPerGram: 0.55, gPerGram: 0.07, weightPerUnit: 20 },
+        { nombres: ['maní', 'mani', 'mantequilla de maní', 'mantequilla de mani'], calPerGram: 5.88, pPerGram: 0.25, cPerGram: 0.20, gPerGram: 0.50, weightPerUnit: 15 },
+      ];
+
       const lineas = promptTexto ? promptTexto.split(/[\n,\+;]+|\s+y\s+/i) : [comidaIaModal.nombre];
       let calAcc = 0, pAcc = 0, cAcc = 0, gAcc = 0;
       let itemsEncontrados = 0;
-
-      const baseAlimentos: Record<string, { unit: 'g' | 'ml' | 'u', calUnit: number, pUnit: number, cUnit: number, gUnit: number }> = {
-        'leche': { unit: 'ml', calUnit: 0.35, pUnit: 0.034, cUnit: 0.048, gUnit: 0.002 },
-        'leche descremada': { unit: 'ml', calUnit: 0.35, pUnit: 0.034, cUnit: 0.048, gUnit: 0.002 },
-        'galleta de arroz': { unit: 'g', calUnit: 3.8, pUnit: 0.08, cUnit: 0.8, gUnit: 0.03 },
-        'galletas de arroz': { unit: 'g', calUnit: 3.8, pUnit: 0.08, cUnit: 0.8, gUnit: 0.03 },
-        'pan integral': { unit: 'g', calUnit: 2.5, pUnit: 0.09, cUnit: 0.45, gUnit: 0.03 },
-        'pan': { unit: 'g', calUnit: 2.6, pUnit: 0.08, cUnit: 0.5, gUnit: 0.02 },
-        'manzana': { unit: 'g', calUnit: 0.52, pUnit: 0.003, cUnit: 0.14, gUnit: 0.002 },
-        'huevo': { unit: 'g', calUnit: 1.43, pUnit: 0.12, cUnit: 0.008, gUnit: 0.095 },
-        'huevos': { unit: 'g', calUnit: 1.43, pUnit: 0.12, cUnit: 0.008, gUnit: 0.095 },
-        'almendra': { unit: 'u', calUnit: 7, pUnit: 0.25, cUnit: 0.25, gUnit: 0.6 },
-        'almendras': { unit: 'u', calUnit: 7, pUnit: 0.25, cUnit: 0.25, gUnit: 0.6 },
-        'pollo': { unit: 'g', calUnit: 1.65, pUnit: 0.31, cUnit: 0, gUnit: 0.036 },
-        'pechuga': { unit: 'g', calUnit: 1.65, pUnit: 0.31, cUnit: 0, gUnit: 0.036 },
-        'carne': { unit: 'g', calUnit: 2.2, pUnit: 0.26, cUnit: 0, gUnit: 0.13 },
-        'arroz': { unit: 'g', calUnit: 1.3, pUnit: 0.027, cUnit: 0.28, gUnit: 0.003 },
-        'fideos': { unit: 'g', calUnit: 1.31, pUnit: 0.05, cUnit: 0.25, gUnit: 0.011 },
-        'banana': { unit: 'u', calUnit: 90, pUnit: 1.1, cUnit: 23, gUnit: 0.3 },
-        'plátano': { unit: 'u', calUnit: 90, pUnit: 1.1, cUnit: 23, gUnit: 0.3 },
-        'queso': { unit: 'g', calUnit: 3.0, pUnit: 0.22, cUnit: 0.02, gUnit: 0.22 },
-        'yogur': { unit: 'g', calUnit: 0.6, pUnit: 0.04, cUnit: 0.07, gUnit: 0.015 },
-        'avena': { unit: 'g', calUnit: 3.89, pUnit: 0.169, cUnit: 0.66, gUnit: 0.069 },
-        'proteina': { unit: 'g', calUnit: 3.8, pUnit: 0.8, cUnit: 0.05, gUnit: 0.03 },
-        'whey': { unit: 'g', calUnit: 3.8, pUnit: 0.8, cUnit: 0.05, gUnit: 0.03 },
-      };
 
       for (const itemStr of lineas) {
         const strL = itemStr.toLowerCase().trim();
         if (!strL) continue;
 
-        const keys = Object.keys(baseAlimentos).sort((a, b) => b.length - a.length);
-        const matchedKey = keys.find((k) => strL.includes(k));
+        let matchedItem = null;
+        let longestMatchLen = 0;
 
-        if (matchedKey) {
-          const info = baseAlimentos[matchedKey];
+        for (const alimento of baseAlimentos) {
+          for (const nombre of alimento.nombres) {
+            if (strL.includes(nombre) && nombre.length > longestMatchLen) {
+              matchedItem = alimento;
+              longestMatchLen = nombre.length;
+            }
+          }
+        }
+
+        if (matchedItem) {
           const matchNum = strL.match(/(\d+)/);
-          let cantidad = matchNum ? parseInt(matchNum[1], 10) : (info.unit === 'u' ? 1 : 100);
+          const tieneUnidadGramos = /g|gr|gramo|gramos|ml|cc/.test(strL);
+          let cantidadGramos = 100;
 
-          calAcc += info.calUnit * cantidad;
-          pAcc += info.pUnit * cantidad;
-          cAcc += info.cUnit * cantidad;
-          gAcc += info.gUnit * cantidad;
+          if (matchNum) {
+            const val = parseInt(matchNum[1], 10);
+            if (tieneUnidadGramos) {
+              cantidadGramos = val;
+            } else {
+              cantidadGramos = val * (matchedItem.weightPerUnit || 100);
+            }
+          } else {
+            cantidadGramos = matchedItem.weightPerUnit || 100;
+          }
+
+          calAcc += matchedItem.calPerGram * cantidadGramos;
+          pAcc += matchedItem.pPerGram * cantidadGramos;
+          cAcc += matchedItem.cPerGram * cantidadGramos;
+          gAcc += matchedItem.gPerGram * cantidadGramos;
           itemsEncontrados++;
         }
       }
@@ -920,17 +958,18 @@ export default function Home() {
       }
     }
 
-    // Actualiza calorías y macros sin modificar el nombre de la comida si ya existía (e.g. Desayuno)
+    const nuevoNombre = nombreIaModalInput.trim() || comidaIaModal.nombre;
+
     setComidas((prev) =>
       prev.map((item) =>
         item.id === comidaIaModal.id
           ? {
               ...item,
+              nombre: nuevoNombre,
               calorias: resCal,
               proteinas: resP,
               carbs: resC,
               grasas: resG,
-              nombre: item.nombre === 'Nueva Comida' && promptTexto ? promptTexto.split(/[\n,]+/)[0].substring(0, 35) : item.nombre,
             }
           : item
       )
@@ -938,7 +977,7 @@ export default function Home() {
 
     setProcesandoIa(false);
     setComidaIaModal(null);
-    alert(`🤖 Estimación IA realizada: ${resCal} kcal | ${resP}g Prot | ${resC}g Carbs | ${resG}g Grasas`);
+    alert(`🤖 Estimación IA realizada para "${nuevoNombre}": ${resCal} kcal | ${resP}g Prot | ${resC}g Carbs | ${resG}g Grasas`);
   };
 
   const modificarAgua = async (deltaMl: number) => {
@@ -1513,8 +1552,9 @@ export default function Home() {
                   </div>
                 </form>
 
+                {/* LISTA ORDENADA AUTOMÁTICAMENTE POR HORA OBJETIVO */}
                 <div className="space-y-2.5">
-                  {habitos.map((h) => {
+                  {habitosOrdenados.map((h) => {
                     const reg = registrosHoy[h.id];
                     const completado = !!reg?.completado;
                     const racha = rachasHabitos[h.id] || 0;
@@ -1814,7 +1854,9 @@ export default function Home() {
                         <option value={5}>⭐⭐⭐⭐⭐ Excelente</option>
                       </select>
                     </div>
-                    <button onClick={guardarSueno} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">💾 Guardar Sueño</button>
+                    <button onClick={guardarSueno} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                      💾 Guardar Sueño
+                    </button>
                   </div>
                 )}
               </section>
@@ -1822,217 +1864,147 @@ export default function Home() {
 
             {/* NOTAS */}
             {seccionActiva === 'notas' && (
-              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
-                <h2 className="text-xl font-semibold text-amber-400">📝 Notas Diarias y Reflexiones</h2>
-                <textarea 
-                  rows={6} 
-                  value={notaDiaria} 
-                  onChange={(e) => setNotaDiaria(e.target.value)} 
-                  placeholder="Escribe tus notas, sensaciones o ideas del día aquí..." 
+              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4 max-w-3xl mx-auto">
+                <h2 className="text-xl font-semibold text-amber-400">📝 Notas del Día</h2>
+                <textarea
+                  rows={8}
+                  value={notaDiaria}
+                  onChange={(e) => setNotaDiaria(e.target.value)}
+                  placeholder="Escribe tus reflexiones, sensaciones del entrenamiento o recordatorios..."
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-amber-500"
                 />
-                <button onClick={guardarNota} disabled={guardandoNota} className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-6 py-2.5 rounded-xl text-xs cursor-pointer transition">
+                <button onClick={guardarNota} disabled={guardandoNota} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl transition cursor-pointer disabled:opacity-50">
                   {guardandoNota ? 'Guardando...' : '💾 Guardar Nota'}
                 </button>
               </section>
             )}
 
-            {/* ESTADÍSTICAS */}
-            {seccionActiva === 'estadisticas' && (
-              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6 text-center">
-                <h2 className="text-xl font-semibold text-indigo-400">📈 Visualización y Estadísticas</h2>
-                <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4">
-                  <p className="text-sm text-slate-300">Resumen histórico de consistencia</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
-                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                      <span className="text-xs text-slate-400 block">Hábitos Completados</span>
-                      <span className="text-2xl font-bold text-indigo-400">{todosLosRegistrosHabitos.length}</span>
-                    </div>
-                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                      <span className="text-xs text-slate-400 block">Ingesta de Hoy</span>
-                      <span className="text-2xl font-bold text-amber-400">{totalIngeridoCal} kcal</span>
-                    </div>
-                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                      <span className="text-xs text-slate-400 block">Gasto de Hoy</span>
-                      <span className="text-2xl font-bold text-emerald-400">{totalGastadoCal} kcal</span>
-                    </div>
-                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                      <span className="text-xs text-slate-400 block">Agua Registrada</span>
-                      <span className="text-2xl font-bold text-cyan-400">{(aguaMl / 1000).toFixed(2)} L</span>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* SOPORTE Y ACTUALIZACIONES */}
+            {/* ACTUALIZACIONES Y SOPORTE */}
             {seccionActiva === 'actualizaciones' && (
-              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                <h2 className="text-xl font-semibold text-indigo-400">🚀 Novedades y Soporte técnico</h2>
-                
-                <form onSubmit={enviarMensajeSoporte} className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4 max-w-xl mx-auto">
-                  <h3 className="text-sm font-bold text-slate-200">Envíanos un reporte o sugerencia</h3>
-                  
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Tipo de Mensaje</label>
-                    <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value as any)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none cursor-pointer">
-                      <option value="bug">🐛 Reporte de Error / Bug</option>
-                      <option value="recomendacion">💡 Sugerencia o Recomendación</option>
-                      <option value="reclamo">📢 Reclamo</option>
-                    </select>
-                  </div>
+              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6 max-w-3xl mx-auto">
+                <h2 className="text-xl font-semibold text-indigo-400">🚀 Novedades y Soporte Técnico</h2>
+                <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2 text-xs text-slate-300">
+                  <p className="font-bold text-indigo-300">Versión de la app: <span className="font-mono text-white">{ULTIMA_ACTUALIZACION_APP}</span></p>
+                  <p>• Ordenamiento cronológico automático para hábitos.</p>
+                  <p>• Estimador nutricional por gramaje corregido para evitar desviaciones al ingresar pesos reales en alimentos.</p>
+                </div>
 
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Tu Correo de Contacto (Opcional)</label>
-                    <input type="email" value={emailContacto} onChange={(e) => setEmailContacto(e.target.value)} placeholder="tu@email.com" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none" />
+                <form onSubmit={enviarMensajeSoporte} className="space-y-4 bg-slate-900/60 p-5 rounded-xl border border-slate-800">
+                  <h3 className="text-sm font-bold text-slate-200">Envíanos tus comentarios o reportes</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Tipo de mensaje</label>
+                      <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value as any)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none cursor-pointer">
+                        <option value="bug">🐛 Reportar un error</option>
+                        <option value="recomendacion">💡 Sugerencia / Idea</option>
+                        <option value="reclamo">⚠️ Reclamo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Email de contacto (opcional)</label>
+                      <input type="email" value={emailContacto} onChange={(e) => setEmailContacto(e.target.value)} placeholder="tu@email.com" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none" />
+                    </div>
                   </div>
-
                   <div>
                     <label className="text-xs text-slate-400 block mb-1">Detalle del mensaje</label>
-                    <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} required placeholder="Describe tu consulta con detalle..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-indigo-500 outline-none" />
+                    <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Describe tu consulta..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white outline-none" />
                   </div>
-
-                  <button type="submit" disabled={enviandoMensaje} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
-                    {enviandoMensaje ? 'Enviando...' : '📤 Enviar Mensaje'}
+                  <button type="submit" disabled={enviandoMensaje} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer disabled:opacity-50">
+                    {enviandoMensaje ? 'Enviando...' : '📤 Enviar Comentario'}
                   </button>
                 </form>
               </section>
             )}
 
-            {/* MODAL IA ESTIMACIÓN COMIDAS */}
-            {comidaIaModal && (
-              <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-                <div className="bg-slate-900 border border-cyan-500/40 p-5 sm:p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h3 className="text-sm font-bold text-cyan-300 flex items-center gap-1.5">
-                      <span>🤖 Estimación de Nutrición con Gemini IA</span>
-                    </h3>
-                    <button onClick={() => setComidaIaModal(null)} className="text-slate-400 hover:text-white cursor-pointer text-xs">✕ Cerrar</button>
+            {/* ESTADÍSTICAS */}
+            {seccionActiva === 'estadisticas' && (
+              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                <h2 className="text-xl font-semibold text-indigo-400">📈 Visualización y Estadísticas</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 text-center">
+                    <p className="text-xs text-slate-400 font-bold uppercase">Consumo Calórico Hoy</p>
+                    <p className="text-3xl font-black text-amber-400 mt-2">{totalIngeridoCal} kcal</p>
                   </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Escribe los alimentos y cantidades ingeridos:</label>
-                      <textarea
-                        value={textoIaInput}
-                        onChange={(e) => setTextoIaInput(e.target.value)}
-                        placeholder="Ej: Leche descremada 336 ml, Galleta de arroz 15g, Pan integral 30g, Manzana 148g, Huevos 91g, Almendras 6u..."
-                        rows={3}
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 resize-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Adjuntar fotos del plato (Opcional):</label>
-                      <input type="file" accept="image/*" multiple onChange={procesarFotoIA} className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:bg-cyan-950 file:text-cyan-300 hover:file:bg-cyan-900 cursor-pointer" />
-                    </div>
-
-                    {imagenesIaInput.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {imagenesIaInput.map((img, idx) => (
-                          <div key={idx} className="relative w-14 h-14 rounded-lg overflow-hidden border border-slate-700 group">
-                            <img src={img} alt="Vista previa" className="w-full h-full object-cover" />
-                            <button onClick={() => eliminarFotoIa(idx)} className="absolute inset-0 bg-slate-950/70 text-rose-400 font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs">✕</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 text-center">
+                    <p className="text-xs text-slate-400 font-bold uppercase">Gasto Estimado Total</p>
+                    <p className="text-3xl font-black text-indigo-400 mt-2">{totalGastadoCal} kcal</p>
                   </div>
-
-                  <button
-                    onClick={estimarComidaConIA}
-                    disabled={procesandoIa}
-                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer disabled:opacity-50"
-                  >
-                    {procesandoIa ? 'Analizando con IA...' : '✨ Estimar Calorías y Macronutrientes'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* MODAL ONBOARDING / SOLO 1 VEZ */}
-            {mostrarModalOnboarding && (
-              <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-                <div className="bg-slate-900 border border-indigo-500/40 p-6 sm:p-8 rounded-2xl max-w-lg w-full space-y-5 shadow-2xl">
-                  <div className="text-center space-y-2">
-                    <span className="text-4xl">👋</span>
-                    <h3 className="text-xl font-bold text-white">¡Bienvenido a Personal Fitness!</h3>
-                    <p className="text-xs text-slate-300">
-                      Ingresa tus datos personales y objetivos físicos solo una vez para configurar tu perfil metabólico.
+                  <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 text-center">
+                    <p className="text-xs text-slate-400 font-bold uppercase">Balance Neto</p>
+                    <p className={`text-3xl font-black mt-2 ${balanceCalorico <= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} kcal
                     </p>
                   </div>
-
-                  <div className="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Tu Nombre</label>
-                      <input 
-                        type="text" 
-                        placeholder="Ej. Juan" 
-                        value={perfil.nombre} 
-                        onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} 
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">Fecha Nacimiento</label>
-                        <input 
-                          type="date" 
-                          value={perfil.fecha_nacimiento} 
-                          onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} 
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none cursor-pointer" 
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">Sexo</label>
-                        <select 
-                          value={perfil.sexo} 
-                          onChange={(e) => setPerfil({...perfil, sexo: e.target.value as any})} 
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none cursor-pointer"
-                        >
-                          <option value="masculino">Masculino</option>
-                          <option value="femenino">Femenino</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">Peso (kg)</label>
-                        <input 
-                          type="number" 
-                          step="0.1" 
-                          value={perfil.peso} 
-                          onChange={(e) => setPerfil({...perfil, peso: Number(e.target.value)})} 
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">Altura (cm)</label>
-                        <input 
-                          type="number" 
-                          value={perfil.altura} 
-                          onChange={(e) => setPerfil({...perfil, altura: Number(e.target.value)})} 
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={guardarPerfil}
-                    disabled={guardandoPerfil}
-                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition cursor-pointer text-sm shadow-lg shadow-indigo-600/30"
-                  >
-                    {guardandoPerfil ? 'Guardando...' : '🚀 Guardar e Iniciar App'}
-                  </button>
                 </div>
-              </div>
+              </section>
             )}
           </div>
         )}
       </main>
+
+      {/* MODAL IA ESTIMACIÓN DE COMIDA */}
+      {comidaIaModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-cyan-300 flex items-center gap-2">
+                <span>📷 Estimador IA Nutricional</span>
+              </h3>
+              <button onClick={() => setComidaIaModal(null)} className="text-slate-400 hover:text-white cursor-pointer font-bold">✕</button>
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-400 block mb-1 font-semibold">Nombre de la Comida / Tiempo</label>
+              <input
+                type="text"
+                value={nombreIaModalInput}
+                onChange={(e) => setNombreIaModalInput(e.target.value)}
+                placeholder="Ej: Post entreno, Desayuno..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-400 block mb-1 font-semibold">Descripción o lista de alimentos</label>
+              <textarea
+                rows={4}
+                value={textoIaInput}
+                onChange={(e) => setTextoIaInput(e.target.value)}
+                placeholder={`Ejemplo:\nAvena 62g\nChía 15g\nAlmendras 6g\nBanana 81g\nLeche descremada 329g\ncopos de maiz 44g`}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-400 block mb-1 font-semibold">Fotos del plato (Opcional)</label>
+              <input type="file" accept="image/*" multiple onChange={procesarFotoIA} className="hidden" id="foto-ia-input" />
+              <label htmlFor="foto-ia-input" className="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 border-dashed py-3 rounded-xl text-xs text-slate-300 font-medium cursor-pointer flex items-center justify-center gap-2">
+                <span>📸 Subir imágenes del plato</span>
+              </label>
+
+              {imagenesIaInput.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {imagenesIaInput.map((img, idx) => (
+                    <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-700">
+                      <img src={img} alt={`Plato ${idx}`} className="w-full h-full object-cover" />
+                      <button onClick={() => eliminarFotoIa(idx)} className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setComidaIaModal(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-xl text-xs transition cursor-pointer">
+                Cancelar
+              </button>
+              <button onClick={estimarComidaConIA} disabled={procesandoIa} className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer disabled:opacity-50">
+                {procesandoIa ? 'Procesando...' : '⚡ Calcular con IA'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
