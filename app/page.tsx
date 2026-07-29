@@ -3,15 +3,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
-// FECHA Y HORA REAL DInÁMICA DE ÚLTIMA ACTUALIZACIÓN
+// FECHA Y HORA REAL DINÁMICA DE ÚLTIMA ACTUALIZACIÓN
 const obtenerFechaUltimaActualizacion = () => {
   if (typeof window === 'undefined') return '29/07/2026 18:00';
   const ahora = new Date();
   const fecha = ahora.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const hora = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const hora = meAhora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   return `${fecha} ${hora}`;
 };
 
+const meAhora = new Date();
 const ULTIMA_ACTUALIZACION_APP = obtenerFechaUltimaActualizacion();
 
 // --- INTERFACES ---
@@ -137,6 +138,7 @@ export default function Home() {
   const [esRegistro, setEsRegistro] = useState(false);
   const [emailAuth, setEmailAuth] = useState('');
   const [passwordAuth, setPasswordAuth] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [cargandoAuth, setCargandoAuth] = useState(false);
   const [errorAuth, setErrorAuth] = useState('');
 
@@ -181,7 +183,7 @@ export default function Home() {
   const [busquedaBiblioteca, setBusquedaBiblioteca] = useState('');
   const [guardandoCalorias, setGuardandoCalorias] = useState(false);
 
-  // Modal IA Comidas (Soporta múltiples fotos)
+  // Modal IA Comidas
   const [comidaIaModal, setComidaIaModal] = useState<ItemComida | null>(null);
   const [textoIaInput, setTextoIaInput] = useState('');
   const [imagenesIaInput, setImagenesIaInput] = useState<string[]>([]);
@@ -310,7 +312,7 @@ export default function Home() {
       });
       if (error) throw error;
     } catch (err: any) {
-      setErrorAuth(err.message || 'Error al iniciar sesión con Google');
+      setErrorAuth(err.message || 'Error al iniciar sesión con Google. Revisa la configuración del proveedor en Supabase.');
       setCargandoAuth(false);
     }
   };
@@ -772,10 +774,10 @@ export default function Home() {
     localStorage.setItem('biblioteca_comidas_user', JSON.stringify(nuevaBib));
   };
 
-  // ESTIMADOR IA CON SOPORTE PARA MÚLTIPLES IMÁGENES Y CÁLCULO MEJORADO
+  // ESTIMADOR CON GEMINI IA & PARSER LOCAL DE RESPALDO CORREGIDO
   const abrirModalIaComida = (comida: ItemComida) => {
     setComidaIaModal(comida);
-    setTextoIaInput(comida.nombre !== 'Nueva Comida' ? comida.nombre : '');
+    setTextoIaInput(''); // Se deja vacío para visualizar el placeholder con el ejemplo
     setImagenesIaInput([]);
   };
 
@@ -799,140 +801,144 @@ export default function Home() {
     setImagenesIaInput((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const estimarComidaConIA = () => {
+  const estimarComidaConIA = async () => {
     if (!comidaIaModal) return;
     setProcesandoIa(true);
 
-    setTimeout(() => {
-      let cal = 0, p = 0, c = 0, g = 0;
-      const texto = (textoIaInput || comidaIaModal.nombre).toLowerCase();
+    const promptTexto = textoIaInput.trim();
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
-      // Base de datos inteligente: tipo 'g' (por 100g) o tipo 'u' (por unidad)
-      const baseAlimentos: Record<string, { type: 'g' | 'u', cal: number, p: number, c: number, g: number }> = {
-        'pollo': { type: 'g', cal: 165, p: 31, c: 0, g: 3.6 },
-        'pechuga': { type: 'g', cal: 165, p: 31, c: 0, g: 3.6 },
-        'muslo': { type: 'g', cal: 180, p: 24, c: 0, g: 9 },
-        'carne': { type: 'g', cal: 220, p: 26, c: 0, g: 13 },
-        'vacuna': { type: 'g', cal: 220, p: 26, c: 0, g: 13 },
-        'vaca': { type: 'g', cal: 220, p: 26, c: 0, g: 13 },
-        'bife': { type: 'g', cal: 220, p: 26, c: 0, g: 13 },
-        'lomo': { type: 'g', cal: 190, p: 27, c: 0, g: 8 },
-        'asado': { type: 'g', cal: 280, p: 24, c: 0, g: 20 },
-        'cerdo': { type: 'g', cal: 240, p: 25, c: 0, g: 14 },
-        'bondiola': { type: 'g', cal: 260, p: 23, c: 0, g: 18 },
-        'pescado': { type: 'g', cal: 120, p: 20, c: 0, g: 4 },
-        'merluza': { type: 'g', cal: 90, p: 18, c: 0, g: 1.5 },
-        'atun': { type: 'g', cal: 130, p: 28, c: 0, g: 1 },
-        'atún': { type: 'g', cal: 130, p: 28, c: 0, g: 1 },
-        'salmon': { type: 'g', cal: 200, p: 20, c: 0, g: 13 },
-        'salmón': { type: 'g', cal: 200, p: 20, c: 0, g: 13 },
-        'huevo': { type: 'u', cal: 75, p: 6.5, c: 0.5, g: 5 },
-        'huevos': { type: 'u', cal: 75, p: 6.5, c: 0.5, g: 5 },
-        'clara': { type: 'u', cal: 17, p: 3.6, c: 0.2, g: 0.1 },
-        'claras': { type: 'u', cal: 17, p: 3.6, c: 0.2, g: 0.1 },
-        'arroz': { type: 'g', cal: 130, p: 2.7, c: 28, g: 0.3 },
-        'fideos': { type: 'g', cal: 131, p: 5, c: 25, g: 1.1 },
-        'pasta': { type: 'g', cal: 131, p: 5, c: 25, g: 1.1 },
-        'pastas': { type: 'g', cal: 131, p: 5, c: 25, g: 1.1 },
-        'tallarines': { type: 'g', cal: 131, p: 5, c: 25, g: 1.1 },
-        'pan': { type: 'u', cal: 80, p: 3, c: 15, g: 1 },
-        'tostada': { type: 'u', cal: 70, p: 2.5, c: 13, g: 0.8 },
-        'tostadas': { type: 'u', cal: 70, p: 2.5, c: 13, g: 0.8 },
-        'papa': { type: 'g', cal: 77, p: 2, c: 17, g: 0.1 },
-        'papas': { type: 'g', cal: 77, p: 2, c: 17, g: 0.1 },
-        'patata': { type: 'g', cal: 77, p: 2, c: 17, g: 0.1 },
-        'batata': { type: 'g', cal: 86, p: 1.6, c: 20, g: 0.1 },
-        'avena': { type: 'g', cal: 389, p: 16.9, c: 66, g: 6.9 },
-        'leche': { type: 'g', cal: 50, p: 3.3, c: 4.8, g: 2 },
-        'yogur': { type: 'g', cal: 60, p: 4, c: 7, g: 1.5 },
-        'yogurt': { type: 'g', cal: 60, p: 4, c: 7, g: 1.5 },
-        'queso': { type: 'g', cal: 300, p: 22, c: 2, g: 22 },
-        'mozzarella': { type: 'g', cal: 280, p: 20, c: 2, g: 21 },
-        'banana': { type: 'u', cal: 90, p: 1.1, c: 23, g: 0.3 },
-        'platano': { type: 'u', cal: 90, p: 1.1, c: 23, g: 0.3 },
-        'plátano': { type: 'u', cal: 90, p: 1.1, c: 23, g: 0.3 },
-        'manzana': { type: 'u', cal: 80, p: 0.4, c: 21, g: 0.2 },
-        'naranja': { type: 'u', cal: 60, p: 1, c: 15, g: 0.2 },
-        'palta': { type: 'u', cal: 160, p: 2, c: 8, g: 15 },
-        'aguacate': { type: 'u', cal: 160, p: 2, c: 8, g: 15 },
-        'ensalada': { type: 'g', cal: 35, p: 1.5, c: 6, g: 0.3 },
-        'tomate': { type: 'g', cal: 18, p: 0.9, c: 3.9, g: 0.2 },
-        'lechuga': { type: 'g', cal: 15, p: 1.4, c: 2.9, g: 0.2 },
-        'aceite': { type: 'g', cal: 884, p: 0, c: 0, g: 100 },
-        'manteca': { type: 'g', cal: 717, p: 0.9, c: 0.1, g: 81 },
-        'mantequilla': { type: 'g', cal: 717, p: 0.9, c: 0.1, g: 81 },
-        'milanesa': { type: 'u', cal: 280, p: 22, c: 15, g: 12 },
-        'milanesas': { type: 'u', cal: 280, p: 22, c: 15, g: 12 },
-        'empanada': { type: 'u', cal: 250, p: 8, c: 26, g: 12 },
-        'empanadas': { type: 'u', cal: 250, p: 8, c: 26, g: 12 },
-        'pizza': { type: 'u', cal: 270, p: 11, c: 32, g: 10 },
-        'hamburguesa': { type: 'u', cal: 350, p: 20, c: 28, g: 18 },
-        'frutos secos': { type: 'g', cal: 600, p: 20, c: 20, g: 50 },
-        'nueces': { type: 'g', cal: 650, p: 15, c: 14, g: 65 },
-        'almendras': { type: 'g', cal: 575, p: 21, c: 22, g: 49 },
-        'proteina': { type: 'g', cal: 380, p: 80, c: 5, g: 3 },
-        'proteína': { type: 'g', cal: 380, p: 80, c: 5, g: 3 },
-        'whey': { type: 'g', cal: 380, p: 80, c: 5, g: 3 },
+    let resCal = 0, resP = 0, resC = 0, resG = 0;
+    let exitoGemini = false;
+
+    // Intento de integración directa con la API de Google Gemini (si existe API key configurada)
+    if (apiKey && (promptTexto || imagenesIaInput.length > 0)) {
+      try {
+        const parts: any[] = [];
+        if (promptTexto) {
+          parts.push({
+            text: `Analiza la siguiente ingesta de alimentos e indica ÚNICAMENTE un JSON válido con esta estructura exacta sin formato markdown: {"calorias": number, "proteinas": number, "carbs": number, "grasas": number}. Descripción: "${promptTexto}"`
+          });
+        }
+
+        for (const imgBase64 of imagenesIaInput) {
+          const mimeMatch = imgBase64.match(/^data:(image\/\w+);base64,/);
+          const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+          const base64Data = imgBase64.replace(/^data:image\/\w+;base64,/, '');
+          parts.push({
+            inline_data: { mime_type: mimeType, data: base64Data }
+          });
+        }
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts }] })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            resCal = Math.round(Number(parsed.calorias) || 0);
+            resP = Math.round(Number(parsed.proteinas) || 0);
+            resC = Math.round(Number(parsed.carbs) || 0);
+            resG = Math.round(Number(parsed.grasas) || 0);
+            exitoGemini = true;
+          }
+        }
+      } catch (err) {
+        console.warn('Error con la API de Gemini, utilizando estimador nutricional local:', err);
+      }
+    }
+
+    // Algoritmo local inteligente de respaldo que evalúa unidades vs gramos/ml
+    if (!exitoGemini) {
+      const lineas = promptTexto ? promptTexto.split(/[\n,\+;]+|\s+y\s+/i) : [comidaIaModal.nombre];
+      let calAcc = 0, pAcc = 0, cAcc = 0, gAcc = 0;
+      let itemsEncontrados = 0;
+
+      const baseAlimentos: Record<string, { unit: 'g' | 'ml' | 'u', calUnit: number, pUnit: number, cUnit: number, gUnit: number }> = {
+        'leche': { unit: 'ml', calUnit: 0.35, pUnit: 0.034, cUnit: 0.048, gUnit: 0.002 },
+        'leche descremada': { unit: 'ml', calUnit: 0.35, pUnit: 0.034, cUnit: 0.048, gUnit: 0.002 },
+        'galleta de arroz': { unit: 'g', calUnit: 3.8, pUnit: 0.08, cUnit: 0.8, gUnit: 0.03 },
+        'galletas de arroz': { unit: 'g', calUnit: 3.8, pUnit: 0.08, cUnit: 0.8, gUnit: 0.03 },
+        'pan integral': { unit: 'g', calUnit: 2.5, pUnit: 0.09, cUnit: 0.45, gUnit: 0.03 },
+        'pan': { unit: 'g', calUnit: 2.6, pUnit: 0.08, cUnit: 0.5, gUnit: 0.02 },
+        'manzana': { unit: 'g', calUnit: 0.52, pUnit: 0.003, cUnit: 0.14, gUnit: 0.002 },
+        'huevo': { unit: 'g', calUnit: 1.43, pUnit: 0.12, cUnit: 0.008, gUnit: 0.095 },
+        'huevos': { unit: 'g', calUnit: 1.43, pUnit: 0.12, cUnit: 0.008, gUnit: 0.095 },
+        'almendra': { unit: 'u', calUnit: 7, pUnit: 0.25, cUnit: 0.25, gUnit: 0.6 },
+        'almendras': { unit: 'u', calUnit: 7, pUnit: 0.25, cUnit: 0.25, gUnit: 0.6 },
+        'pollo': { unit: 'g', calUnit: 1.65, pUnit: 0.31, cUnit: 0, gUnit: 0.036 },
+        'pechuga': { unit: 'g', calUnit: 1.65, pUnit: 0.31, cUnit: 0, gUnit: 0.036 },
+        'carne': { unit: 'g', calUnit: 2.2, pUnit: 0.26, cUnit: 0, gUnit: 0.13 },
+        'arroz': { unit: 'g', calUnit: 1.3, pUnit: 0.027, cUnit: 0.28, gUnit: 0.003 },
+        'fideos': { unit: 'g', calUnit: 1.31, pUnit: 0.05, cUnit: 0.25, gUnit: 0.011 },
+        'banana': { unit: 'u', calUnit: 90, pUnit: 1.1, cUnit: 23, gUnit: 0.3 },
+        'plátano': { unit: 'u', calUnit: 90, pUnit: 1.1, cUnit: 23, gUnit: 0.3 },
+        'queso': { unit: 'g', calUnit: 3.0, pUnit: 0.22, cUnit: 0.02, gUnit: 0.22 },
+        'yogur': { unit: 'g', calUnit: 0.6, pUnit: 0.04, cUnit: 0.07, gUnit: 0.015 },
+        'avena': { unit: 'g', calUnit: 3.89, pUnit: 0.169, cUnit: 0.66, gUnit: 0.069 },
+        'proteina': { unit: 'g', calUnit: 3.8, pUnit: 0.8, cUnit: 0.05, gUnit: 0.03 },
+        'whey': { unit: 'g', calUnit: 3.8, pUnit: 0.8, cUnit: 0.05, gUnit: 0.03 },
       };
 
-      const partes = texto.split(/[\n,\+]+|\s+y\s+/i);
-      let detectado = false;
-
-      partes.forEach((part) => {
-        const pClean = part.trim();
-        if (!pClean) return;
+      for (const itemStr of lineas) {
+        const strL = itemStr.toLowerCase().trim();
+        if (!strL) continue;
 
         const keys = Object.keys(baseAlimentos).sort((a, b) => b.length - a.length);
-        const matchedKey = keys.find((key) => pClean.includes(key));
+        const matchedKey = keys.find((k) => strL.includes(k));
 
         if (matchedKey) {
-          detectado = true;
           const info = baseAlimentos[matchedKey];
-          
-          const matchNum = pClean.match(/(\d+)/);
-          let num = matchNum ? parseInt(matchNum[1], 10) : (info.type === 'u' ? 1 : 100);
+          const matchNum = strL.match(/(\d+)/);
+          let cantidad = matchNum ? parseInt(matchNum[1], 10) : (info.unit === 'u' ? 1 : 100);
 
-          let factor = info.type === 'u' ? num : num / 100;
-
-          cal += info.cal * factor;
-          p += info.p * factor;
-          c += info.c * factor;
-          g += info.g * factor;
+          calAcc += info.calUnit * cantidad;
+          pAcc += info.pUnit * cantidad;
+          cAcc += info.cUnit * cantidad;
+          gAcc += info.gUnit * cantidad;
+          itemsEncontrados++;
         }
-      });
-
-      if (!detectado) {
-        const base = 250 + (imagenesIaInput.length > 0 ? 100 : 0);
-        cal = base;
-        p = Math.round(base * 0.06);
-        c = Math.round(base * 0.1);
-        g = Math.round(base * 0.025);
       }
 
-      const resCal = Math.round(cal);
-      const resP = Math.round(p);
-      const resC = Math.round(c);
-      const resG = Math.round(g);
+      if (itemsEncontrados > 0) {
+        resCal = Math.round(calAcc);
+        resP = Math.round(pAcc);
+        resC = Math.round(cAcc);
+        resG = Math.round(gAcc);
+      } else {
+        const base = 250 + (imagenesIaInput.length > 0 ? 100 : 0);
+        resCal = base;
+        resP = Math.round(base * 0.06);
+        resC = Math.round(base * 0.1);
+        resG = Math.round(base * 0.025);
+      }
+    }
 
-      setComidas((prev) =>
-        prev.map((item) =>
-          item.id === comidaIaModal.id
-            ? {
-                ...item,
-                calorias: resCal,
-                proteinas: resP,
-                carbs: resC,
-                grasas: resG,
-                nombre: textoIaInput.trim() ? textoIaInput.split(/[\n,]+/)[0].substring(0, 35) : item.nombre,
-              }
-            : item
-        )
-      );
+    // Actualiza calorías y macros sin modificar el nombre de la comida si ya existía (e.g. Desayuno)
+    setComidas((prev) =>
+      prev.map((item) =>
+        item.id === comidaIaModal.id
+          ? {
+              ...item,
+              calorias: resCal,
+              proteinas: resP,
+              carbs: resC,
+              grasas: resG,
+              nombre: item.nombre === 'Nueva Comida' && promptTexto ? promptTexto.split(/[\n,]+/)[0].substring(0, 35) : item.nombre,
+            }
+          : item
+      )
+    );
 
-      setProcesandoIa(false);
-      setComidaIaModal(null);
-      alert(`🤖 Estimación IA realizada: ${resCal} kcal | ${resP}g Prot | ${resC}g Carbs | ${resG}g Grasas`);
-    }, 800);
+    setProcesandoIa(false);
+    setComidaIaModal(null);
+    alert(`🤖 Estimación IA realizada: ${resCal} kcal | ${resP}g Prot | ${resC}g Carbs | ${resG}g Grasas`);
   };
 
   const modificarAgua = async (deltaMl: number) => {
@@ -1109,15 +1115,25 @@ export default function Home() {
 
             <div>
               <label className="text-xs text-slate-400 block mb-1 font-semibold">Contraseña</label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={passwordAuth}
-                onChange={(e) => setPasswordAuth(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
-              />
+              <div className="relative">
+                <input
+                  type={mostrarPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={passwordAuth}
+                  onChange={(e) => setPasswordAuth(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 pr-10 text-sm text-white focus:outline-none focus:border-indigo-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarPassword(!mostrarPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition cursor-pointer text-sm select-none"
+                  title={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {mostrarPassword ? '👁️' : '🙈'}
+                </button>
+              </div>
             </div>
 
             <button
@@ -1462,7 +1478,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* HÁBITOS DIARIOS CON TEXTO EN LA HORA */}
+            {/* HÁBITOS DIARIOS */}
             {seccionActiva === 'habitos' && (
               <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1749,6 +1765,191 @@ export default function Home() {
               </section>
             )}
 
+            {/* SECCIÓN EXTRA (HIDRATACIÓN Y SUEÑO) */}
+            {seccionActiva === 'extra' && (
+              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                <div className="flex border-b border-slate-700 pb-3 gap-4">
+                  <button onClick={() => setSubSeccionExtra('agua')} className={`text-sm font-bold pb-1 cursor-pointer transition ${subSeccionExtra === 'agua' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-white'}`}>
+                    💧 Hidratación
+                  </button>
+                  <button onClick={() => setSubSeccionExtra('sueno')} className={`text-sm font-bold pb-1 cursor-pointer transition ${subSeccionExtra === 'sueno' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-white'}`}>
+                    😴 Registro de Sueño
+                  </button>
+                </div>
+
+                {subSeccionExtra === 'agua' ? (
+                  <div className="space-y-4 max-w-md mx-auto text-center bg-slate-900/60 p-6 rounded-2xl border border-slate-800">
+                    <span className="text-5xl">💧</span>
+                    <h3 className="text-xl font-bold text-cyan-300">Control de Hidratación</h3>
+                    <p className="text-3xl font-black text-cyan-400">{(aguaMl / 1000).toFixed(2)} / {(metaAguaMl / 1000).toFixed(2)} L</p>
+                    <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
+                      <div className="bg-cyan-500 h-full transition-all duration-300" style={{ width: `${pctAgua}%` }}></div>
+                    </div>
+                    <div className="flex justify-center gap-3 pt-2">
+                      <button onClick={() => modificarAgua(250)} className="bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer">+250 ml 🥛</button>
+                      <button onClick={() => modificarAgua(500)} className="bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer">+500 ml 🍾</button>
+                      <button onClick={() => modificarAgua(-250)} className="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 px-3 py-2 rounded-xl text-xs cursor-pointer">-250 ml</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-w-md mx-auto bg-slate-900/60 p-6 rounded-2xl border border-slate-800">
+                    <h3 className="text-lg font-bold text-indigo-300 text-center">😴 Registro de Descanso</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-slate-400 block mb-1">Hora de Acostarse</label>
+                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 block mb-1">Hora de Levantarse</label>
+                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Calidad de Sueño (1 a 5)</label>
+                      <select value={suenoHoy.calidad} onChange={(e) => setSuenoHoy({...suenoHoy, calidad: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer">
+                        <option value={1}>⭐ Mala</option>
+                        <option value={2}>⭐⭐ Regular</option>
+                        <option value={3}>⭐⭐⭐ Aceptable</option>
+                        <option value={4}>⭐⭐⭐⭐ Buena</option>
+                        <option value={5}>⭐⭐⭐⭐⭐ Excelente</option>
+                      </select>
+                    </div>
+                    <button onClick={guardarSueno} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">💾 Guardar Sueño</button>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* NOTAS */}
+            {seccionActiva === 'notas' && (
+              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
+                <h2 className="text-xl font-semibold text-amber-400">📝 Notas Diarias y Reflexiones</h2>
+                <textarea 
+                  rows={6} 
+                  value={notaDiaria} 
+                  onChange={(e) => setNotaDiaria(e.target.value)} 
+                  placeholder="Escribe tus notas, sensaciones o ideas del día aquí..." 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-amber-500"
+                />
+                <button onClick={guardarNota} disabled={guardandoNota} className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-6 py-2.5 rounded-xl text-xs cursor-pointer transition">
+                  {guardandoNota ? 'Guardando...' : '💾 Guardar Nota'}
+                </button>
+              </section>
+            )}
+
+            {/* ESTADÍSTICAS */}
+            {seccionActiva === 'estadisticas' && (
+              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6 text-center">
+                <h2 className="text-xl font-semibold text-indigo-400">📈 Visualización y Estadísticas</h2>
+                <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4">
+                  <p className="text-sm text-slate-300">Resumen histórico de consistencia</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
+                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                      <span className="text-xs text-slate-400 block">Hábitos Completados</span>
+                      <span className="text-2xl font-bold text-indigo-400">{todosLosRegistrosHabitos.length}</span>
+                    </div>
+                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                      <span className="text-xs text-slate-400 block">Ingesta de Hoy</span>
+                      <span className="text-2xl font-bold text-amber-400">{totalIngeridoCal} kcal</span>
+                    </div>
+                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                      <span className="text-xs text-slate-400 block">Gasto de Hoy</span>
+                      <span className="text-2xl font-bold text-emerald-400">{totalGastadoCal} kcal</span>
+                    </div>
+                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                      <span className="text-xs text-slate-400 block">Agua Registrada</span>
+                      <span className="text-2xl font-bold text-cyan-400">{(aguaMl / 1000).toFixed(2)} L</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* SOPORTE Y ACTUALIZACIONES */}
+            {seccionActiva === 'actualizaciones' && (
+              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                <h2 className="text-xl font-semibold text-indigo-400">🚀 Novedades y Soporte técnico</h2>
+                
+                <form onSubmit={enviarMensajeSoporte} className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4 max-w-xl mx-auto">
+                  <h3 className="text-sm font-bold text-slate-200">Envíanos un reporte o sugerencia</h3>
+                  
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Tipo de Mensaje</label>
+                    <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value as any)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none cursor-pointer">
+                      <option value="bug">🐛 Reporte de Error / Bug</option>
+                      <option value="recomendacion">💡 Sugerencia o Recomendación</option>
+                      <option value="reclamo">📢 Reclamo</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Tu Correo de Contacto (Opcional)</label>
+                    <input type="email" value={emailContacto} onChange={(e) => setEmailContacto(e.target.value)} placeholder="tu@email.com" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none" />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Detalle del mensaje</label>
+                    <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} required placeholder="Describe tu consulta con detalle..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-indigo-500 outline-none" />
+                  </div>
+
+                  <button type="submit" disabled={enviandoMensaje} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                    {enviandoMensaje ? 'Enviando...' : '📤 Enviar Mensaje'}
+                  </button>
+                </form>
+              </section>
+            )}
+
+            {/* MODAL IA ESTIMACIÓN COMIDAS */}
+            {comidaIaModal && (
+              <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-cyan-500/40 p-5 sm:p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h3 className="text-sm font-bold text-cyan-300 flex items-center gap-1.5">
+                      <span>🤖 Estimación de Nutrición con Gemini IA</span>
+                    </h3>
+                    <button onClick={() => setComidaIaModal(null)} className="text-slate-400 hover:text-white cursor-pointer text-xs">✕ Cerrar</button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Escribe los alimentos y cantidades ingeridos:</label>
+                      <textarea
+                        value={textoIaInput}
+                        onChange={(e) => setTextoIaInput(e.target.value)}
+                        placeholder="Ej: Leche descremada 336 ml, Galleta de arroz 15g, Pan integral 30g, Manzana 148g, Huevos 91g, Almendras 6u..."
+                        rows={3}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Adjuntar fotos del plato (Opcional):</label>
+                      <input type="file" accept="image/*" multiple onChange={procesarFotoIA} className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:bg-cyan-950 file:text-cyan-300 hover:file:bg-cyan-900 cursor-pointer" />
+                    </div>
+
+                    {imagenesIaInput.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {imagenesIaInput.map((img, idx) => (
+                          <div key={idx} className="relative w-14 h-14 rounded-lg overflow-hidden border border-slate-700 group">
+                            <img src={img} alt="Vista previa" className="w-full h-full object-cover" />
+                            <button onClick={() => eliminarFotoIa(idx)} className="absolute inset-0 bg-slate-950/70 text-rose-400 font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs">✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={estimarComidaConIA}
+                    disabled={procesandoIa}
+                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer disabled:opacity-50"
+                  >
+                    {procesandoIa ? 'Analizando con IA...' : '✨ Estimar Calorías y Macronutrientes'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* MODAL ONBOARDING / SOLO 1 VEZ */}
             {mostrarModalOnboarding && (
               <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
@@ -1817,266 +2018,17 @@ export default function Home() {
                         />
                       </div>
                     </div>
-
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Objetivo Principal</label>
-                      <select 
-                        value={perfil.objetivo} 
-                        onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} 
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer"
-                      >
-                        <option value="bajar">Bajar de peso (Déficit)</option>
-                        <option value="mantener">Mantener peso / Recomposición</option>
-                        <option value="subir">Subir de peso (Masa muscular)</option>
-                      </select>
-                    </div>
-
-                    {perfil.objetivo !== 'mantener' && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs text-slate-400 block mb-1">Kilos Objetivo</label>
-                          <input 
-                            type="number" 
-                            step="0.1" 
-                            value={perfil.kilos_objetivo} 
-                            onChange={(e) => setPerfil({...perfil, kilos_objetivo: Number(e.target.value)})} 
-                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-slate-400 block mb-1">Plazo (Meses)</label>
-                          <input 
-                            type="number" 
-                            min="1" 
-                            value={perfil.tiempo_objetivo_meses} 
-                            onChange={(e) => setPerfil({...perfil, tiempo_objetivo_meses: Number(e.target.value)})} 
-                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none" 
-                          />
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   <button
-                    onClick={async () => {
-                      if (!perfil.nombre.trim()) {
-                        alert('Por favor ingresa tu nombre');
-                        return;
-                      }
-                      await guardarPerfil();
-                    }}
+                    onClick={guardarPerfil}
                     disabled={guardandoPerfil}
-                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl transition text-sm cursor-pointer shadow-lg shadow-indigo-600/30 font-bold disabled:opacity-50"
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition cursor-pointer text-sm shadow-lg shadow-indigo-600/30"
                   >
-                    {guardandoPerfil ? 'Guardando...' : '🚀 Guardar Mis Datos y Empezar'}
+                    {guardandoPerfil ? 'Guardando...' : '🚀 Guardar e Iniciar App'}
                   </button>
                 </div>
               </div>
-            )}
-
-            {/* MODAL IA ESTIMADOR CON SOPORTE MÚLTIPLE DE FOTOS */}
-            {comidaIaModal && (
-              <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl max-w-md w-full space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-bold text-cyan-400 flex items-center gap-1.5">
-                      <span>🤖</span> Estimador de Nutrición con IA
-                    </h3>
-                    <button onClick={() => setComidaIaModal(null)} className="text-slate-500 hover:text-slate-300">✕</button>
-                  </div>
-
-                  <p className="text-xs text-slate-300">
-                    Puedes tomar varias fotos o describirlo indicando cantidades (ej. <em>"2 huevos duros, 150g pechuga de pollo, 1 banana"</em>).
-                  </p>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-[11px] text-slate-400 block mb-1.5">📷 Fotos del plato (puedes subir más de una)</label>
-                      <div className="flex gap-2">
-                        <label className="flex-1 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-800/60 rounded-xl py-2 px-3 text-xs font-semibold text-center cursor-pointer transition">
-                          📸 Tomar Foto
-                          <input type="file" accept="image/*" capture="environment" multiple onChange={procesarFotoIA} className="hidden" />
-                        </label>
-                        <label className="flex-1 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-800/60 rounded-xl py-2 px-3 text-xs font-semibold text-center cursor-pointer transition">
-                          🖼️ Galería (Múltiple)
-                          <input type="file" accept="image/*" multiple onChange={procesarFotoIA} className="hidden" />
-                        </label>
-                      </div>
-
-                      {imagenesIaInput.length > 0 && (
-                        <div className="grid grid-cols-3 gap-2 mt-2">
-                          {imagenesIaInput.map((img, idx) => (
-                            <div key={idx} className="relative group">
-                              <img src={img} alt={`Preview ${idx}`} className="h-20 w-full object-cover rounded-xl border border-slate-700" />
-                              <button onClick={() => eliminarFotoIa(idx)} className="absolute top-1 right-1 bg-slate-900/80 text-rose-400 p-1 rounded-full text-xs hover:bg-slate-900">✕</button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] text-slate-400 block mb-1">✍️ Descripción del alimento y cantidades</label>
-                      <textarea rows={3} value={textoIaInput} onChange={(e) => setTextoIaInput(e.target.value)} placeholder="Ej: 2 huevos revueltos con 150g de pechuga de pollo y 1 tostada de pan" className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-500" />
-                    </div>
-                  </div>
-
-                  <button onClick={estimarComidaConIA} disabled={procesandoIa} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-medium py-2.5 rounded-xl transition text-xs cursor-pointer disabled:opacity-50 font-bold">
-                    {procesandoIa ? 'Analizando alimento...' : '✨ Calcular Calorías y Macros'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* EXTRA (HIDRATACIÓN Y SUEÑO RESTAURADO Y COMPLETO) */}
-            {seccionActiva === 'extra' && (
-              <div className="space-y-6">
-                <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
-                  {[
-                    { id: 'agua', label: '💧 Hidratación' },
-                    { id: 'sueno', label: '😴 Sueño y Descanso' },
-                  ].map((sub) => (
-                    <button
-                      key={sub.id}
-                      onClick={() => setSubSeccionExtra(sub.id as any)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                        subSeccionExtra === sub.id ? 'bg-slate-800 text-white border border-slate-700 shadow-md' : 'text-slate-400 hover:bg-slate-900'
-                      }`}
-                    >
-                      {sub.label}
-                    </button>
-                  ))}
-                </div>
-
-                {subSeccionExtra === 'agua' && (
-                  <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                      <h3 className="text-lg font-semibold text-cyan-400">💧 Control de Hidratación</h3>
-                      <span className="text-sm font-mono font-bold text-slate-300">
-                        {aguaMl} / {metaAguaMl} ml ({pctAgua}%)
-                      </span>
-                    </div>
-
-                    <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800">
-                      <div className="h-full bg-cyan-500 transition-all duration-300 rounded-full" style={{ width: `${pctAgua}%` }}></div>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <button onClick={() => modificarAgua(250)} className="bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-800/60 text-cyan-300 p-3 rounded-xl font-bold text-sm transition cursor-pointer">
-                        + 250 ml 🥛
-                      </button>
-                      <button onClick={() => modificarAgua(500)} className="bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-800/60 text-cyan-300 p-3 rounded-xl font-bold text-sm transition cursor-pointer">
-                        + 500 ml 🍾
-                      </button>
-                      <button onClick={() => modificarAgua(-250)} className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400 p-3 rounded-xl font-semibold text-sm transition cursor-pointer">
-                        - 250 ml
-                      </button>
-                      <button onClick={() => setAguaMl(0)} className="bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 text-rose-300 p-3 rounded-xl font-semibold text-sm transition cursor-pointer">
-                        Reset 🔄
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {subSeccionExtra === 'sueno' && (
-                  <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                    <h3 className="text-lg font-semibold text-indigo-300">😴 Control de Sueño y Descanso</h3>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">Hora de Acostarse</label>
-                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_acostarse: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">Hora de Levantarse</label>
-                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_levantarse: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Calidad del Sueño (1 al 5)</label>
-                      <div className="flex gap-2">
-                        {[1, 2, 3, 4, 5].map((val) => (
-                          <button key={val} type="button" onClick={() => setSuenoHoy({ ...suenoHoy, calidad: val })} className={`flex-1 py-2 rounded-xl text-sm font-bold border transition cursor-pointer ${suenoHoy.calidad === val ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
-                            {val} ⭐
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <button onClick={guardarSueno} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition cursor-pointer">
-                      💾 Guardar Sueño
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* NOTAS */}
-            {seccionActiva === 'notas' && (
-              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
-                <h2 className="text-xl font-semibold text-amber-400">📝 Notas Diarias y Reflexiones</h2>
-                <textarea rows={8} value={notaDiaria} onChange={(e) => setNotaDiaria(e.target.value)} placeholder="Escribe tus sensaciones del día, entrenamientos o reflexiones..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3.5 text-sm text-white focus:outline-none focus:border-amber-500" />
-                <button onClick={guardarNota} disabled={guardandoNota} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl transition cursor-pointer disabled:opacity-50">
-                  {guardandoNota ? 'Guardando...' : '💾 Guardar Nota'}
-                </button>
-              </section>
-            )}
-
-            {/* ESTADÍSTICAS */}
-            {seccionActiva === 'estadisticas' && (
-              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                <h2 className="text-xl font-semibold text-indigo-400">📈 Estadísticas y Métricas Físicas</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                    <span className="text-xs text-slate-400 block mb-1">Total Consumido Hoy</span>
-                    <span className="text-2xl font-bold font-mono text-amber-400">{totalIngeridoCal} kcal</span>
-                  </div>
-                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                    <span className="text-xs text-slate-400 block mb-1">Gasto de Actividad Físico</span>
-                    <span className="text-2xl font-bold font-mono text-indigo-400">{totalGastoEjercicios} kcal</span>
-                  </div>
-                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                    <span className="text-xs text-slate-400 block mb-1">Porcentaje de Hábitos</span>
-                    <span className="text-2xl font-bold font-mono text-emerald-400">{porcentajeHabitos}%</span>
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* ACTUALIZACIONES Y SOPORTE */}
-            {seccionActiva === 'actualizaciones' && (
-              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                <h2 className="text-xl font-semibold text-indigo-400">🚀 Novedades y Formulario de Contacto</h2>
-                
-                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
-                  <h3 className="text-sm font-bold text-slate-200">Última versión instalada</h3>
-                  <p className="text-xs text-indigo-400 font-mono">Actualizado el: {ULTIMA_ACTUALIZACION_APP}</p>
-                </div>
-
-                <form onSubmit={enviarMensajeSoporte} className="space-y-4 bg-slate-900/80 p-5 rounded-xl border border-slate-800">
-                  <h3 className="text-sm font-bold text-slate-200">📩 Enviar un mensaje / reporte de error</h3>
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Tipo de mensaje</label>
-                    <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value as any)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
-                      <option value="bug">Reportar Bug / Error</option>
-                      <option value="recomendacion">Recomendación / Mejora</option>
-                      <option value="reclamo">Reclamo</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Email de contacto (Opcional)</label>
-                    <input type="email" value={emailContacto} onChange={(e) => setEmailContacto(e.target.value)} placeholder="tu@email.com" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Mensaje</label>
-                    <textarea rows={4} required value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Escribe tu mensaje..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white" />
-                  </div>
-                  <button type="submit" disabled={enviandoMensaje} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition cursor-pointer disabled:opacity-50">
-                    {enviandoMensaje ? 'Enviando...' : '🚀 Enviar Mensaje'}
-                  </button>
-                </form>
-              </section>
             )}
           </div>
         )}
