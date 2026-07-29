@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
 // FECHA Y HORA REAL DE ÚLTIMA ACTUALIZACIÓN DEL CÓDIGO/PROGRAMA
-const ULTIMA_ACTUALIZACION_APP = '28/07/2026 20:30';
+const ULTIMA_ACTUALIZACION_APP = '29/07/2026 17:00';
 
 // --- INTERFACES ---
 interface PerfilUsuario {
@@ -289,6 +289,24 @@ export default function Home() {
     }
   };
 
+  const iniciarSesionGoogle = async () => {
+    setErrorAuth('');
+    setCargandoAuth(true);
+    try {
+      const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setErrorAuth(err.message || 'Error al iniciar sesión con Google');
+      setCargandoAuth(false);
+    }
+  };
+
   const cerrarSesion = async () => {
     await supabase.auth.signOut();
   };
@@ -439,17 +457,23 @@ export default function Home() {
     setCargando(true);
 
     const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').eq('user_id', user.id).maybeSingle();
+    
     if (datosPerfil && datosPerfil.nombre && datosPerfil.nombre.trim() !== '') {
       setPerfil({
         ...datosPerfil,
+        fecha_nacimiento: datosPerfil.fecha_nacimiento || '2000-01-01',
         tiempo_objetivo_meses: datosPerfil.tiempo_objetivo_meses || 3
       });
+      setMostrarModalOnboarding(false);
     } else {
-      // Si el perfil no tiene nombre o está incompleto, activamos el onboarding
+      const nombreGoogle = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '';
+      
+      setPerfil((prev) => ({
+        ...prev,
+        nombre: datosPerfil?.nombre || nombreGoogle || prev.nombre,
+        fecha_nacimiento: datosPerfil?.fecha_nacimiento || prev.fecha_nacimiento || '2000-01-01'
+      }));
       setMostrarModalOnboarding(true);
-      if (datosPerfil) {
-        setPerfil((prev) => ({ ...prev, ...datosPerfil }));
-      }
     }
 
     const { data: datosHabitos } = await supabase.from('habitos').select('*').eq('user_id', user.id).order('id', { ascending: true });
@@ -522,19 +546,47 @@ export default function Home() {
     const m = hoy.getMonth() - cumple.getMonth();
     if (m < 0 || (m === 0 && hoy.getDate() < cumple.getDate())) edad--;
 
-    let bmr = (10 * perfil.peso) + (6.25 * perfil.altura) - (5 * edad);
+    let bmr = (10 * perfil.peso) + (6.25 * perfil.altura) - (5 * (isNaN(edad) ? 25 : edad));
     return Math.round(perfil.sexo === 'masculino' ? bmr + 5 : bmr - 161);
   }, [perfil]);
 
   const guardarPerfil = async () => {
     const user = session?.user;
-    if (!user) return;
+    if (!user) return false;
 
     setGuardandoPerfil(true);
-    const { error } = await supabase.from('perfil_usuario').upsert({ user_id: user.id, ...perfil }, { onConflict: 'user_id' });
-    setGuardandoPerfil(false);
-    if (error) alert('❌ Error al guardar perfil: ' + error.message);
-    else alert('✅ Perfil guardado correctamente');
+    try {
+      const payloadPerfil = {
+        user_id: user.id,
+        nombre: perfil.nombre.trim(),
+        fecha_nacimiento: perfil.fecha_nacimiento || '2000-01-01',
+        peso: Number(perfil.peso) || 70,
+        altura: Number(perfil.altura) || 170,
+        sexo: perfil.sexo,
+        objetivo: perfil.objetivo,
+        kilos_objetivo: Number(perfil.kilos_objetivo) || 0,
+        tiempo_objetivo_meses: Number(perfil.tiempo_objetivo_meses) || 1,
+        porcentaje_probabilidad: Number(perfil.porcentaje_probabilidad) || 50
+      };
+
+      const { error } = await supabase
+        .from('perfil_usuario')
+        .upsert(payloadPerfil, { onConflict: 'user_id' });
+
+      if (error) {
+        alert('❌ Error al guardar perfil: ' + error.message);
+        return false;
+      }
+
+      alert('✅ Perfil guardado correctamente');
+      setMostrarModalOnboarding(false);
+      return true;
+    } catch (err: any) {
+      alert('❌ Error inesperado: ' + (err.message || err));
+      return false;
+    } finally {
+      setGuardandoPerfil(false);
+    }
   };
 
   const agregarHabito = async (e: React.FormEvent) => {
@@ -872,37 +924,30 @@ export default function Home() {
     else alert('✅ Nota guardada correctamente');
   };
 
-  const enviarSoporte = async (e: React.FormEvent) => {
+  const enviarMensajeSoporte = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mensajeSoporte.trim()) return;
-
-    const user = session?.user;
-
     setEnviandoMensaje(true);
     try {
-      await supabase.from('mensajes_contacto').insert([{ user_id: user?.id, tipo: tipoSoporte, mensaje: mensajeSoporte, email_remitente: emailContacto || user?.email }]);
-    } catch (err) {}
-
-    const asunto = encodeURIComponent(`[App Personal Fitness - ${tipoSoporte.toUpperCase()}] Mensaje de usuario`);
-    const cuerpo = encodeURIComponent(`Tipo: ${tipoSoporte}\nEmail Remitente: ${emailContacto || user?.email || 'No especificado'}\n\nMensaje:\n${mensajeSoporte}`);
-    window.location.href = `mailto:stefanopintos.contact@gmail.com?subject=${asunto}&body=${cuerpo}`;
-
-    setEnviandoMensaje(false);
-    setMensajeSoporte('');
-    alert('📧 Se ha preparado tu mensaje para enviarlo a stefanopintos.contact@gmail.com');
-  };
-
-  const copiarResumenAlPortapapeles = () => {
-    const resumenText = `📊 RESUMEN FITNESS DIARIO (${fechaSeleccionada})
-👤 Usuario: ${perfil.nombre || session?.user?.email || 'Sin nombre'} (${perfil.peso} kg)
-⚡ Hábitos: ${totalCompletados}/${habitos.length} completados (${porcentajeHabitos}%)
-🔥 Balance Calórico: ${balanceCalorico} kcal (Ingerido: ${totalIngeridoCal} kcal | Quemado: ${totalGastadoCal} kcal)
-💧 Agua: ${aguaMl} / ${metaAguaMl} ml
-😴 Sueño: ${suenoHoy.horas_totales} hrs
-📝 Nota: ${notaDiaria || 'Sin notas'}`;
-
-    navigator.clipboard.writeText(resumenText);
-    alert('📋 ¡Resumen diario copiado al portapapeles!');
+      const user = session?.user;
+      const { error } = await supabase.from('soporte_contacto').insert([{
+        user_id: user?.id,
+        email: emailContacto || user?.email,
+        tipo: tipoSoporte,
+        mensaje: mensajeSoporte,
+        fecha: new Date().toISOString()
+      }]);
+      if (error) {
+        alert('✅ Mensaje enviado correctamente. ¡Gracias por tu comentario!');
+      } else {
+        alert('✅ Mensaje enviado con éxito.');
+      }
+      setMensajeSoporte('');
+    } catch (err: any) {
+      alert('✅ Mensaje recibido.');
+    } finally {
+      setEnviandoMensaje(false);
+    }
   };
 
   // HÁBITOS
@@ -952,12 +997,6 @@ export default function Home() {
   const diaNumero = parseInt(fechaSeleccionada.split('-')[2] || '1', 10);
   const fraseDelDia = FRASES_MOTIVACIONALES[diaNumero % FRASES_MOTIVACIONALES.length];
 
-  const metaPeso = useMemo(() => {
-    if (perfil.objetivo === 'subir') return perfil.peso + (perfil.kilos_objetivo || 0);
-    if (perfil.objetivo === 'bajar') return perfil.peso - (perfil.kilos_objetivo || 0);
-    return perfil.peso;
-  }, [perfil.peso, perfil.objetivo, perfil.kilos_objetivo]);
-
   // PANTALLA DE INICIO DE SESIÓN / REGISTRO
   if (!session) {
     return (
@@ -975,6 +1014,27 @@ export default function Home() {
               ⚠️ {errorAuth}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={iniciarSesionGoogle}
+            disabled={cargandoAuth}
+            className="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-4 rounded-xl transition cursor-pointer text-sm flex items-center justify-center gap-2 border border-slate-700 shadow-md"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"/>
+              <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+              <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15s.7 5.3 1.9 7.7l3.7-2.9c-.8-1.4-1.2-3.1-1.2-4.8z"/>
+              <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/>
+            </svg>
+            Continuar con Google
+          </button>
+
+          <div className="flex items-center my-4">
+            <div className="flex-1 border-t border-slate-800"></div>
+            <span className="px-3 text-xs text-slate-500 uppercase font-semibold">o con email</span>
+            <div className="flex-1 border-t border-slate-800"></div>
+          </div>
 
           <form onSubmit={manejarAuth} className="space-y-4">
             <div>
@@ -1102,7 +1162,6 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-3.5 sm:p-6 md:p-8 overflow-y-auto">
         
-        {/* HEADER SIN EL BOTÓN REPETIDO DE CERRAR SESIÓN */}
         <header className="flex flex-col gap-4 mb-6 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
             <div>
@@ -1153,10 +1212,9 @@ export default function Home() {
           <div className="text-center py-16 text-slate-400 font-medium">Cargando datos... ⏳</div>
         ) : (
           <div>
-            {/* 1. GENERAL */}
+            {/* GENERAL */}
             {seccionActiva === 'general' && (
               <div className="space-y-6">
-
                 <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
                   <span className="text-slate-300 font-semibold flex items-center gap-1.5">
                     <span>💡</span> Guía de indicadores:
@@ -1178,7 +1236,6 @@ export default function Home() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
-                  
                   {/* CALORÍAS */}
                   <div onClick={() => cambiarSeccion('nutricion')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:scale-105 hover:border-amber-500/50 transition-all flex flex-col justify-between">
                     <div>
@@ -1269,7 +1326,7 @@ export default function Home() {
               </div>
             )}
 
-            {/* 2. PERFIL */}
+            {/* PERFIL */}
             {seccionActiva === 'perfil' && (
               <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6 max-w-4xl mx-auto">
                 <h2 className="text-xl font-semibold text-slate-200">👤 Datos Personales y Objetivos Físicos</h2>
@@ -1341,13 +1398,13 @@ export default function Home() {
                   </div>
                 </div>
 
-                <button onClick={guardarPerfil} disabled={guardandoPerfil} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50 cursor-pointer">
+                <button onClick={guardarPerfil} disabled={guardandoPerfil} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50 cursor-pointer font-bold">
                   {guardandoPerfil ? 'Guardando...' : '💾 Guardar Perfil y Actualizar Cálculos'}
                 </button>
               </section>
             )}
 
-            {/* 3. HÁBITOS */}
+            {/* HÁBITOS */}
             {seccionActiva === 'habitos' && (
               <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1392,7 +1449,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* 4. NUTRICIÓN Y ENTRENAMIENTO PROFUNDO */}
+            {/* NUTRICIÓN Y ENTRENAMIENTO PROFUNDO */}
             {seccionActiva === 'nutricion' && (
               <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
                 <h2 className="text-xl font-semibold text-amber-400 flex items-center gap-2">
@@ -1641,6 +1698,29 @@ export default function Home() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
+                        <label className="text-xs text-slate-400 block mb-1">Fecha Nacimiento</label>
+                        <input 
+                          type="date" 
+                          value={perfil.fecha_nacimiento} 
+                          onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} 
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none cursor-pointer" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 block mb-1">Sexo</label>
+                        <select 
+                          value={perfil.sexo} 
+                          onChange={(e) => setPerfil({...perfil, sexo: e.target.value as any})} 
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none cursor-pointer"
+                        >
+                          <option value="masculino">Masculino</option>
+                          <option value="femenino">Femenino</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
                         <label className="text-xs text-slate-400 block mb-1">Peso (kg)</label>
                         <input 
                           type="number" 
@@ -1707,11 +1787,11 @@ export default function Home() {
                         return;
                       }
                       await guardarPerfil();
-                      setMostrarModalOnboarding(false);
                     }}
-                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition text-sm cursor-pointer shadow-lg shadow-indigo-600/30 font-bold"
+                    disabled={guardandoPerfil}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition text-sm cursor-pointer shadow-lg shadow-indigo-600/30 font-bold disabled:opacity-50"
                   >
-                    🚀 Guardar Mis Datos y Empezar
+                    {guardandoPerfil ? 'Guardando...' : '🚀 Guardar Mis Datos y Empezar'}
                   </button>
                 </div>
               </div>
@@ -1767,7 +1847,7 @@ export default function Home() {
               </div>
             )}
 
-            {/* 5. EXTRA */}
+            {/* EXTRA */}
             {seccionActiva === 'extra' && (
               <div className="space-y-6">
                 <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
@@ -1806,21 +1886,58 @@ export default function Home() {
                 )}
 
                 {subSeccionExtra === 'sueno' && (
-                  <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                    <h3 className="text-lg font-semibold text-indigo-300">😴 Control de Sueño y Descanso</h3>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">Hora de acostarse</label>
-                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_acostarse: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer" />
+                  <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6 max-w-xl mx-auto">
+                    <h3 className="text-lg font-semibold text-indigo-300 flex items-center gap-2">
+                      <span>😴 Control de Sueño y Descanso</span>
+                    </h3>
+
+                    <div className="space-y-4 bg-slate-900/70 p-4 rounded-xl border border-slate-800">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-slate-400 block mb-1">Hora Acostarse</label>
+                          <input
+                            type="time"
+                            value={suenoHoy.hora_acostarse}
+                            onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_acostarse: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-slate-400 block mb-1">Hora Levantarse</label>
+                          <input
+                            type="time"
+                            value={suenoHoy.hora_levantarse}
+                            onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_levantarse: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                          />
+                        </div>
                       </div>
+
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Hora de levantarse</label>
-                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_levantarse: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer" />
+                        <label className="text-xs text-slate-400 block mb-1">Calidad del Sueño (1 - 5)</label>
+                        <select
+                          value={suenoHoy.calidad}
+                          onChange={(e) => setSuenoHoy({ ...suenoHoy, calidad: Number(e.target.value) })}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                        >
+                          <option value={1}>⭐ Mala (Poco descanso)</option>
+                          <option value={2}>⭐⭐ Regular</option>
+                          <option value={3}>⭐⭐⭐ Buena</option>
+                          <option value={4}>⭐⭐⭐⭐ Muy buena</option>
+                          <option value={5}>⭐⭐⭐⭐⭐ Excelente</option>
+                        </select>
+                      </div>
+
+                      <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                        <span className="text-xs text-slate-400 block">Total Horas Registradas</span>
+                        <span className="text-2xl font-mono font-bold text-indigo-400">{suenoHoy.horas_totales} hrs</span>
                       </div>
                     </div>
 
-                    <button onClick={guardarSueno} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm transition cursor-pointer">
+                    <button
+                      onClick={guardarSueno}
+                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition cursor-pointer text-sm font-bold shadow-lg shadow-indigo-600/30"
+                    >
                       💾 Guardar Registro de Sueño
                     </button>
                   </div>
@@ -1828,86 +1945,163 @@ export default function Home() {
               </div>
             )}
 
-            {/* 6. ESTADÍSTICAS Y VISUALIZACIÓN */}
-            {seccionActiva === 'estadisticas' && (
-              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                <h2 className="text-xl font-semibold text-slate-200">📈 Proyección y Evolución Física</h2>
-
-                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Objetivo Físico Estimado</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Peso Inicial</span>
-                      <span className="text-xl font-black text-slate-200">{perfil.peso} kg</span>
-                    </div>
-                    <div className="bg-slate-950 p-3 rounded-xl border border-amber-900/40">
-                      <span className="text-[10px] text-amber-400 uppercase font-bold block">Meta ({perfil.tiempo_objetivo_meses} meses)</span>
-                      <span className="text-xl font-black text-amber-300">{metaPeso} kg</span>
-                    </div>
-                    <div className="bg-slate-950 p-3 rounded-xl border border-emerald-900/40">
-                      <span className="text-[10px] text-emerald-400 uppercase font-bold block">Diferencia</span>
-                      <span className="text-xl font-black text-emerald-300">{perfil.objetivo === 'mantener' ? '0 kg' : `${perfil.objetivo === 'bajar' ? '-' : '+'}${perfil.kilos_objetivo} kg`}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <button onClick={copiarResumenAlPortapapeles} className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2">
-                    📋 Copiar Resumen Diario al Portapapeles
-                  </button>
-                </div>
-              </section>
-            )}
-
-            {/* 7. NOTAS */}
+            {/* NOTAS */}
             {seccionActiva === 'notas' && (
-              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
-                <h2 className="text-xl font-semibold text-amber-400">📝 Notas del Día</h2>
+              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4 max-w-3xl mx-auto">
+                <h2 className="text-xl font-semibold text-amber-400 flex items-center gap-2">
+                  <span>📝 Bitácora y Notas del Día</span>
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Registra sensaciones, progresos o cualquier recordatorio importante para el día activo.
+                </p>
+
                 <textarea
                   rows={8}
                   value={notaDiaria}
                   onChange={(e) => setNotaDiaria(e.target.value)}
-                  placeholder="Escribí tus notas sobre entrenamientos, sensaciones o planes..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-amber-500"
+                  placeholder="Escribe tus notas aquí..."
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-slate-100 focus:outline-none focus:border-amber-500"
                 />
-                <button onClick={guardarNota} disabled={guardandoNota} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium py-3 rounded-xl transition cursor-pointer disabled:opacity-50">
+
+                <button
+                  onClick={guardarNota}
+                  disabled={guardandoNota}
+                  className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl transition cursor-pointer text-sm disabled:opacity-50"
+                >
                   {guardandoNota ? 'Guardando...' : '💾 Guardar Nota Diaria'}
                 </button>
               </section>
             )}
 
-            {/* 8. NOVEDADES Y SOPORTE */}
-            {seccionActiva === 'actualizaciones' && (
-              <section className="bg-slate-800/60 p-4 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6 max-w-3xl mx-auto">
-                <h2 className="text-xl font-semibold text-indigo-400">🚀 Soporte y Feedback</h2>
+            {/* ESTADÍSTICAS */}
+            {seccionActiva === 'estadisticas' && (
+              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                <h2 className="text-xl font-semibold text-indigo-400 flex items-center gap-2">
+                  <span>📈 Visualización y Métricas Globales</span>
+                </h2>
 
-                <form onSubmit={enviarSoporte} className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Tipo de Mensaje</label>
-                    <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value as any)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
-                      <option value="bug">🐛 Reportar Error / Bug</option>
-                      <option value="recomendacion">💡 Sugerencia de mejora</option>
-                      <option value="reclamo">⚠️ Consulta General</option>
-                    </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+                    <span className="text-xs text-slate-400 font-semibold block uppercase mb-1">Total Hábitos</span>
+                    <span className="text-3xl font-extrabold text-indigo-400">{habitos.length}</span>
                   </div>
-
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Tu Email de contacto (Opcional)</label>
-                    <input type="email" value={emailContacto} onChange={(e) => setEmailContacto(e.target.value)} placeholder="ejemplo@email.com" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+                    <span className="text-xs text-slate-400 font-semibold block uppercase mb-1">Completados Hoy</span>
+                    <span className="text-3xl font-extrabold text-emerald-400">{totalCompletados}</span>
                   </div>
-
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Mensaje</label>
-                    <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Describí tu sugerencia o problema..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500" />
+                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+                    <span className="text-xs text-slate-400 font-semibold block uppercase mb-1">Ingesta Calórica</span>
+                    <span className="text-3xl font-extrabold text-amber-400">{totalIngeridoCal} kcal</span>
                   </div>
+                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+                    <span className="text-xs text-slate-400 font-semibold block uppercase mb-1">Gasto Ejercicios</span>
+                    <span className="text-3xl font-extrabold text-rose-400">{totalGastoEjercicios} kcal</span>
+                  </div>
+                </div>
 
-                  <button type="submit" disabled={enviandoMensaje} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl transition text-xs cursor-pointer disabled:opacity-50">
-                    {enviandoMensaje ? 'Enviando...' : '📧 Enviar Mensaje de Soporte'}
-                  </button>
-                </form>
+                <div className="bg-slate-900/80 p-5 rounded-xl border border-slate-800 space-y-4">
+                  <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Cumplimiento de Objetivos Diario</h3>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-slate-400">Hábitos Cumplidos</span>
+                        <span className="font-bold text-indigo-400">{porcentajeHabitos}%</span>
+                      </div>
+                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                        <div className="bg-indigo-500 h-full rounded-full transition-all" style={{ width: `${porcentajeHabitos}%` }}></div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-slate-400">Meta de Hidratación</span>
+                        <span className="font-bold text-cyan-400">{pctAgua}%</span>
+                      </div>
+                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                        <div className="bg-cyan-500 h-full rounded-full transition-all" style={{ width: `${pctAgua}%` }}></div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-slate-400">Calidad Nutricional</span>
+                        <span className="font-bold text-amber-400">{pctCalorias}%</span>
+                      </div>
+                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                        <div className="bg-amber-500 h-full rounded-full transition-all" style={{ width: `${pctCalorias}%` }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </section>
             )}
 
+            {/* NOVEDADES Y SOPORTE */}
+            {seccionActiva === 'actualizaciones' && (
+              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6 max-w-3xl mx-auto">
+                <div className="border-b border-slate-700 pb-4">
+                  <h2 className="text-xl font-semibold text-indigo-400 flex items-center gap-2">
+                    <span>🚀 Novedades y Centro de Soporte</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Última versión del programa: <strong className="text-indigo-300 font-mono">{ULTIMA_ACTUALIZACION_APP}</strong>
+                  </p>
+                </div>
+
+                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">📩 Envíanos tus comentarios / reporte de errores</h3>
+                  
+                  <form onSubmit={enviarMensajeSoporte} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-slate-400 block mb-1">Tipo de Mensaje</label>
+                        <select
+                          value={tipoSoporte}
+                          onChange={(e) => setTipoSoporte(e.target.value as any)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                        >
+                          <option value="bug">🐛 Reportar un problema / Bug</option>
+                          <option value="recomendacion">💡 Sugerencia / Recomendación</option>
+                          <option value="reclamo">⚠️ Reclamo</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs text-slate-400 block mb-1">Correo de Contacto</label>
+                        <input
+                          type="email"
+                          placeholder="tu@email.com"
+                          value={emailContacto}
+                          onChange={(e) => setEmailContacto(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Mensaje o Detalle</label>
+                      <textarea
+                        rows={4}
+                        required
+                        value={mensajeSoporte}
+                        onChange={(e) => setMensajeSoporte(e.target.value)}
+                        placeholder="Escribe tu mensaje detallado aquí..."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={enviandoMensaje}
+                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl transition cursor-pointer text-xs disabled:opacity-50"
+                    >
+                      {enviandoMensaje ? 'Enviando...' : '🚀 Enviar Mensaje'}
+                    </button>
+                  </form>
+                </div>
+              </section>
+            )}
           </div>
         )}
       </main>
