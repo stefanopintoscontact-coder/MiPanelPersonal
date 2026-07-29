@@ -1878,67 +1878,44 @@ export default function Home() {
                     </div>
 
                     <div className="flex flex-wrap gap-2.5 justify-center">
-                      <button onClick={() => modificarAgua(250)} className="bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800 text-cyan-200 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer">+250ml 🥛</button>
-                      <button onClick={() => modificarAgua(500)} className="bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800 text-cyan-200 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer">+500ml 🥤</button>
-                      <button onClick={() => modificarAgua(-250)} className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400 px-3 py-2 rounded-xl text-xs font-medium transition cursor-pointer">-250ml</button>
+                      <button onClick={() => modificarAgua(250)} className="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-2 rounded-xl text-xs transition cursor-pointer">+250 ml 💧</button>
+                      <button onClick={() => modificarAgua(500)} className="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-2 rounded-xl text-xs transition cursor-pointer">+500 ml 💧</button>
+                      <button onClick={() => modificarAgua(-250)} className="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition cursor-pointer">-250 ml</button>
+                      <button onClick={() => modificarAgua(-aguaMl)} className="bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 font-semibold px-4 py-2 rounded-xl text-xs transition cursor-pointer">Reiniciar</button>
                     </div>
                   </div>
                 )}
 
                 {subSeccionExtra === 'sueno' && (
-                  <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6 max-w-xl mx-auto">
-                    <h3 className="text-lg font-semibold text-indigo-300 flex items-center gap-2">
-                      <span>😴 Control de Sueño y Descanso</span>
+                  <div className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
+                    <h3 className="text-lg font-semibold text-indigo-400 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <span>😴 Registro de Sueño y Descanso</span>
+                      <span className="text-sm font-mono font-bold text-slate-300">{suenoHoy.horas_totales} hrs ({pctSueño}%)</span>
                     </h3>
 
-                    <div className="space-y-4 bg-slate-900/70 p-4 rounded-xl border border-slate-800">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs text-slate-400 block mb-1">Hora Acostarse</label>
-                          <input
-                            type="time"
-                            value={suenoHoy.hora_acostarse}
-                            onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_acostarse: e.target.value })}
-                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-slate-400 block mb-1">Hora Levantarse</label>
-                          <input
-                            type="time"
-                            value={suenoHoy.hora_levantarse}
-                            onChange={(e) => setSuenoHoy({ ...suenoHoy, hora_levantarse: e.target.value })}
-                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
-                          />
-                        </div>
-                      </div>
-
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Calidad del Sueño (1 - 5)</label>
-                        <select
-                          value={suenoHoy.calidad}
-                          onChange={(e) => setSuenoHoy({ ...suenoHoy, calidad: Number(e.target.value) })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
-                        >
-                          <option value={1}>⭐ Mala (Poco descanso)</option>
-                          <option value={2}>⭐⭐ Regular</option>
-                          <option value={3}>⭐⭐⭐ Buena</option>
-                          <option value={4}>⭐⭐⭐⭐ Muy buena</option>
-                          <option value={5}>⭐⭐⭐⭐⭐ Excelente</option>
-                        </select>
+                        <label className="text-xs text-slate-400 block mb-1">Hora de acostarse</label>
+                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none cursor-pointer" />
                       </div>
-
-                      <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
-                        <span className="text-xs text-slate-400 block">Total Horas Registradas</span>
-                        <span className="text-2xl font-mono font-bold text-indigo-400">{suenoHoy.horas_totales} hrs</span>
+                      <div>
+                        <label className="text-xs text-slate-400 block mb-1">Hora de levantarse</label>
+                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none cursor-pointer" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 block mb-1">Calidad del sueño (1 a 5)</label>
+                        <select value={suenoHoy.calidad} onChange={(e) => setSuenoHoy({...suenoHoy, calidad: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none cursor-pointer">
+                          <option value={1}>⭐ Mala (1)</option>
+                          <option value={2}>⭐⭐ Regular (2)</option>
+                          <option value={3}>⭐⭐⭐ Buena (3)</option>
+                          <option value={4}>⭐⭐⭐⭐ Muy Buena (4)</option>
+                          <option value={5}>⭐⭐⭐⭐⭐ Excelente (5)</option>
+                        </select>
                       </div>
                     </div>
 
-                    <button
-                      onClick={guardarSueno}
-                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition cursor-pointer text-sm font-bold shadow-lg shadow-indigo-600/30"
-                    >
-                      💾 Guardar Registro de Sueño
+                    <button onClick={guardarSueno} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm py-2.5 rounded-xl transition cursor-pointer font-bold">
+                      💾 Guardar Sueño
                     </button>
                   </div>
                 )}
@@ -1947,28 +1924,22 @@ export default function Home() {
 
             {/* NOTAS */}
             {seccionActiva === 'notas' && (
-              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4 max-w-3xl mx-auto">
-                <h2 className="text-xl font-semibold text-amber-400 flex items-center gap-2">
-                  <span>📝 Bitácora y Notas del Día</span>
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Registra sensaciones, progresos o cualquier recordatorio importante para el día activo.
-                </p>
-
+              <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-4">
+                <h2 className="text-xl font-semibold text-amber-400">📝 Notas Diarias y Reflexiones</h2>
+                <p className="text-xs text-slate-400">Anota tus pensamientos, nivel de energía del día o sensaciones de entrenamiento.</p>
                 <textarea
                   rows={8}
                   value={notaDiaria}
                   onChange={(e) => setNotaDiaria(e.target.value)}
                   placeholder="Escribe tus notas aquí..."
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-amber-500"
                 />
-
                 <button
                   onClick={guardarNota}
                   disabled={guardandoNota}
-                  className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl transition cursor-pointer text-sm disabled:opacity-50"
+                  className="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium text-sm py-3 rounded-xl transition cursor-pointer font-bold disabled:opacity-50"
                 >
-                  {guardandoNota ? 'Guardando...' : '💾 Guardar Nota Diaria'}
+                  {guardandoNota ? 'Guardando...' : '💾 Guardar Nota del Día'}
                 </button>
               </section>
             )}
@@ -1976,60 +1947,57 @@ export default function Home() {
             {/* ESTADÍSTICAS */}
             {seccionActiva === 'estadisticas' && (
               <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6">
-                <h2 className="text-xl font-semibold text-indigo-400 flex items-center gap-2">
-                  <span>📈 Visualización y Métricas Globales</span>
-                </h2>
-
+                <h2 className="text-xl font-semibold text-indigo-400">📈 Resumen y Estadísticas Globales</h2>
+                
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
-                    <span className="text-xs text-slate-400 font-semibold block uppercase mb-1">Total Hábitos</span>
-                    <span className="text-3xl font-extrabold text-indigo-400">{habitos.length}</span>
+                  <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                    <span className="text-xs text-slate-400 block font-semibold">Tasa Cumplimiento Hábitos</span>
+                    <span className="text-2xl font-bold text-indigo-400">{porcentajeHabitos}%</span>
                   </div>
-                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
-                    <span className="text-xs text-slate-400 font-semibold block uppercase mb-1">Completados Hoy</span>
-                    <span className="text-3xl font-extrabold text-emerald-400">{totalCompletados}</span>
+                  <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                    <span className="text-xs text-slate-400 block font-semibold">Consumo Calórico</span>
+                    <span className="text-2xl font-bold text-amber-400">{totalIngeridoCal} kcal</span>
                   </div>
-                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
-                    <span className="text-xs text-slate-400 font-semibold block uppercase mb-1">Ingesta Calórica</span>
-                    <span className="text-3xl font-extrabold text-amber-400">{totalIngeridoCal} kcal</span>
+                  <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                    <span className="text-xs text-slate-400 block font-semibold">Gasto Calórico Total</span>
+                    <span className="text-2xl font-bold text-rose-400">{totalGastadoCal} kcal</span>
                   </div>
-                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
-                    <span className="text-xs text-slate-400 font-semibold block uppercase mb-1">Gasto Ejercicios</span>
-                    <span className="text-3xl font-extrabold text-rose-400">{totalGastoEjercicios} kcal</span>
+                  <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                    <span className="text-xs text-slate-400 block font-semibold">Agua Ingerida</span>
+                    <span className="text-2xl font-bold text-cyan-400">{aguaMl} ml</span>
                   </div>
                 </div>
 
-                <div className="bg-slate-900/80 p-5 rounded-xl border border-slate-800 space-y-4">
-                  <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Cumplimiento de Objetivos Diario</h3>
-                  
-                  <div className="space-y-3">
+                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-3">
+                  <h3 className="text-sm font-bold text-slate-200">📊 Desglose de Macronutrientes Ingeridos</h3>
+                  <div className="space-y-2">
                     <div>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-400">Hábitos Cumplidos</span>
-                        <span className="font-bold text-indigo-400">{porcentajeHabitos}%</span>
+                        <span className="text-rose-400 font-semibold">Proteínas ({totalProteinas}g)</span>
+                        <span className="text-slate-400">{totalProteinas * 4} kcal</span>
                       </div>
-                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
-                        <div className="bg-indigo-500 h-full rounded-full transition-all" style={{ width: `${porcentajeHabitos}%` }}></div>
+                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                        <div className="bg-rose-500 h-full" style={{ width: `${Math.min(100, (totalProteinas * 4 / Math.max(1, totalIngeridoCal)) * 100)}%` }}></div>
                       </div>
                     </div>
 
                     <div>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-400">Meta de Hidratación</span>
-                        <span className="font-bold text-cyan-400">{pctAgua}%</span>
+                        <span className="text-amber-400 font-semibold">Carbohidratos ({totalCarbs}g)</span>
+                        <span className="text-slate-400">{totalCarbs * 4} kcal</span>
                       </div>
-                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
-                        <div className="bg-cyan-500 h-full rounded-full transition-all" style={{ width: `${pctAgua}%` }}></div>
+                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                        <div className="bg-amber-500 h-full" style={{ width: `${Math.min(100, (totalCarbs * 4 / Math.max(1, totalIngeridoCal)) * 100)}%` }}></div>
                       </div>
                     </div>
 
                     <div>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-400">Calidad Nutricional</span>
-                        <span className="font-bold text-amber-400">{pctCalorias}%</span>
+                        <span className="text-blue-400 font-semibold">Grasas ({totalGrasas}g)</span>
+                        <span className="text-slate-400">{totalGrasas * 9} kcal</span>
                       </div>
-                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
-                        <div className="bg-amber-500 h-full rounded-full transition-all" style={{ width: `${pctCalorias}%` }}></div>
+                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                        <div className="bg-blue-500 h-full" style={{ width: `${Math.min(100, (totalGrasas * 9 / Math.max(1, totalIngeridoCal)) * 100)}%` }}></div>
                       </div>
                     </div>
                   </div>
@@ -2037,69 +2005,49 @@ export default function Home() {
               </section>
             )}
 
-            {/* NOVEDADES Y SOPORTE */}
+            {/* ACTUALIZACIONES Y SOPORTE */}
             {seccionActiva === 'actualizaciones' && (
               <section className="bg-slate-800/60 p-3.5 sm:p-6 rounded-2xl border border-slate-700/50 shadow-xl space-y-6 max-w-3xl mx-auto">
-                <div className="border-b border-slate-700 pb-4">
-                  <h2 className="text-xl font-semibold text-indigo-400 flex items-center gap-2">
-                    <span>🚀 Novedades y Centro de Soporte</span>
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Última versión del programa: <strong className="text-indigo-300 font-mono">{ULTIMA_ACTUALIZACION_APP}</strong>
-                  </p>
+                <h2 className="text-xl font-semibold text-indigo-400">🚀 Novedades y Soporte Técnico</h2>
+
+                <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
+                  <h3 className="text-sm font-bold text-slate-200">✨ Versión de la Aplicación</h3>
+                  <p className="text-xs text-slate-400">Última actualización desplegada: <span className="font-mono text-indigo-400 font-bold">{ULTIMA_ACTUALIZACION_APP}</span></p>
+                  <ul className="text-xs text-slate-300 list-disc list-inside space-y-1 pt-2">
+                    <li>Integración con Supabase Auth y Base de datos en vivo.</li>
+                    <li>Módulo de estimación de macros mediante Inteligencia Artificial.</li>
+                    <li>Seguimiento de hábitos con rachas automáticas.</li>
+                    <li>Clima en tiempo real y recomendaciones adaptativas.</li>
+                  </ul>
                 </div>
 
-                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
-                  <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">📩 Envíanos tus comentarios / reporte de errores</h3>
+                <form onSubmit={enviarMensajeSoporte} className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <h3 className="text-sm font-bold text-slate-200">📬 Enviar Recomendación o Reportar Bug</h3>
                   
-                  <form onSubmit={enviarMensajeSoporte} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">Tipo de Mensaje</label>
-                        <select
-                          value={tipoSoporte}
-                          onChange={(e) => setTipoSoporte(e.target.value as any)}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
-                        >
-                          <option value="bug">🐛 Reportar un problema / Bug</option>
-                          <option value="recomendacion">💡 Sugerencia / Recomendación</option>
-                          <option value="reclamo">⚠️ Reclamo</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">Correo de Contacto</label>
-                        <input
-                          type="email"
-                          placeholder="tu@email.com"
-                          value={emailContacto}
-                          onChange={(e) => setEmailContacto(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
-
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs text-slate-400 block mb-1">Mensaje o Detalle</label>
-                      <textarea
-                        rows={4}
-                        required
-                        value={mensajeSoporte}
-                        onChange={(e) => setMensajeSoporte(e.target.value)}
-                        placeholder="Escribe tu mensaje detallado aquí..."
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
+                      <label className="text-xs text-slate-400 block mb-1">Tipo de Mensaje</label>
+                      <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value as any)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none cursor-pointer">
+                        <option value="bug">🐛 Reporte de Bug / Error</option>
+                        <option value="reclamo">⚠️ Reclamo</option>
+                        <option value="recomendacion">💡 Recomendación / Sugerencia</option>
+                      </select>
                     </div>
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Email de Contacto</label>
+                      <input type="email" placeholder="tu@email.com" value={emailContacto} onChange={(e) => setEmailContacto(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none" />
+                    </div>
+                  </div>
 
-                    <button
-                      type="submit"
-                      disabled={enviandoMensaje}
-                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl transition cursor-pointer text-xs disabled:opacity-50"
-                    >
-                      {enviandoMensaje ? 'Enviando...' : '🚀 Enviar Mensaje'}
-                    </button>
-                  </form>
-                </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Mensaje</label>
+                    <textarea rows={4} required value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Describe el error o sugerencia..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500" />
+                  </div>
+
+                  <button type="submit" disabled={enviandoMensaje} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl transition text-xs cursor-pointer font-bold disabled:opacity-50">
+                    {enviandoMensaje ? 'Enviando...' : '📩 Enviar Mensaje'}
+                  </button>
+                </form>
               </section>
             )}
           </div>
