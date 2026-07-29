@@ -704,72 +704,81 @@ export default function Home() {
     e.target.value = '';
   };
 
-  // ESTIMADOR CON IA CORREGIDO (CALIBRADO PARA EVITAR +1000 KCAL EN COMIDAS DE 500)
+  // ESTIMADOR CON IA CALIBRADO Y GUARDADO AUTOMÁTICO INMEDIATO
   const estimarComidaConIA = async () => {
     if (!comidaIaModal) return;
     setProcesandoIa(true);
 
-    const promptTexto = textoIaInput.trim();
+    const promptTexto = `${comidaIaModal.nombre} ${textoIaInput}`.trim().toLowerCase();
     let resCal = 350, resP = 25, resC = 35, resG = 10;
 
-    // Base nutricional calibrada por porciones estándar reales (por 100g o porción estándar)
-    const baseAlimentos: { nombres: string[]; calPerGram: number; pPerGram: number; cPerGram: number; gPerGram: number; defaultPortion: number }[] = [
+    const baseAlimentos = [
       { nombres: ['arroz', 'fideos', 'pasta'], calPerGram: 1.3, pPerGram: 0.04, cPerGram: 0.28, gPerGram: 0.01, defaultPortion: 150 },
       { nombres: ['pollo', 'pechuga'], calPerGram: 1.65, pPerGram: 0.31, cPerGram: 0, gPerGram: 0.035, defaultPortion: 150 },
-      { nombres: ['carne', 'vacuna', 'bife'], calPerGram: 2.1, pPerGram: 0.26, cPerGram: 0, gPerGram: 0.12, defaultPortion: 180 },
+      { nombres: ['carne', 'vacuna', 'bife', 'lomo'], calPerGram: 2.1, pPerGram: 0.26, cPerGram: 0, gPerGram: 0.12, defaultPortion: 180 },
       { nombres: ['huevo', 'huevos'], calPerGram: 1.4, pPerGram: 0.13, cPerGram: 0.01, gPerGram: 0.10, defaultPortion: 100 },
       { nombres: ['avena'], calPerGram: 3.8, pPerGram: 0.13, cPerGram: 0.66, gPerGram: 0.07, defaultPortion: 50 },
-      { nombres: ['banana', 'plátano'], calPerGram: 0.9, pPerGram: 0.01, cPerGram: 0.23, gPerGram: 0.003, defaultPortion: 120 },
+      { nombres: ['banana', 'plátano', 'platano'], calPerGram: 0.9, pPerGram: 0.01, cPerGram: 0.23, gPerGram: 0.003, defaultPortion: 120 },
       { nombres: ['manzana'], calPerGram: 0.52, pPerGram: 0.003, cPerGram: 0.14, gPerGram: 0.002, defaultPortion: 150 },
-      { nombres: ['pan'], calPerGram: 2.5, pPerGram: 0.09, cPerGram: 0.48, gPerGram: 0.03, defaultPortion: 60 },
-      { nombres: ['atún', 'atun'], calPerGram: 1.2, pPerGram: 0.25, cPerGram: 0, gPerGram: 0.02, defaultPortion: 120 }
+      { nombres: ['naranja'], calPerGram: 0.47, pPerGram: 0.009, cPerGram: 0.12, gPerGram: 0.001, defaultPortion: 150 },
+      { nombres: ['pan', 'tostada'], calPerGram: 2.5, pPerGram: 0.09, cPerGram: 0.48, gPerGram: 0.03, defaultPortion: 60 },
+      { nombres: ['atún', 'atun'], calPerGram: 1.2, pPerGram: 0.25, cPerGram: 0, gPerGram: 0.02, defaultPortion: 120 },
+      { nombres: ['café', 'cafe'], calPerGram: 0.5, pPerGram: 0.01, cPerGram: 0.05, gPerGram: 0.01, defaultPortion: 200 }
     ];
 
-    if (promptTexto) {
-      const strL = promptTexto.toLowerCase();
-      let matched = false;
-      let calAcc = 0, pAcc = 0, cAcc = 0, gAcc = 0;
+    let matched = false;
+    let calAcc = 0, pAcc = 0, cAcc = 0, gAcc = 0;
 
-      for (const al of baseAlimentos) {
-        if (strL.includes(al.nombres[0])) {
-          matched = true;
-          const matchNum = strL.match(/(\d+)/);
-          const gramos = matchNum ? parseInt(matchNum[1], 10) : al.defaultPortion;
-          // Si el número ingresado parece porción en gramos o ml
-          const porcionReal = gramos > 5 ? gramos : al.defaultPortion;
-          calAcc += al.calPerGram * porcionReal;
-          pAcc += al.pPerGram * porcionReal;
-          cAcc += al.cPerGram * porcionReal;
-          gAcc += al.gPerGram * porcionReal;
-        }
+    for (const al of baseAlimentos) {
+      const found = al.nombres.some(n => promptTexto.includes(n));
+      if (found) {
+        matched = true;
+        const matchNum = promptTexto.match(new RegExp(`(?:${al.nombres.join('|')})[^\\d]*(\\d+)`, 'i')) || promptTexto.match(/(\d+)/);
+        const gramos = matchNum ? parseInt(matchNum[1], 10) : al.defaultPortion;
+        const porcionReal = gramos > 5 && gramos < 1000 ? gramos : al.defaultPortion;
+        calAcc += al.calPerGram * porcionReal;
+        pAcc += al.pPerGram * porcionReal;
+        cAcc += al.cPerGram * porcionReal;
+        gAcc += al.gPerGram * porcionReal;
       }
+    }
 
-      if (matched && calAcc > 0) {
-        resCal = Math.round(calAcc);
-        resP = Math.round(pAcc);
-        resC = Math.round(cAcc);
-        resG = Math.round(gAcc);
-      } else {
-        // Estimación moderada por defecto para comida estándar (aprox 450-550 kcal)
-        resCal = 480;
-        resP = 35;
-        resC = 45;
-        resG = 12;
-      }
+    if (matched && calAcc > 0) {
+      resCal = Math.round(calAcc);
+      resP = Math.round(pAcc);
+      resC = Math.round(cAcc);
+      resG = Math.round(gAcc);
+    } else if (promptTexto.length > 3) {
+      resCal = 420;
+      resP = 28;
+      resC = 42;
+      resG = 12;
     }
 
     const nuevoNombre = nombreIaModalInput.trim() || comidaIaModal.nombre;
 
-    setComidas((prev) =>
-      prev.map((item) =>
-        item.id === comidaIaModal.id
-          ? { ...item, nombre: nuevoNombre, calorias: resCal, proteinas: resP, carbs: resC, grasas: resG }
-          : item
-      )
+    const nuevasComidas = comidas.map((item) =>
+      item.id === comidaIaModal.id
+        ? { ...item, nombre: nuevoNombre, calorias: resCal, proteinas: resP, carbs: resC, grasas: resG }
+        : item
     );
 
+    setComidas(nuevasComidas);
     setProcesandoIa(false);
     setComidaIaModal(null);
+
+    // Guardado automático inmediato en Supabase tras calcular con IA
+    if (session?.user) {
+      await supabase.from('registro_calorias').upsert({
+        user_id: session.user.id,
+        fecha: fechaSeleccionada,
+        base: bmrCalculado,
+        agua_ml: aguaMl,
+        ejercicios,
+        comidas: nuevasComidas
+      }, { onConflict: 'user_id,fecha' });
+    }
+
     alert(`🤖 IA: Estimado "${nuevoNombre}" -> ${resCal} kcal | ${resP}g P | ${resC}g C | ${resG}g G`);
   };
 
@@ -984,29 +993,44 @@ export default function Home() {
           <div className="text-center py-16 text-slate-400 font-medium">Cargando datos... ⏳</div>
         ) : (
           <div>
-            {/* GENERAL */}
+            {/* GENERAL CON BARRAS DE PORCENTAJE RESTAURADAS */}
             {seccionActiva === 'general' && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                   <div onClick={() => cambiarSeccion('nutricion')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-amber-500 transition">
                     <span className="text-xs text-slate-400">Balance Calórico</span>
                     <p className={`text-2xl font-extrabold mt-2 ${balanceCalorico < 0 ? 'text-amber-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico}</p>
+                    <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
+                      <div className="bg-amber-500 h-full transition-all" style={{ width: `${pctCalorias}%` }}></div>
+                    </div>
                   </div>
                   <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('agua'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-cyan-500 transition">
                     <span className="text-xs text-slate-400">Agua Diaria</span>
                     <p className="text-2xl font-extrabold text-cyan-400 mt-2">{(aguaMl / 1000).toFixed(2)}L</p>
+                    <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
+                      <div className="bg-cyan-500 h-full transition-all" style={{ width: `${pctAgua}%` }}></div>
+                    </div>
                   </div>
                   <div onClick={() => cambiarSeccion('habitos')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-indigo-500 transition">
                     <span className="text-xs text-slate-400">Hábitos</span>
                     <p className="text-2xl font-extrabold text-indigo-400 mt-2">{porcentajeHabitos}%</p>
+                    <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
+                      <div className="bg-indigo-500 h-full transition-all" style={{ width: `${porcentajeHabitos}%` }}></div>
+                    </div>
                   </div>
                   <div onClick={() => cambiarSeccion('perfil')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-slate-400 transition">
                     <span className="text-xs text-slate-400">Peso / Éxito</span>
                     <p className="text-xl font-extrabold text-slate-200 mt-2">{perfil.peso} kg</p>
+                    <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
+                      <div className="bg-emerald-500 h-full transition-all" style={{ width: `${perfil.porcentaje_probabilidad}%` }}></div>
+                    </div>
                   </div>
                   <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('sueno'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-indigo-400 transition">
                     <span className="text-xs text-slate-400">Sueño</span>
                     <p className="text-xl font-extrabold text-indigo-300 mt-2">{suenoHoy.horas_totales} hrs</p>
+                    <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
+                      <div className="bg-indigo-500 h-full transition-all" style={{ width: `${pctSueño}%` }}></div>
+                    </div>
                   </div>
                 </div>
 
@@ -1070,7 +1094,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* HÁBITOS */}
+            {/* HÁBITOS (BOTÓN CORREGIDO DENTRO DEL RECUADRO) */}
             {seccionActiva === 'habitos' && (
               <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6">
                 <div className="flex justify-between items-center">
@@ -1080,10 +1104,10 @@ export default function Home() {
                   </span>
                 </div>
 
-                <form onSubmit={agregarHabito} className="flex gap-2">
-                  <input type="text" placeholder="Nuevo hábito..." value={nuevoHabito} onChange={(e) => setNuevoHabito(e.target.value)} className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white" />
-                  <input type="time" value={horaObjetivo} onChange={(e) => setHoraObjetivo(e.target.value)} className="bg-slate-900 border border-slate-700 rounded-xl px-3 text-sm text-white font-mono" />
-                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer">Añadir</button>
+                <form onSubmit={agregarHabito} className="flex flex-col sm:flex-row gap-2 bg-slate-900 p-3 rounded-2xl border border-slate-800">
+                  <input type="text" placeholder="Nuevo hábito..." value={nuevoHabito} onChange={(e) => setNuevoHabito(e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white" />
+                  <input type="time" value={horaObjetivo} onChange={(e) => setHoraObjetivo(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-xl px-3 text-sm text-white font-mono py-2" />
+                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-xl text-sm font-medium cursor-pointer shrink-0">Añadir</button>
                 </form>
 
                 <div className="space-y-2.5">
@@ -1188,7 +1212,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* SECCIÓN EXTRA (AGUA Y SUEÑO MEJORADO) */}
+            {/* SECCIÓN EXTRA (AGUA Y SUEÑO CON INPUTS ACOMODADOS PARA EVITAR SOLAPAMIENTO) */}
             {seccionActiva === 'extra' && (
               <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 max-w-xl mx-auto">
                 <div className="flex border-b border-slate-700 pb-3 gap-4">
@@ -1219,14 +1243,14 @@ export default function Home() {
                       <div className="bg-indigo-500 h-full transition-all" style={{ width: `${pctSueño}%` }}></div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-3 text-left pt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-2">
                       <div>
                         <label className="text-xs text-slate-400 font-semibold block mb-1">Acostarse</label>
-                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-mono" />
+                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white font-mono" />
                       </div>
                       <div>
                         <label className="text-xs text-slate-400 font-semibold block mb-1">Levantarse</label>
-                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-mono" />
+                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white font-mono" />
                       </div>
                     </div>
 
@@ -1302,9 +1326,11 @@ export default function Home() {
                 <h2 className="text-xl font-semibold text-indigo-400">🚀 Novedades y Soporte</h2>
                 <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-2">
                   <p className="font-bold text-white">Versión Actual: {ULTIMA_ACTUALIZACION_APP}</p>
-                  <p>• Corrección definitiva de guardado y persistencia en desayunos.</p>
-                  <p>• Calibración del estimador de IA para evitar sobreestimaciones calóricas.</p>
-                  <p>• Nuevo diseño en control de sueño y estadísticas comparativas avanzadas.</p>
+                  <p>• Restauración de barras de porcentaje en el resumen general.</p>
+                  <p>• Alineación y ajuste responsive del botón "Añadir" en hábitos diarios.</p>
+                  <p>• Guardado automático inmediato tras el cálculo de macros por IA.</p>
+                  <p>• Calibración precisa del estimador de IA para evitar sobreestimaciones.</p>
+                  <p>• Ajuste de inputs de sueño en módulos extra para evitar solapamiento.</p>
                 </div>
               </section>
             )}
