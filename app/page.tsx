@@ -8,11 +8,16 @@ const obtenerFechaUltimaActualizacion = () => {
   if (typeof window === 'undefined') return '29/07/2026 18:00';
   const ahora = new Date();
   const fecha = ahora.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const hora = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const hora = me => me.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })(ahora);
   return `${fecha} ${hora}`;
 };
 
 const ULTIMA_ACTUALIZACION_APP = obtenerFechaUltimaActualizacion();
+
+// --- ESTILOS REUTILIZABLES ---
+const INPUT_CLS = "w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 transition placeholder:text-slate-500 outline-none";
+const BTN_PRIMARY = "w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer shadow-lg shadow-indigo-950/50 active:scale-[0.99]";
+const CARD_CLS = "bg-slate-900/70 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl transition-all hover:border-slate-700/80";
 
 // --- INTERFACES ---
 interface PerfilUsuario {
@@ -83,21 +88,21 @@ interface RegistroSueno {
 }
 
 const FRASES_MOTIVACIONALES = [
-  "«El éxito es la suma de pequeños esfuerzos repetidos día tras día.»",
-  "«La disciplina es construir el puente entre tus metas y tus logros.»",
-  "«No cuentes los días, haz que los días cuenten.»",
-  "«Tu versión del futuro te agradecerá la constancia de hoy.»",
-  "«Un pequeño avance diario genera resultados gigantes al final del año.»",
-  "«La constancia vence a la motivación cuando la motivación falta.»",
-  "«Haz hoy lo que otros no quieren para vivir mañana como otros no pueden.»"
+  "«El éxito es la suma de pequeños esfuerzos repetidos día tras día.» 🚀",
+  "«La disciplina es construir el puente entre tus metas y tus logros.» 🔥",
+  "«No cuentes los días, haz que los días cuenten.» ⚡",
+  "«Tu versión del futuro te agradecerá la constancia de hoy.» 💎",
+  "«Un pequeño avance diario genera resultados gigantes al final del año.» 🏆",
+  "«La constancia vence a la motivación cuando la motivación falta.» 🛡️",
+  "«Haz hoy lo que otros no quieren para vivir mañana como otros no pueden.» ✨"
 ];
 
 const COMIDAS_POR_DEFECTO: ItemComida[] = [
-  { id: '1', nombre: 'Desayuno', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
-  { id: '2', nombre: 'Almuerzo', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
-  { id: '3', nombre: 'Merienda', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
-  { id: '4', nombre: 'Cena', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
-  { id: '5', nombre: 'Extra', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
+  { id: '1', nombre: '🍳 Desayuno', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
+  { id: '2', nombre: '🥗 Almuerzo', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
+  { id: '3', nombre: '🍎 Merienda', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
+  { id: '4', nombre: '🍗 Cena', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
+  { id: '5', nombre: '🥑 Snacks / Extra', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
 ];
 
 // --- FUNCIONES AUXILIARES ---
@@ -120,14 +125,11 @@ const formatearFechaLarga = (fechaStr: string) => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
-// HELPER PARA COLORES Y ANCHO DINÁMICO DE BARRAS DE PROGRESO (INCLUYE MINIMO ROJO)
 const obtenerEstiloBarra = (porcentaje: number) => {
-  if (porcentaje <= 0) {
-    return { width: '5%', colorClass: 'bg-rose-500' };
-  }
-  let colorClass = 'bg-emerald-500';
-  if (porcentaje < 40) colorClass = 'bg-rose-500';
-  else if (porcentaje < 80) colorClass = 'bg-amber-500';
+  if (porcentaje <= 0) return { width: '6%', colorClass: 'bg-rose-500 shadow-rose-500/50' };
+  let colorClass = 'bg-emerald-500 shadow-emerald-500/50';
+  if (porcentaje < 40) colorClass = 'bg-rose-500 shadow-rose-500/50';
+  else if (porcentaje < 80) colorClass = 'bg-amber-500 shadow-amber-500/50';
   
   return { width: `${Math.min(100, porcentaje)}%`, colorClass };
 };
@@ -153,7 +155,7 @@ export default function Home() {
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(obtenerFechaLogica());
   const [clima, setClima] = useState<ClimaData | null>(null);
 
-  // Perfil del Usuario
+  // Perfil
   const [perfil, setPerfil] = useState<PerfilUsuario>({
     nombre: '',
     fecha_nacimiento: '2000-01-01',
@@ -178,7 +180,7 @@ export default function Home() {
     return [...habitos].sort((a, b) => (a.hora_objetivo || '00:00').localeCompare(b.hora_objetivo || '00:00'));
   }, [habitos]);
 
-  // Nutrición / Calorías / Gimnasio
+  // Nutrición / Gimnasio
   const [ejercicios, setEjercicios] = useState<EjercicioGimnasio[]>([]);
   const [comidas, setComidas] = useState<ItemComida[]>(COMIDAS_POR_DEFECTO);
   const [youtubeLink, setYoutubeLink] = useState('');
@@ -191,11 +193,10 @@ export default function Home() {
   const [imagenesIaInput, setImagenesIaInput] = useState<string[]>([]);
   const [procesandoIa, setProcesandoIa] = useState(false);
 
-  // Hidratación
+  // Hidratación y Sueño
   const [aguaMl, setAguaMl] = useState<number>(0);
   const metaAguaMl = 2500;
 
-  // Sueño
   const [suenoHoy, setSuenoHoy] = useState<RegistroSueno>({
     fecha: fechaSeleccionada,
     hora_acostarse: '23:00',
@@ -321,8 +322,6 @@ export default function Home() {
           try {
             const resClima = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
             const dataClima = await resClima.json();
-            let textoUbicacion = 'Tu ubicación';
-
             if (dataClima.current_weather) {
               const temp = Math.round(dataClima.current_weather.temperature);
               const code = dataClima.current_weather.weathercode;
@@ -335,7 +334,7 @@ export default function Home() {
               let rec = 'Día ideal para realizar tus actividades físicas.';
               if (code >= 51 && code <= 67) { desc = 'Lluvia'; icono = '🌧️'; rec = '⚠️ Lluvia en tu zona. Entrená en interiores.'; }
 
-              const objClima = { temp, codigoClima: code, descripcion: desc, recomendacion: rec, ubicacion: textoUbicacion, icono };
+              const objClima = { temp, codigoClima: code, descripcion: desc, recomendacion: rec, ubicacion: 'Tu ubicación', icono };
               setClima(objClima);
               localStorage.setItem('clima_cache', JSON.stringify(objClima));
               localStorage.setItem('clima_cache_time', String(Date.now()));
@@ -498,7 +497,7 @@ export default function Home() {
     if (!error) setHabitos(habitos.filter((h) => h.id !== id));
   };
 
-  // --- EJERCICIOS Y ENTRENAMIENTO DIVERSIFICADO ---
+  // --- EJERCICIOS Y ENTRENAMIENTO ---
   const agregarEjercicio = () => setEjercicios([
     ...ejercicios, 
     { id: Date.now().toString(), nombre: 'Nuevo Ejercicio', tipo: 'fuerza', series: 4, repeticiones: 10, peso: 0, duracion_minutos: 30, distancia_km: 0, calorias: 0 }
@@ -519,13 +518,9 @@ export default function Home() {
       cal = (item.series || 1) * (item.repeticiones || 10) * ((item.peso || 0) * 0.012 + 0.4) * (pesoUser / 75);
     } else if (item.tipo === 'running') {
       cal = (item.distancia_km || 1) * pesoUser * 1.03;
-    } else if (item.tipo === 'ciclismo') {
-      cal = (item.duracion_minutos || 30) * (8.0 * 3.5 * pesoUser / 200);
-    } else if (item.tipo === 'boxeo') {
-      cal = (item.duracion_minutos || 30) * (9.0 * 3.5 * pesoUser / 200);
-    } else if (item.tipo === 'natacion') {
-      cal = (item.duracion_minutos || 30) * (8.0 * 3.5 * pesoUser / 200);
-    } else if (item.tipo === 'futbol') {
+    } else if (item.tipo === 'ciclismo' || item.tipo === 'boxeo' || item.tipo === 'natacion') {
+      cal = (item.duracion_minutos || 30) * (8.5 * 3.5 * pesoUser / 200);
+    } else if (item.tipo === 'futbol' || item.tipo === 'funcional') {
       cal = (item.duracion_minutos || 30) * (7.5 * 3.5 * pesoUser / 200);
     } else if (item.tipo === 'caminata') {
       cal = (item.distancia_km || 1) * pesoUser * 0.5;
@@ -545,17 +540,18 @@ export default function Home() {
 
     setTimeout(() => {
       const pesoUser = perfil.peso || 70;
-      const esHiit = youtubeLink.toLowerCase().includes('hiit') || youtubeLink.toLowerCase().includes('tabata');
-      const esYoga = youtubeLink.toLowerCase().includes('yoga') || youtubeLink.toLowerCase().includes('stretching');
+      const urlLower = youtubeLink.toLowerCase();
+      const esHiit = urlLower.includes('hiit') || urlLower.includes('tabata') || urlLower.includes('cardio');
+      const esYoga = urlLower.includes('yoga') || urlLower.includes('stretching') || urlLower.includes('pilates');
       
-      let tipoDetectado: TipoEjercicio = esHiit ? 'funcional' : 'otro';
-      let duracionEst = esYoga ? 20 : 30;
-      let metEst = esYoga ? 3.0 : (esHiit ? 8.5 : 6.0);
+      let tipoDetectado: TipoEjercicio = esYoga ? 'funcional' : (esHiit ? 'funcional' : 'otro');
+      let duracionEst = esYoga ? 25 : 30;
+      let metEst = esYoga ? 3.2 : (esHiit ? 8.5 : 6.0);
       let calEst = Math.round(duracionEst * (metEst * 3.5 * pesoUser / 200));
 
       const nuevoEj: EjercicioGimnasio = {
         id: Date.now().toString(),
-        nombre: esYoga ? 'Rutina Yoga YouTube' : (esHiit ? 'Entrenamiento HIIT YouTube' : 'Rutina Ejercicio YouTube'),
+        nombre: esYoga ? '🧘 Yoga / Flexibilidad (YouTube)' : (esHiit ? '🔥 HIIT Intensivo (YouTube)' : '🏋️ Rutina Guiada YouTube'),
         tipo: tipoDetectado,
         duracion_minutos: duracionEst,
         calorias: calEst
@@ -564,8 +560,8 @@ export default function Home() {
       setEjercicios(prev => [...prev, nuevoEj]);
       setYoutubeLink('');
       setProcesandoYoutube(false);
-      alert(`🤖 ¡Video Procesado! Se añadió la rutina automáticamente: ~${calEst} kcal estimated.`);
-    }, 1200);
+      alert(`🤖 ¡Video Procesado! Se añadió la rutina automáticamente: ~${calEst} kcal estimadas.`);
+    }, 1100);
   };
 
   // --- COMIDAS ---
@@ -680,7 +676,7 @@ export default function Home() {
     else { setSuenoHoy(datosGuardar); alert('✅ Sueño guardado correctamente'); }
   };
 
-  // CÁLCULOS
+  // CÁLCULOS GENERALES
   const totalCompletados = habitos.filter((h) => registrosHoy[h.id]?.completado).length;
   const porcentajeHabitos = habitos.length > 0 ? Math.round((totalCompletados / habitos.length) * 100) : 0;
 
@@ -698,13 +694,13 @@ export default function Home() {
     const b = balanceCalorico;
     
     if (perfil.objetivo === 'bajar') {
-      if (b <= -200 && b >= -800) { nota = 10; mensaje = '¡Excelente déficit para quemar grasa!'; }
-      else if (b < -800) { nota = 5; mensaje = '⚠️ Déficit excesivo. Riesgo muscular.'; }
+      if (b <= -200 && b >= -800) { nota = 10; mensaje = '¡Excelente déficit para quemar grasa de forma saludable!'; }
+      else if (b < -800) { nota = 5; mensaje = '⚠️ Déficit excesivo. Riesgo de perder masa muscular.'; }
       else if (b < 0) { nota = 8; mensaje = 'Buen déficit ligero.'; }
-      else { nota = 5; mensaje = 'Superávit o mantenimiento. No estás bajando peso.'; }
+      else { nota = 5; mensaje = 'Superávit o mantenimiento. No estás en déficit.'; }
     } else if (perfil.objetivo === 'subir') {
-      if (b >= 200 && b <= 600) { nota = 10; mensaje = '¡Superávit ideal para ganancia muscular!'; }
-      else { nota = 7; mensaje = 'Ajusta tus calorías para asegurar hipertrofia.'; }
+      if (b >= 200 && b <= 600) { nota = 10; mensaje = '¡Superávit ideal para construcción muscular!'; }
+      else { nota = 7; mensaje = 'Ajusta tus calorías para maximizar hipertrofia.'; }
     } else {
       nota = Math.abs(b) <= 150 ? 10 : 7;
       mensaje = 'Mantenimiento en curso.';
@@ -722,34 +718,42 @@ export default function Home() {
   if (cargandoSesion) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center font-sans">
-        <div className="text-slate-400 font-medium animate-pulse">Cargando aplicación... ⏳</div>
+        <div className="text-indigo-400 font-semibold animate-pulse flex items-center gap-2">
+          <span>⚡ Cargar aplicación...</span>
+        </div>
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4 font-sans">
-        <div className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl max-w-md w-full space-y-6 shadow-2xl">
+      <div className="min-h-screen bg-slate-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950 via-slate-950 to-black text-white flex items-center justify-center p-4 font-sans">
+        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl">
           <div className="text-center space-y-2">
-            <h1 className="text-2xl font-black text-indigo-400">💪 Personal Fitness App</h1>
-            <p className="text-xs text-slate-400">{esRegistro ? 'Crea tu cuenta' : 'Inicia sesión'}</p>
+            <span className="text-4xl inline-block mb-1 animate-bounce">💪</span>
+            <h1 className="text-2xl font-black bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Personal Fitness App</h1>
+            <p className="text-xs text-slate-400">{esRegistro ? 'Crea tu cuenta de entrenamiento' : 'Bienvenido de nuevo'}</p>
           </div>
 
-          {errorAuth && <div className="bg-rose-950 text-rose-200 text-xs p-3 rounded-xl border border-rose-800">⚠️ {errorAuth}</div>}
+          {errorAuth && <div className="bg-rose-950/80 text-rose-200 text-xs p-3.5 rounded-2xl border border-rose-800/80 text-center">⚠️ {errorAuth}</div>}
 
-          <button onClick={iniciarSesionGoogle} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 border border-slate-700 cursor-pointer">
-            Continuar con Google
+          <button onClick={iniciarSesionGoogle} className="w-full bg-slate-800/80 hover:bg-slate-700 text-white font-semibold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-700 cursor-pointer transition shadow-md">
+            <span>🌐 Continuar con Google</span>
           </button>
 
-          <form onSubmit={manejarAuth} className="space-y-4">
-            <input type="email" required value={emailAuth} onChange={(e) => setEmailAuth(e.target.value)} placeholder="tu@email.com" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white" />
-            <input type="password" required value={passwordAuth} onChange={(e) => setPasswordAuth(e.target.value)} placeholder="••••••••" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white" />
-            <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl text-sm cursor-pointer">{esRegistro ? 'Registrarse' : 'Iniciar Sesión'}</button>
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800"></div></div>
+            <div className="relative flex justify-center text-xs uppercase"><span className="bg-slate-900 px-2 text-slate-500">O Email</span></div>
+          </div>
+
+          <form onSubmit={manejarAuth} className="space-y-3.5">
+            <input type="email" required value={emailAuth} onChange={(e) => setEmailAuth(e.target.value)} placeholder="tu@email.com" className={INPUT_CLS} />
+            <input type="password" required value={passwordAuth} onChange={(e) => setPasswordAuth(e.target.value)} placeholder="••••••••" className={INPUT_CLS} />
+            <button type="submit" className={BTN_PRIMARY}>{esRegistro ? 'Registrarse' : 'Iniciar Sesión'}</button>
           </form>
 
-          <button onClick={() => setEsRegistro(!esRegistro)} className="w-full text-center text-xs text-slate-400 hover:text-indigo-400 cursor-pointer">
-            {esRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
+          <button onClick={() => setEsRegistro(!esRegistro)} className="w-full text-center text-xs text-slate-400 hover:text-indigo-400 transition cursor-pointer">
+            {esRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate gratis'}
           </button>
         </div>
       </div>
@@ -757,40 +761,42 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row font-sans">
+    <div className="min-h-screen bg-slate-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black text-slate-100 flex flex-col md:flex-row font-sans">
       
-      {/* BARRA LATERAL */}
-      <aside className={`bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:inset-auto md:w-64 md:h-auto overflow-y-auto' : 'w-full md:w-16'}`}>
+      {/* BARRA LATERAL / MENÚ */}
+      <aside className={`bg-slate-900/90 backdrop-blur-xl border-b md:border-b-0 md:border-r border-slate-800/80 transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:inset-auto md:w-64 md:h-auto overflow-y-auto' : 'w-full md:w-20'}`}>
         <div>
-          <div className="p-3 sm:p-4 flex items-center justify-between border-b border-slate-800">
-            <button onClick={() => setSidebarAbierto(!sidebarAbierto)} className="p-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer flex items-center gap-2">
-              <span className="text-xs font-bold uppercase">{sidebarAbierto ? '✕' : '☰'}</span>
+          <div className="p-4 flex items-center justify-between border-b border-slate-800/80">
+            <button onClick={() => setSidebarAbierto(!sidebarAbierto)} className="p-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 cursor-pointer flex items-center gap-2 border border-slate-700/50 transition">
+              <span className="text-sm font-bold uppercase">{sidebarAbierto ? '✕' : '☰'}</span>
             </button>
             {session?.user && (
-              <button onClick={() => cambiarSeccion('perfil')} className="flex items-center gap-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 px-3 py-2 rounded-xl cursor-pointer">
-                <span className="text-xs font-extrabold text-indigo-400">{perfil.nombre || 'Perfil'} 👋</span>
+              <button onClick={() => cambiarSeccion('perfil')} className="flex items-center gap-2 bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-800/50 px-3 py-1.5 rounded-xl cursor-pointer transition">
+                <span className="text-xs font-bold text-indigo-300">{perfil.nombre || 'Perfil'} 👋</span>
               </button>
             )}
           </div>
 
-          <nav className={`p-2 sm:p-3 ${sidebarAbierto ? 'flex flex-col space-y-2' : 'flex flex-row md:flex-col overflow-x-auto gap-1.5 md:space-y-1.5 justify-around md:justify-start'}`}>
+          <nav className={`p-3 ${sidebarAbierto ? 'flex flex-col space-y-2' : 'flex flex-row md:flex-col overflow-x-auto gap-2 justify-around md:justify-start'}`}>
             {[
               { id: 'general', label: 'General', icon: '📊' },
               { id: 'perfil', label: 'Mi Perfil', icon: '👤' },
               { id: 'habitos', label: 'Hábitos', icon: '⚡' },
               { id: 'nutricion', label: 'Nutrición / Entreno', icon: '🔥' },
-              { id: 'extra', label: 'Extra', icon: '✨' },
+              { id: 'extra', label: 'Agua & Sueño', icon: '✨' },
               { id: 'estadisticas', label: 'Estadísticas', icon: '📈' },
-              { id: 'actualizaciones', label: 'Actualización', icon: '🚀' },
+              { id: 'actualizaciones', label: 'Actualizaciones', icon: '🚀' },
             ].map((item) => (
               <button
                 key={item.id}
                 onClick={() => cambiarSeccion(item.id as any)}
-                className={`flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer shrink-0 ${
-                  seccionActiva === item.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                } ${sidebarAbierto ? 'w-full justify-start text-base py-3' : 'justify-center'}`}
+                className={`flex items-center gap-3.5 px-3.5 py-3 rounded-2xl text-xs font-semibold transition cursor-pointer shrink-0 ${
+                  seccionActiva === item.id 
+                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-950/50' 
+                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                } ${sidebarAbierto ? 'w-full justify-start text-sm py-3.5' : 'justify-center'}`}
               >
-                <span className="text-lg">{item.icon}</span>
+                <span className="text-xl">{item.icon}</span>
                 {sidebarAbierto && <span>{item.label}</span>}
               </button>
             ))}
@@ -798,136 +804,151 @@ export default function Home() {
         </div>
 
         {sidebarAbierto && (
-          <div className="p-4 border-t border-slate-800 bg-slate-900 space-y-3 mt-auto">
-            <button onClick={cerrarSesion} className="w-full bg-rose-950/60 border border-rose-800 text-rose-300 font-bold py-2 rounded-xl text-xs cursor-pointer">🚪 Cerrar Sesión</button>
-            <div className="text-[11px] text-slate-400 text-center">🚀 Versión: <span className="text-indigo-400">{ULTIMA_ACTUALIZACION_APP}</span></div>
+          <div className="p-4 border-t border-slate-800 bg-slate-950/50 space-y-3 mt-auto">
+            <button onClick={cerrarSesion} className="w-full bg-rose-950/50 hover:bg-rose-900/80 border border-rose-800/60 text-rose-300 font-bold py-2.5 rounded-xl text-xs cursor-pointer transition">🚪 Cerrar Sesión</button>
+            <div className="text-[10px] text-slate-500 text-center font-mono">🚀 v{ULTIMA_ACTUALIZACION_APP}</div>
             <div>
-              <label className="text-[11px] text-slate-400 font-semibold block mb-1">Fecha Activa</label>
-              <input type="date" value={fechaSeleccionada} onChange={(e) => setFechaSeleccionada(e.target.value)} className="w-full bg-slate-950 border border-slate-700 text-xs px-2.5 py-1.5 rounded-lg text-slate-200 cursor-pointer"/>
+              <label className="text-[11px] text-slate-400 font-medium block mb-1">Fecha Activa</label>
+              <input type="date" value={fechaSeleccionada} onChange={(e) => setFechaSeleccionada(e.target.value)} className={INPUT_CLS}/>
             </div>
           </div>
         )}
       </aside>
 
       {/* CONTENIDO PRINCIPAL */}
-      <main className="flex-1 p-3.5 sm:p-6 md:p-8 overflow-y-auto">
-        <header className="flex flex-col gap-4 mb-6 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-          <div className="flex justify-between items-center">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">
+        <header className="flex flex-col gap-4 mb-6 bg-slate-900/60 backdrop-blur-md p-5 rounded-3xl border border-slate-800/80 shadow-xl">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-              <h2 className="text-lg sm:text-2xl font-bold text-slate-100">
+              <h2 className="text-xl sm:text-2xl font-black bg-gradient-to-r from-slate-100 to-slate-400 bg-clip-text text-transparent">
                 {seccionActiva === 'general' && '📊 Resumen General'}
                 {seccionActiva === 'perfil' && '👤 Mi Perfil y Objetivos'}
                 {seccionActiva === 'habitos' && '⚡ Hábitos Diarios'}
                 {seccionActiva === 'nutricion' && '🔥 Nutrición y Entrenamiento'}
-                {seccionActiva === 'extra' && '✨ Módulos Extra (Agua y Sueño)'}
+                {seccionActiva === 'extra' && '✨ Control de Hidratación y Descanso'}
                 {seccionActiva === 'estadisticas' && '📈 Visualización y Estadísticas'}
                 {seccionActiva === 'actualizaciones' && '🚀 Novedades y Soporte'}
               </h2>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-indigo-400">📅 {formatearFechaLarga(fechaSeleccionada)}</span>
-                <span className="text-xs font-mono bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded border border-indigo-800">🕒 {horaVivo || '00:00'}</span>
+                <span className="text-xs font-medium text-indigo-400">📅 {formatearFechaLarga(fechaSeleccionada)}</span>
+                <span className="text-xs font-mono bg-indigo-950/80 text-indigo-300 px-2.5 py-0.5 rounded-full border border-indigo-800/60">🕒 {horaVivo || '00:00'}</span>
               </div>
             </div>
           </div>
 
           {clima && (
-            <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center gap-3">
-              <span className="text-2xl">{clima.icono}</span>
+            <div className="bg-slate-950/60 border border-slate-800 p-3.5 rounded-2xl flex items-center gap-3 shadow-inner">
+              <span className="text-3xl">{clima.icono}</span>
               <div className="text-left">
-                <span className="font-bold text-sm">{clima.temp}°C - {clima.descripcion}</span>
-                <p className="text-xs text-indigo-300">{clima.recomendacion}</p>
+                <span className="font-bold text-xs sm:text-sm text-slate-200">{clima.temp}°C - {clima.descripcion}</span>
+                <p className="text-xs text-indigo-300/90">{clima.recomendacion}</p>
               </div>
             </div>
           )}
         </header>
 
-        <div className="mb-6 bg-indigo-950/40 border border-indigo-800/50 p-3 rounded-xl text-center text-indigo-300 text-xs italic">
+        <div className="mb-6 bg-gradient-to-r from-indigo-950/50 via-purple-950/30 to-indigo-950/50 border border-indigo-800/40 p-3.5 rounded-2xl text-center text-indigo-200 text-xs sm:text-sm italic font-medium shadow-lg">
           {fraseDelDia}
         </div>
 
         {cargando ? (
-          <div className="text-center py-16 text-slate-400 font-medium">Cargando datos... ⏳</div>
+          <div className="text-center py-20 text-slate-400 font-medium">Cargando tus datos... ⏳</div>
         ) : (
           <div>
-            {/* GENERAL CON BARRAS CON MINIMO ROJO SI ESTAN VACIAS */}
+            {/* GENERAL */}
             {seccionActiva === 'general' && (
               <div className="space-y-6">
                 
-                <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                  <div className="font-bold text-slate-200">💡 Guía de Progreso Diario:</div>
-                  <div className="flex items-center gap-4 text-slate-300 flex-wrap justify-center">
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> Rojo: Vacío o Lejos (&lt;40%)</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Naranja: En camino (40-79%)</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Verde: Ideal (80-100%)</span>
+                <div className="bg-slate-900/80 border border-slate-800/80 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                  <div className="font-bold text-slate-200 flex items-center gap-1.5">💡 Guía de Progreso:</div>
+                  <div className="flex items-center gap-4 text-slate-400 flex-wrap justify-center">
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shadow-sm shadow-rose-500"></span> Rojo (&lt;40%)</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shadow-sm shadow-amber-500"></span> Naranja (40-79%)</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow-sm shadow-emerald-500"></span> Verde (&gt;80%)</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-                  {/* CARD CALORÍAS */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3.5">
+                  {/* CALORÍAS */}
                   {(() => {
                     const estilo = obtenerEstiloBarra(pctCalorias);
                     return (
-                      <div onClick={() => cambiarSeccion('nutricion')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-amber-500 transition">
-                        <span className="text-xs text-slate-400">Balance Calórico</span>
-                        <p className={`text-2xl font-extrabold mt-2 ${balanceCalorico < 0 ? 'text-amber-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico}</p>
-                        <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                      <div onClick={() => cambiarSeccion('nutricion')} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
+                        <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                          <span>Balance Calórico</span>
+                          <span>🔥</span>
+                        </div>
+                        <p className={`text-2xl font-black mt-2 ${balanceCalorico < 0 ? 'text-amber-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs font-normal text-slate-500">kcal</span></p>
+                        <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
+                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
                         </div>
                       </div>
                     );
                   })()}
 
-                  {/* CARD AGUA */}
+                  {/* AGUA */}
                   {(() => {
                     const estilo = obtenerEstiloBarra(pctAgua);
                     return (
-                      <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('agua'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-cyan-500 transition">
-                        <span className="text-xs text-slate-400">Agua Diaria</span>
-                        <p className="text-2xl font-extrabold text-cyan-400 mt-2">{(aguaMl / 1000).toFixed(2)}L</p>
-                        <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                      <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('agua'); }} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
+                        <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                          <span>Agua Diaria</span>
+                          <span>💧</span>
+                        </div>
+                        <p className="text-2xl font-black text-cyan-400 mt-2">{(aguaMl / 1000).toFixed(2)}L <span className="text-xs font-normal text-slate-500">/ 2.5L</span></p>
+                        <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
+                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
                         </div>
                       </div>
                     );
                   })()}
 
-                  {/* CARD HÁBITOS */}
+                  {/* HÁBITOS */}
                   {(() => {
                     const estilo = obtenerEstiloBarra(porcentajeHabitos);
                     return (
-                      <div onClick={() => cambiarSeccion('habitos')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-indigo-500 transition">
-                        <span className="text-xs text-slate-400">Hábitos</span>
-                        <p className="text-2xl font-extrabold text-indigo-400 mt-2">{porcentajeHabitos}%</p>
-                        <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                      <div onClick={() => cambiarSeccion('habitos')} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
+                        <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                          <span>Hábitos</span>
+                          <span>⚡</span>
+                        </div>
+                        <p className="text-2xl font-black text-indigo-400 mt-2">{porcentajeHabitos}%</p>
+                        <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
+                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
                         </div>
                       </div>
                     );
                   })()}
 
-                  {/* CARD PESO / ÉXITO */}
+                  {/* PESO / ÉXITO */}
                   {(() => {
                     const estilo = obtenerEstiloBarra(perfil.porcentaje_probabilidad);
                     return (
-                      <div onClick={() => cambiarSeccion('perfil')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-slate-400 transition">
-                        <span className="text-xs text-slate-400">Peso / Éxito</span>
-                        <p className="text-xl font-extrabold text-slate-200 mt-2">{perfil.peso} kg</p>
-                        <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                      <div onClick={() => cambiarSeccion('perfil')} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
+                        <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                          <span>Peso / Éxito</span>
+                          <span>🎯</span>
+                        </div>
+                        <p className="text-2xl font-black text-slate-200 mt-2">{perfil.peso} <span className="text-xs font-normal text-slate-500">kg</span></p>
+                        <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
+                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
                         </div>
                       </div>
                     );
                   })()}
 
-                  {/* CARD SUEÑO */}
+                  {/* SUEÑO */}
                   {(() => {
                     const estilo = obtenerEstiloBarra(pctSueno);
                     return (
-                      <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('sueno'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-indigo-400 transition">
-                        <span className="text-xs text-slate-400">Sueño</span>
-                        <p className="text-xl font-extrabold text-indigo-300 mt-2">{suenoHoy.horas_totales} hrs</p>
-                        <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                      <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('sueno'); }} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
+                        <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                          <span>Sueño</span>
+                          <span>😴</span>
+                        </div>
+                        <p className="text-2xl font-black text-violet-400 mt-2">{suenoHoy.horas_totales} <span className="text-xs font-normal text-slate-500">hrs</span></p>
+                        <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
+                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
                         </div>
                       </div>
                     );
@@ -938,59 +959,57 @@ export default function Home() {
 
             {/* MI PERFIL Y OBJETIVOS */}
             {seccionActiva === 'perfil' && (
-              <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 max-w-4xl mx-auto">
-                <h2 className="text-xl font-semibold text-slate-200">👤 Mi Perfil y Objetivos</h2>
-                
-                <div className="flex border-b border-slate-700 pb-3 gap-4">
-                  <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-sm font-bold pb-1 cursor-pointer transition ${subSeccionPerfil === 'perfil' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>👤 Datos Personales</button>
-                  <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-sm font-bold pb-1 cursor-pointer transition ${subSeccionPerfil === 'objetivo' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🎯 Mi Objetivo</button>
+              <section className={`${CARD_CLS} max-w-3xl mx-auto space-y-6`}>
+                <div className="flex border-b border-slate-800 pb-3 gap-6">
+                  <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionPerfil === 'perfil' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>👤 Datos Personales</button>
+                  <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionPerfil === 'objetivo' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🎯 Mi Objetivo</button>
                 </div>
 
                 {subSeccionPerfil === 'perfil' ? (
-                  <div className="space-y-4 bg-slate-900/50 p-5 rounded-xl border border-slate-800">
+                  <div className="space-y-4 bg-slate-950/40 p-5 rounded-2xl border border-slate-800/80">
                     <div>
-                      <label className="text-xs text-slate-400 block mb-1">Nombre</label>
-                      <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white" />
+                      <label className="text-xs text-slate-400 font-medium block mb-1.5">Nombre Completo</label>
+                      <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={INPUT_CLS} />
                     </div>
                     <div>
-                      <label className="text-xs text-slate-400 block mb-1">Fecha de Nacimiento</label>
-                      <input type="date" value={perfil.fecha_nacimiento} onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white" />
+                      <label className="text-xs text-slate-400 font-medium block mb-1.5">Fecha de Nacimiento</label>
+                      <input type="date" value={perfil.fecha_nacimiento} onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} className={INPUT_CLS} />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Peso (kg)</label>
-                        <input type="number" step="0.1" value={perfil.peso} onChange={(e) => setPerfil({...perfil, peso: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white" />
+                        <label className="text-xs text-slate-400 font-medium block mb-1.5">Peso (kg)</label>
+                        <input type="number" step="0.1" value={perfil.peso} onChange={(e) => setPerfil({...perfil, peso: Number(e.target.value)})} className={INPUT_CLS} />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Altura (cm)</label>
-                        <input type="number" value={perfil.altura} onChange={(e) => setPerfil({...perfil, altura: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white" />
+                        <label className="text-xs text-slate-400 font-medium block mb-1.5">Altura (cm)</label>
+                        <input type="number" value={perfil.altura} onChange={(e) => setPerfil({...perfil, altura: Number(e.target.value)})} className={INPUT_CLS} />
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-4 bg-slate-900/50 p-5 rounded-xl border border-slate-800">
+                  <div className="space-y-4 bg-slate-950/40 p-5 rounded-2xl border border-slate-800/80">
                     <div>
-                      <label className="text-xs text-slate-400 block mb-1">Objetivo Principal</label>
-                      <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
-                        <option value="bajar">Bajar de peso (Déficit)</option>
-                        <option value="mantener">Mantener peso</option>
-                        <option value="subir">Subir de peso (Masa muscular)</option>
+                      <label className="text-xs text-slate-400 font-medium block mb-1.5">Objetivo Principal</label>
+                      <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={INPUT_CLS}>
+                        <option value="bajar">🔥 Bajar de peso (Déficit Calórico)</option>
+                        <option value="mantener">⚖️ Mantener peso corporal</option>
+                        <option value="subir">💪 Subir de peso (Masa muscular)</option>
                       </select>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Kilos Objetivo</label>
-                        <input type="number" step="0.1" value={perfil.kilos_objetivo} onChange={(e) => setPerfil({...perfil, kilos_objetivo: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white" />
+                        <label className="text-xs text-slate-400 font-medium block mb-1.5">Kilos Objetivo</label>
+                        <input type="number" step="0.1" value={perfil.kilos_objetivo} onChange={(e) => setPerfil({...perfil, kilos_objetivo: Number(e.target.value)})} className={INPUT_CLS} />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Plazo (Meses)</label>
-                        <input type="number" value={perfil.tiempo_objetivo_meses} onChange={(e) => setPerfil({...perfil, tiempo_objetivo_meses: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white" />
+                        <label className="text-xs text-slate-400 font-medium block mb-1.5">Plazo (Meses)</label>
+                        <input type="number" value={perfil.tiempo_objetivo_meses} onChange={(e) => setPerfil({...perfil, tiempo_objetivo_meses: Number(e.target.value)})} className={INPUT_CLS} />
                       </div>
                     </div>
                   </div>
                 )}
 
-                <button onClick={guardarPerfil} disabled={guardandoPerfil} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl cursor-pointer">
+                <button onClick={guardarPerfil} disabled={guardandoPerfil} className={BTN_PRIMARY}>
                   {guardandoPerfil ? 'Guardando...' : '💾 Guardar Perfil'}
                 </button>
               </section>
@@ -998,18 +1017,18 @@ export default function Home() {
 
             {/* HÁBITOS */}
             {seccionActiva === 'habitos' && (
-              <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6">
+              <section className={`${CARD_CLS} space-y-6 max-w-3xl mx-auto`}>
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-indigo-400">⚡ Hábitos Diarios</h2>
-                  <span className="text-xs px-3 py-1 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300">
+                  <h3 className="text-base font-bold text-indigo-400 flex items-center gap-2">⚡ Hábitos Diarios</h3>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300">
                     {totalCompletados}/{habitos.length} ({porcentajeHabitos}%)
                   </span>
                 </div>
 
-                <form onSubmit={agregarHabito} className="flex flex-col sm:flex-row gap-2 bg-slate-900 p-3 rounded-2xl border border-slate-800">
-                  <input type="text" placeholder="Nuevo hábito..." value={nuevoHabito} onChange={(e) => setNuevoHabito(e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white" />
-                  <input type="time" value={horaObjetivo} onChange={(e) => setHoraObjetivo(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-xl px-3 text-sm text-white font-mono py-2" />
-                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-xl text-sm font-medium cursor-pointer shrink-0">Añadir</button>
+                <form onSubmit={agregarHabito} className="flex flex-col sm:flex-row gap-2.5 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+                  <input type="text" placeholder="Escribe un nuevo hábito..." value={nuevoHabito} onChange={(e) => setNuevoHabito(e.target.value)} className={INPUT_CLS} />
+                  <input type="time" value={horaObjetivo} onChange={(e) => setHoraObjetivo(e.target.value)} className={`${INPUT_CLS} sm:w-32 text-center font-mono`} />
+                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-xl text-xs cursor-pointer shrink-0 transition">Añadir</button>
                 </form>
 
                 <div className="space-y-2.5">
@@ -1017,19 +1036,19 @@ export default function Home() {
                     const completado = !!registrosHoy[h.id]?.completado;
                     const racha = rachasHabitos[h.id] || 0;
                     return (
-                      <div key={h.id} className={`p-3.5 rounded-xl border flex items-center justify-between ${completado ? 'bg-indigo-950/40 border-indigo-800' : 'bg-slate-900 border-slate-800'}`}>
-                        <div className="flex items-center gap-3">
-                          <button onClick={() => alternarHabito(h.id)} className={`w-6 h-6 rounded-lg border flex items-center justify-center cursor-pointer ${completado ? 'bg-indigo-600 border-indigo-500' : 'border-slate-600'}`}>
+                      <div key={h.id} className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${completado ? 'bg-indigo-950/30 border-indigo-800/60' : 'bg-slate-950/40 border-slate-800/80'}`}>
+                        <div className="flex items-center gap-3.5">
+                          <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center cursor-pointer transition ${completado ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' : 'border-slate-700 hover:border-indigo-500'}`}>
                             {completado && '✓'}
                           </button>
                           <div>
-                            <p className={`text-sm font-semibold ${completado ? 'line-through text-slate-400' : ''}`}>{h.texto}</p>
-                            <p className="text-[11px] text-slate-400">Hora: <span className="text-indigo-300 font-mono">{h.hora_objetivo}</span></p>
+                            <p className={`text-xs sm:text-sm font-semibold ${completado ? 'line-through text-slate-400' : 'text-slate-100'}`}>{h.texto}</p>
+                            <p className="text-[10px] text-slate-400">Hora: <span className="text-indigo-300 font-mono">{h.hora_objetivo}</span></p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-xs px-2 py-0.5 rounded bg-amber-950 border border-amber-800 text-amber-400">🔥 {racha} días</span>
-                          <button onClick={() => eliminarHabito(h.id)} className="bg-rose-950/60 border border-rose-800 text-rose-300 p-1.5 rounded-xl text-xs cursor-pointer hover:bg-rose-900">🗑️</button>
+                          <span className="text-xs px-2.5 py-1 rounded-full bg-amber-950/80 border border-amber-800/60 text-amber-400 font-bold">🔥 {racha}d</span>
+                          <button onClick={() => eliminarHabito(h.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
                         </div>
                       </div>
                     );
@@ -1038,103 +1057,106 @@ export default function Home() {
               </section>
             )}
 
-            {/* NUTRICIÓN Y ENTRENAMIENTO SEPARADOS EN 2 PESTAÑAS */}
+            {/* NUTRICIÓN Y ENTRENAMIENTO */}
             {seccionActiva === 'nutricion' && (
-              <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6">
-                <div className="flex border-b border-slate-700 pb-3 gap-4 justify-center">
-                  <button onClick={() => setSubSeccionNutricion('nutricion')} className={`text-sm font-bold pb-1 cursor-pointer transition ${subSeccionNutricion === 'nutricion' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400 hover:text-slate-200'}`}>🥗 Nutrición y Macros</button>
-                  <button onClick={() => setSubSeccionNutricion('entrenamiento')} className={`text-sm font-bold pb-1 cursor-pointer transition ${subSeccionNutricion === 'entrenamiento' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🏋️ Actividad Física y Entrenamiento</button>
+              <section className={`${CARD_CLS} max-w-4xl mx-auto space-y-6`}>
+                <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
+                  <button onClick={() => setSubSeccionNutricion('nutricion')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionNutricion === 'nutricion' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400 hover:text-slate-200'}`}>🥗 Nutrición y Macros</button>
+                  <button onClick={() => setSubSeccionNutricion('entrenamiento')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionNutricion === 'entrenamiento' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🏋️ Actividad Física</button>
                 </div>
 
                 {subSeccionNutricion === 'nutricion' ? (
                   <div className="space-y-6">
-                    <div className="bg-slate-900 p-5 rounded-2xl border border-slate-700 flex flex-col md:flex-row items-center gap-4">
-                      <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 text-center">
-                        <span className="text-4xl font-black text-amber-400">{evaluacionNutricion.nota}/10</span>
+                    <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 flex flex-col sm:flex-row items-center gap-4">
+                      <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 text-center min-w-[100px]">
+                        <span className="text-3xl font-black text-amber-400">{evaluacionNutricion.nota}/10</span>
                       </div>
                       <div>
-                        <h3 className="text-sm font-bold text-slate-200">Objetivo: <span className="text-amber-400 uppercase">{perfil.objetivo}</span></h3>
-                        <p className="text-sm text-slate-400">{evaluacionNutricion.mensaje}</p>
+                        <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wide">Objetivo: <span className="text-amber-400">{perfil.objetivo}</span></h3>
+                        <p className="text-xs text-slate-400 mt-1">{evaluacionNutricion.mensaje}</p>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-3 text-center">
-                      <div className="bg-slate-900 p-3 rounded-xl border border-slate-800"><span className="text-xs text-rose-400 font-bold block">Proteínas</span><span className="text-lg font-bold text-rose-300">{totalProteinas}g</span></div>
-                      <div className="bg-slate-900 p-3 rounded-xl border border-slate-800"><span className="text-xs text-amber-400 font-bold block">Carbs</span><span className="text-lg font-bold text-amber-300">{totalCarbs}g</span></div>
-                      <div className="bg-slate-900 p-3 rounded-xl border border-slate-800"><span className="text-xs text-blue-400 font-bold block">Grasas</span><span className="text-lg font-bold text-blue-300">{totalGrasas}g</span></div>
+                      <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80"><span className="text-[11px] text-rose-400 font-bold block">Proteínas</span><span className="text-base sm:text-lg font-black text-rose-300">{totalProteinas}g</span></div>
+                      <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80"><span className="text-[11px] text-amber-400 font-bold block">Carbs</span><span className="text-base sm:text-lg font-black text-amber-300">{totalCarbs}g</span></div>
+                      <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80"><span className="text-[11px] text-cyan-400 font-bold block">Grasas</span><span className="text-base sm:text-lg font-black text-cyan-300">{totalGrasas}g</span></div>
                     </div>
 
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <h3 className="text-xs font-semibold uppercase text-slate-400">🥗 Comidas del Día</h3>
-                        <button onClick={agregarComida} className="text-xs text-amber-400 cursor-pointer">+ Agregar Comida</button>
+                        <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">🥗 Comidas del Día</h3>
+                        <button onClick={agregarComida} className="text-xs text-amber-400 font-bold hover:underline cursor-pointer">+ Agregar Comida</button>
                       </div>
                       
                       {comidas.map((item) => (
-                        <div key={item.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
+                        <div key={item.id} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-3">
                           <div className="flex gap-2 items-center">
-                            <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold" />
-                            <button onClick={() => abrirModalIaComida(item)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 px-3 py-1.5 rounded-xl text-xs cursor-pointer hover:bg-cyan-900">📷</button>
-                            <button onClick={() => eliminarComida(item.id)} className="bg-rose-950/60 border border-rose-800 text-rose-300 p-1.5 rounded-xl text-xs cursor-pointer hover:bg-rose-900">🗑️</button>
+                            <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
+                            <button onClick={() => abrirModalIaComida(item)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 px-3 py-2 rounded-xl text-xs cursor-pointer hover:bg-cyan-900 transition">📷</button>
+                            <button onClick={() => eliminarComida(item.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
                           </div>
                           <div className="grid grid-cols-4 gap-2 text-xs">
-                            <div><label className="text-[10px] text-slate-400">Kcal</label><input type="number" value={item.calorias} onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                            <div><label className="text-[10px] text-rose-400">Prot (g)</label><input type="number" value={item.proteinas || 0} onChange={(e) => actualizarComida(item.id, 'proteinas', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                            <div><label className="text-[10px] text-amber-400">Carbs (g)</label><input type="number" value={item.carbs || 0} onChange={(e) => actualizarComida(item.id, 'carbs', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                            <div><label className="text-[10px] text-blue-400">Grasas (g)</label><input type="number" value={item.grasas || 0} onChange={(e) => actualizarComida(item.id, 'grasas', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                            <div><label className="text-[10px] text-slate-400 block mb-1">Kcal</label><input type="number" value={item.calorias} onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
+                            <div><label className="text-[10px] text-rose-400 block mb-1">Prot (g)</label><input type="number" value={item.proteinas || 0} onChange={(e) => actualizarComida(item.id, 'proteinas', Number(e.target.value))} className={INPUT_CLS} /></div>
+                            <div><label className="text-[10px] text-amber-400 block mb-1">Carbs (g)</label><input type="number" value={item.carbs || 0} onChange={(e) => actualizarComida(item.id, 'carbs', Number(e.target.value))} className={INPUT_CLS} /></div>
+                            <div><label className="text-[10px] text-cyan-400 block mb-1">Grasas (g)</label><input type="number" value={item.grasas || 0} onChange={(e) => actualizarComida(item.id, 'grasas', Number(e.target.value))} className={INPUT_CLS} /></div>
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    <button onClick={guardarCalorias} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl cursor-pointer">
+                    <button onClick={guardarCalorias} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl cursor-pointer transition shadow-lg shadow-amber-950/50">
                       💾 Guardar Comidas
                     </button>
                   </div>
                 ) : (
-                  /* PESTAÑA ENTRENAMIENTO */
+                  /* PESTAÑA ENTRENAMIENTO Y ACTIVIDAD FÍSICA */
                   <div className="space-y-6">
-                    {/* CALCULADORA DE RUTINA POR LINK DE YOUTUBE */}
-                    <div className="bg-slate-900/90 border border-red-900/50 p-4 rounded-2xl space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">▶️</span>
-                        <h3 className="text-sm font-bold text-red-400">Calcular Entrenamiento vía YouTube (IA)</h3>
+                    
+                    {/* RECUADRO DE YOUTUBE MEJORADO Y CENTRADO */}
+                    <div className="bg-slate-950/80 border border-red-900/40 p-5 rounded-2xl space-y-4 text-center shadow-lg">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-2xl animate-pulse">▶️</span>
+                        <h3 className="text-xs sm:text-sm font-extrabold text-red-400 uppercase tracking-wide">Calcular Entrenamiento vía YouTube (IA)</h3>
                       </div>
-                      <p className="text-xs text-slate-400">Ingresa el enlace del video de YouTube que vas a realizar y la IA estimará tu consumo calórico y rutina automáticamente.</p>
-                      <div className="flex gap-2">
+                      <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                        Ingresa el enlace del video de YouTube que vas a realizar y la IA estimará tu consumo calórico y rutina automáticamente.
+                      </p>
+                      
+                      <div className="flex flex-col items-center gap-3 max-w-md mx-auto w-full">
                         <input 
                           type="url" 
                           placeholder="https://www.youtube.com/watch?v=..." 
                           value={youtubeLink} 
                           onChange={(e) => setYoutubeLink(e.target.value)} 
-                          className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white" 
+                          className={`${INPUT_CLS} text-center border-slate-700/80 focus:border-red-500`} 
                         />
                         <button 
                           onClick={procesarVideoYoutubeIA} 
                           disabled={procesandoYoutube} 
-                          className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-xl text-xs cursor-pointer disabled:opacity-50 shrink-0"
+                          className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-2.5 px-5 rounded-xl text-xs cursor-pointer disabled:opacity-50 transition shadow-lg shadow-red-950/40 active:scale-[0.98]"
                         >
-                          {procesandoYoutube ? 'Procesando...' : '🤖 Procesar Video'}
+                          {procesandoYoutube ? '⏳ Procesando video...' : '🤖 Procesar Video'}
                         </button>
                       </div>
                     </div>
 
                     <div className="space-y-3 pt-2">
                       <div className="flex justify-between items-center">
-                        <h3 className="text-xs font-semibold uppercase text-slate-400">🏋️ Actividades Físicas Registradas</h3>
-                        <button onClick={agregarEjercicio} className="text-xs text-indigo-400 cursor-pointer">+ Agregar Ejercicio</button>
+                        <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">🏋️ Actividades Registradas</h3>
+                        <button onClick={agregarEjercicio} className="text-xs text-indigo-400 font-bold hover:underline cursor-pointer">+ Agregar Ejercicio</button>
                       </div>
 
                       {ejercicios.map((item) => (
-                        <div key={item.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
-                          <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                            <input type="text" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className="flex-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold" />
+                        <div key={item.id} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-3">
+                          <div className="flex flex-col sm:flex-row gap-2.5 items-start sm:items-center">
+                            <input type="text" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
                             
-                            {/* SELECTOR DINÁMICO DE ACTIVIDAD */}
                             <select 
                               value={item.tipo || 'fuerza'} 
                               onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} 
-                              className="bg-slate-950 border border-slate-700 text-xs rounded-xl px-2.5 py-1.5 text-indigo-300 font-bold cursor-pointer"
+                              className={`${INPUT_CLS} sm:w-44 text-indigo-300 font-bold`}
                             >
                               <option value="fuerza">🏋️ Fuerza / Gym</option>
                               <option value="running">🏃 Running</option>
@@ -1148,36 +1170,36 @@ export default function Home() {
                             </select>
 
                             <div className="flex items-center gap-2">
-                              <button onClick={() => calcularCaloriasEjercicioIA(item)} className="bg-indigo-950 border border-indigo-800 text-indigo-300 px-3 py-1.5 rounded-xl text-xs cursor-pointer">🤖 IA</button>
-                              <button onClick={() => eliminarEjercicio(item.id)} className="bg-rose-950/60 border border-rose-800 text-rose-300 p-1.5 rounded-xl text-xs cursor-pointer hover:bg-rose-900">🗑️</button>
+                              <button onClick={() => calcularCaloriasEjercicioIA(item)} className="bg-indigo-950 border border-indigo-800 text-indigo-300 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer hover:bg-indigo-900 transition">🤖 IA</button>
+                              <button onClick={() => eliminarEjercicio(item.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
                             </div>
                           </div>
 
-                          {/* CAMPOS DINÁMICOS SEGÚN ACTIVIDAD SELECCIONADA */}
+                          {/* CAMPOS DINÁMICOS SEGÚN ACTIVIDAD */}
                           {item.tipo === 'fuerza' ? (
                             <div className="grid grid-cols-4 gap-2 text-xs">
-                              <div><label className="text-[10px] text-slate-400">Series</label><input type="number" value={item.series || 0} onChange={(e) => actualizarEjercicio(item.id, 'series', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                              <div><label className="text-[10px] text-slate-400">Reps</label><input type="number" value={item.repeticiones || 0} onChange={(e) => actualizarEjercicio(item.id, 'repeticiones', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                              <div><label className="text-[10px] text-slate-400">Peso (kg)</label><input type="number" value={item.peso || 0} onChange={(e) => actualizarEjercicio(item.id, 'peso', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                              <div><label className="text-[10px] text-amber-400">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                              <div><label className="text-[10px] text-slate-400 block mb-1">Series</label><input type="number" value={item.series || 0} onChange={(e) => actualizarEjercicio(item.id, 'series', Number(e.target.value))} className={INPUT_CLS} /></div>
+                              <div><label className="text-[10px] text-slate-400 block mb-1">Reps</label><input type="number" value={item.repeticiones || 0} onChange={(e) => actualizarEjercicio(item.id, 'repeticiones', Number(e.target.value))} className={INPUT_CLS} /></div>
+                              <div><label className="text-[10px] text-slate-400 block mb-1">Peso (kg)</label><input type="number" value={item.peso || 0} onChange={(e) => actualizarEjercicio(item.id, 'peso', Number(e.target.value))} className={INPUT_CLS} /></div>
+                              <div><label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
                             </div>
                           ) : (item.tipo === 'running' || item.tipo === 'ciclismo' || item.tipo === 'caminata') ? (
                             <div className="grid grid-cols-3 gap-2 text-xs">
-                              <div><label className="text-[10px] text-slate-400">Distancia (km)</label><input type="number" step="0.1" value={item.distancia_km || 0} onChange={(e) => actualizarEjercicio(item.id, 'distancia_km', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                              <div><label className="text-[10px] text-slate-400">Duración (min)</label><input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                              <div><label className="text-[10px] text-amber-400">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                              <div><label className="text-[10px] text-slate-400 block mb-1">Distancia (km)</label><input type="number" step="0.1" value={item.distancia_km || 0} onChange={(e) => actualizarEjercicio(item.id, 'distancia_km', Number(e.target.value))} className={INPUT_CLS} /></div>
+                              <div><label className="text-[10px] text-slate-400 block mb-1">Duración (min)</label><input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className={INPUT_CLS} /></div>
+                              <div><label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
                             </div>
                           ) : (
                             <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div><label className="text-[10px] text-slate-400">Duración (min)</label><input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                              <div><label className="text-[10px] text-amber-400">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                              <div><label className="text-[10px] text-slate-400 block mb-1">Duración (min)</label><input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className={INPUT_CLS} /></div>
+                              <div><label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
                             </div>
                           )}
                         </div>
                       ))}
                     </div>
 
-                    <button onClick={guardarCalorias} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl cursor-pointer">
+                    <button onClick={guardarCalorias} className={BTN_PRIMARY}>
                       💾 Guardar Entrenamiento
                     </button>
                   </div>
@@ -1187,66 +1209,66 @@ export default function Home() {
 
             {/* SECCIÓN EXTRA (HIDRATACIÓN Y SUEÑO) */}
             {seccionActiva === 'extra' && (
-              <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 max-w-xl mx-auto">
-                <div className="flex border-b border-slate-700 pb-3 gap-4 justify-center">
-                  <button onClick={() => setSubSeccionExtra('agua')} className={`text-sm font-bold pb-1 cursor-pointer ${subSeccionExtra === 'agua' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400'}`}>💧 Hidratación</button>
-                  <button onClick={() => setSubSeccionExtra('sueno')} className={`text-sm font-bold pb-1 cursor-pointer ${subSeccionExtra === 'sueno' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400'}`}>😴 Descanso y Sueño</button>
+              <section className={`${CARD_CLS} max-w-lg mx-auto space-y-6`}>
+                <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
+                  <button onClick={() => setSubSeccionExtra('agua')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionExtra === 'agua' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}>💧 Hidratación</button>
+                  <button onClick={() => setSubSeccionExtra('sueno')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionExtra === 'sueno' ? 'text-violet-400 border-b-2 border-violet-400' : 'text-slate-400 hover:text-slate-200'}`}>😴 Descanso y Sueño</button>
                 </div>
 
                 {subSeccionExtra === 'agua' ? (
-                  <div className="space-y-4 text-center bg-slate-900 p-6 rounded-2xl border border-slate-800">
-                    <span className="text-5xl">💧</span>
-                    <h3 className="text-xl font-bold text-cyan-300">Control de Hidratación</h3>
-                    <p className="text-3xl font-black text-cyan-400">{(aguaMl / 1000).toFixed(2)} / 2.50 L</p>
+                  <div className="space-y-5 text-center bg-slate-950/60 p-6 rounded-2xl border border-slate-800/80">
+                    <span className="text-5xl inline-block animate-bounce">💧</span>
+                    <h3 className="text-lg font-black text-cyan-300">Control de Hidratación</h3>
+                    <p className="text-3xl font-black text-cyan-400">{(aguaMl / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-500">/ 2.50 L</span></p>
                     {(() => {
                       const estilo = obtenerEstiloBarra(pctAgua);
                       return (
                         <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
-                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
                         </div>
                       );
                     })()}
-                    <div className="flex justify-center gap-3 pt-2">
-                      <button onClick={() => modificarAgua(250)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer">+250 ml 🥛</button>
-                      <button onClick={() => modificarAgua(500)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer">+500 ml 🍾</button>
-                      <button onClick={() => modificarAgua(-250)} className="bg-slate-950 border border-slate-800 text-slate-400 px-3 py-2 rounded-xl text-xs cursor-pointer">-250 ml</button>
+                    <div className="flex justify-center gap-2.5 pt-2">
+                      <button onClick={() => modificarAgua(250)} className="bg-cyan-950/80 border border-cyan-800 text-cyan-300 font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-cyan-900 transition">+250 ml 🥛</button>
+                      <button onClick={() => modificarAgua(500)} className="bg-cyan-950/80 border border-cyan-800 text-cyan-300 font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-cyan-900 transition">+500 ml 🍾</button>
+                      <button onClick={() => modificarAgua(-250)} className="bg-slate-900 border border-slate-800 text-slate-400 px-3 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-slate-800 transition">-250 ml</button>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-5 text-center bg-slate-900 p-6 rounded-2xl border border-slate-800">
-                    <span className="text-5xl">😴</span>
-                    <h3 className="text-xl font-bold text-indigo-300">Control de Descanso y Sueño</h3>
-                    <p className="text-3xl font-black text-indigo-400">{suenoHoy.horas_totales} <span className="text-sm font-normal text-slate-400">/ 8.0 hrs</span></p>
+                  <div className="space-y-5 text-center bg-slate-950/60 p-6 rounded-2xl border border-slate-800/80">
+                    <span className="text-5xl inline-block animate-pulse">😴</span>
+                    <h3 className="text-lg font-black text-violet-300">Control de Sueño</h3>
+                    <p className="text-3xl font-black text-violet-400">{suenoHoy.horas_totales} <span className="text-sm font-normal text-slate-500">/ 8.0 hrs</span></p>
                     {(() => {
                       const estilo = obtenerEstiloBarra(pctSueno);
                       return (
                         <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
-                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
                         </div>
                       );
                     })()}
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center pt-2 max-w-sm mx-auto">
-                      <div className="flex flex-col items-center">
-                        <label className="text-xs text-slate-400 font-semibold block mb-1 text-center">Acostarse</label>
-                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="w-32 text-center bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white font-mono" />
+                    <div className="grid grid-cols-2 gap-4 text-center pt-2 max-w-sm mx-auto">
+                      <div>
+                        <label className="text-xs text-slate-400 font-medium block mb-1">Acostarse</label>
+                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className={`${INPUT_CLS} text-center font-mono`} />
                       </div>
-                      <div className="flex flex-col items-center">
-                        <label className="text-xs text-slate-400 font-semibold block mb-1 text-center">Levantarse</label>
-                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="w-32 text-center bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white font-mono" />
+                      <div>
+                        <label className="text-xs text-slate-400 font-medium block mb-1">Levantarse</label>
+                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className={`${INPUT_CLS} text-center font-mono`} />
                       </div>
                     </div>
 
                     <div className="text-center pt-2">
-                      <label className="text-xs text-slate-400 font-semibold block mb-1 text-center">Calidad del Sueño</label>
-                      <div className="flex gap-2 justify-center py-2">
+                      <label className="text-xs text-slate-400 font-medium block mb-1">Calidad del Sueño</label>
+                      <div className="flex gap-2 justify-center py-1">
                         {[1, 2, 3, 4, 5].map((estrella) => (
-                          <button key={estrella} type="button" onClick={() => setSuenoHoy({...suenoHoy, calidad: estrella})} className={`text-2xl cursor-pointer ${suenoHoy.calidad >= estrella ? 'text-amber-400 scale-110' : 'text-slate-600'}`}>★</button>
+                          <button key={estrella} type="button" onClick={() => setSuenoHoy({...suenoHoy, calidad: estrella})} className={`text-2xl cursor-pointer transition ${suenoHoy.calidad >= estrella ? 'text-amber-400 scale-110' : 'text-slate-700'}`}>★</button>
                         ))}
                       </div>
                     </div>
 
-                    <button onClick={guardarSueno} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-sm cursor-pointer shadow-md">
+                    <button onClick={guardarSueno} className={BTN_PRIMARY}>
                       💾 Guardar Sueño
                     </button>
                   </div>
@@ -1256,44 +1278,43 @@ export default function Home() {
 
             {/* ESTADÍSTICAS */}
             {seccionActiva === 'estadisticas' && (
-              <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 max-w-4xl mx-auto">
-                <h2 className="text-xl font-semibold text-indigo-400">📈 Visualización y Estadísticas Comparativas</h2>
+              <section className={`${CARD_CLS} max-w-3xl mx-auto space-y-6`}>
+                <h3 className="text-base font-bold text-indigo-400 flex items-center gap-2">📈 Visualización y Estadísticas</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 space-y-2">
-                    <span className="text-xs font-bold uppercase text-slate-400">🍽️ Consumo Calórico</span>
-                    <p className="text-3xl font-black text-amber-400">{totalIngeridoCal} <span className="text-sm font-normal text-slate-400">kcal</span></p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-1">
+                    <span className="text-[11px] font-bold uppercase text-slate-400">🍽️ Ingerido</span>
+                    <p className="text-2xl font-black text-amber-400">{totalIngeridoCal} <span className="text-xs font-normal text-slate-500">kcal</span></p>
                   </div>
 
-                  <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 space-y-2">
-                    <span className="text-xs font-bold uppercase text-slate-400">🔥 Gasto Energético</span>
-                    <p className="text-3xl font-black text-rose-400">{totalGastadoCal} <span className="text-sm font-normal text-slate-400">kcal</span></p>
+                  <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-1">
+                    <span className="text-[11px] font-bold uppercase text-slate-400">🔥 Gastado</span>
+                    <p className="text-2xl font-black text-rose-400">{totalGastadoCal} <span className="text-xs font-normal text-slate-500">kcal</span></p>
                   </div>
 
-                  <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 space-y-2">
-                    <span className="text-xs font-bold uppercase text-slate-400">⚖️ Balance Neto</span>
-                    <p className={`text-3xl font-black ${balanceCalorico < 0 ? 'text-cyan-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-sm font-normal text-slate-400">kcal</span></p>
+                  <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-1">
+                    <span className="text-[11px] font-bold uppercase text-slate-400">⚖️ Balance</span>
+                    <p className={`text-2xl font-black ${balanceCalorico < 0 ? 'text-cyan-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs font-normal text-slate-500">kcal</span></p>
                   </div>
                 </div>
 
-                <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 space-y-3">
-                  <h3 className="text-sm font-bold text-slate-200">📊 Resumen de Rendimiento</h3>
-                  <p className="text-xs text-slate-400">Tus hábitos y registro nutricional muestran una constancia del <strong className="text-indigo-400">{porcentajeHabitos}%</strong>. Mantén el enfoque en tu objetivo de <strong className="text-amber-400">{perfil.objetivo}</strong>.</p>
+                <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 space-y-2">
+                  <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wide">📊 Resumen de Rendimiento</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">Tus hábitos y registro nutricional muestran una constancia del <strong className="text-indigo-400">{porcentajeHabitos}%</strong>. Continúa enfocado en tu meta de <strong className="text-amber-400">{perfil.objetivo}</strong>.</p>
                 </div>
               </section>
             )}
 
             {/* ACTUALIZACIONES Y SOPORTE */}
             {seccionActiva === 'actualizaciones' && (
-              <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 max-w-2xl mx-auto">
-                <h2 className="text-xl font-semibold text-indigo-400">🚀 Novedades y Soporte</h2>
-                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-2">
-                  <p className="font-bold text-white">Versión Actual: {ULTIMA_ACTUALIZACION_APP}</p>
-                  <p>• Pestañas separadas para Nutrición y Entrenamiento.</p>
-                  <p>• Módulo de YouTube que analiza videos y calcula calorías quemadas automáticamente.</p>
-                  <p>• Campos adaptativos según disciplina deportiva (Running, Fuerza, Ciclismo, etc.).</p>
-                  <p>• Barras rojas mínimas cuando las métricas están en 0 en Resumen General.</p>
-                  <p>• Eliminación del módulo de notas innecesario para aligerar la app.</p>
+              <section className={`${CARD_CLS} max-w-xl mx-auto space-y-6`}>
+                <h3 className="text-base font-bold text-indigo-400 flex items-center gap-2">🚀 Novedades y Soporte</h3>
+                <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 text-xs text-slate-300 space-y-2.5">
+                  <p className="font-bold text-slate-100">Versión: {ULTIMA_ACTUALIZACION_APP}</p>
+                  <p>• Pestañas separadas para Nutrición y Entrenamiento con diseño Glassmorphic.</p>
+                  <p>• Módulo de YouTube centrado para analizar rutinas y calcular gasto calórico automático.</p>
+                  <p>• Indicadores mínimos rojos visuales en Resumen General.</p>
+                  <p>• Rendimiento optimizado de renderizado y sincronización automática con Supabase.</p>
                 </div>
               </section>
             )}
@@ -1304,31 +1325,31 @@ export default function Home() {
 
       {/* MODAL IA COMIDA */}
       {comidaIaModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
-            <h3 className="text-lg font-bold text-cyan-300">🤖 Estimador Nutricional IA</h3>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-base font-extrabold text-cyan-300 flex items-center gap-2">🤖 Estimador Nutricional IA</h3>
             <div>
-              <label className="text-xs text-slate-400 block mb-1">Nombre del plato</label>
-              <input type="text" value={nombreIaModalInput} onChange={(e) => setNombreIaModalInput(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white" />
+              <label className="text-xs text-slate-400 font-medium block mb-1">Nombre del plato</label>
+              <input type="text" value={nombreIaModalInput} onChange={(e) => setNombreIaModalInput(e.target.value)} className={INPUT_CLS} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 block mb-1">Describe los ingredientes (ej: pechuga de pollo 150g con arroz)</label>
-              <textarea rows={3} value={textoIaInput} onChange={(e) => setTextoIaInput(e.target.value)} placeholder="Ej: 2 huevos revueltos con una tostada de pan integral..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white" />
+              <label className="text-xs text-slate-400 font-medium block mb-1">Describe los ingredientes (ej: pechuga 150g con arroz)</label>
+              <textarea rows={3} value={textoIaInput} onChange={(e) => setTextoIaInput(e.target.value)} placeholder="Ej: 2 huevos revueltos con una tostada..." className={INPUT_CLS} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 block mb-1">O sube foto de tu plato:</label>
-              <input type="file" accept="image/*" multiple onChange={procesarFotoIA} className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-cyan-950 file:text-cyan-300 hover:file:bg-cyan-900 cursor-pointer" />
+              <label className="text-xs text-slate-400 font-medium block mb-1">O sube foto de tu plato:</label>
+              <input type="file" accept="image/*" multiple onChange={procesarFotoIA} className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-cyan-950 file:text-cyan-300 hover:file:bg-cyan-900 cursor-pointer" />
             </div>
             {imagenesIaInput.length > 0 && (
               <div className="flex gap-2 flex-wrap">
                 {imagenesIaInput.map((img, idx) => (
-                  <img key={idx} src={img} alt="Comida" className="w-16 h-16 object-cover rounded-lg border border-slate-700" />
+                  <img key={idx} src={img} alt="Comida" className="w-14 h-14 object-cover rounded-xl border border-slate-700" />
                 ))}
               </div>
             )}
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setComidaIaModal(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl text-sm font-medium cursor-pointer">Cancelar</button>
-              <button onClick={estimarComidaConIA} disabled={procesandoIa} className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-2.5 rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
+              <button onClick={() => setComidaIaModal(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition">Cancelar</button>
+              <button onClick={estimarComidaConIA} disabled={procesandoIa} className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-2.5 rounded-xl text-xs font-bold cursor-pointer transition disabled:opacity-50">
                 {procesandoIa ? 'Analizando...' : '✨ Calcular Macros'}
               </button>
             </div>
