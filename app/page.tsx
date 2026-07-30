@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 
 // FECHA Y HORA REAL DINÁMICA DE ÚLTIMA ACTUALIZACIÓN
 const obtenerFechaUltimaActualizacion = () => {
-  if (typeof window === 'undefined') return '29/07/2026 18:00';
+  if (typeof window === 'undefined') return '30/07/2026 18:00';
   const ahora = new Date();
   const fecha = ahora.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const hora = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
@@ -112,8 +112,8 @@ const obtenerFechaLogica = () => {
   return fechaAjustada.toISOString().split('T')[0];
 };
 
-const obtenerHora24 = (fechaISO?: string) => {
-  const d = fechaISO ? new Date(fechaISO) : new Date();
+const obtenerHora24 = () => {
+  const d = new Date();
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
@@ -149,7 +149,12 @@ export default function Home() {
   const [subSeccionPerfil, setSubSeccionPerfil] = useState<'perfil' | 'objetivo'>('perfil');
   const [subSeccionNutricion, setSubSeccionNutricion] = useState<'nutricion' | 'entrenamiento'>('nutricion');
   const [subSeccionExtra, setSubSeccionExtra] = useState<'agua' | 'sueno'>('agua');
-  
+  const [subSeccionActualizaciones, setSubSeccionActualizaciones] = useState<'novedades' | 'soporte'>('novedades');
+
+  // Soporte
+  const [tipoSoporte, setTipoSoporte] = useState('Sugerencia de mejora');
+  const [mensajeSoporte, setMensajeSoporte] = useState('');
+
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
   const [horaVivo, setHoraVivo] = useState<string>('');
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(obtenerFechaLogica());
@@ -205,9 +210,9 @@ export default function Home() {
     calidad: 3,
   });
 
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(false);
 
-  // CONTROL DE SESIÓN
+  // CONTROL DE SESIÓN Y PERSISTENCIA DE APPS
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -245,7 +250,7 @@ export default function Home() {
 
   useEffect(() => {
     if (session?.user) cargarDatos();
-  }, [fechaSeleccionada, session]);
+  }, [fechaSeleccionada, session?.user?.id]);
 
   const manejarAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -377,7 +382,6 @@ export default function Home() {
   const cargarDatos = async () => {
     const user = session?.user;
     if (!user) return;
-    setCargando(true);
 
     const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').eq('user_id', user.id).maybeSingle();
     if (datosPerfil) {
@@ -406,8 +410,6 @@ export default function Home() {
 
     const { data: datosSueno } = await supabase.from('registro_sueno').select('*').eq('user_id', user.id).eq('fecha', fechaSeleccionada).maybeSingle();
     setSuenoHoy(datosSueno || { fecha: fechaSeleccionada, hora_acostarse: '23:00', hora_levantarse: '07:00', horas_totales: 0, calidad: 3 });
-
-    setCargando(false);
   };
 
   const bmrCalculado = useMemo(() => {
@@ -421,20 +423,26 @@ export default function Home() {
     return Math.round(perfil.sexo === 'masculino' ? bmr + 5 : bmr - 161);
   }, [perfil]);
 
+  // PERSISTENCIA AUTOMÁTICA
+  const guardarCaloriasAuto = (nuevosEjercicios?: EjercicioGimnasio[], nuevasComidas?: ItemComida[]) => {
+    if (!session?.user) return;
+    supabase.from('registro_calorias').upsert({
+      user_id: session.user.id,
+      fecha: fechaSeleccionada,
+      base: bmrCalculado,
+      agua_ml: aguaMl,
+      ejercicios: nuevosEjercicios || ejercicios,
+      comidas: nuevasComidas || comidas
+    }, { onConflict: 'user_id,fecha' });
+  };
+
   useEffect(() => {
-    if (!session?.user || cargando) return;
+    if (!session?.user) return;
     const timer = setTimeout(() => {
-      supabase.from('registro_calorias').upsert({
-        user_id: session.user.id,
-        fecha: fechaSeleccionada,
-        base: bmrCalculado,
-        agua_ml: aguaMl,
-        ejercicios,
-        comidas
-      }, { onConflict: 'user_id,fecha' });
+      guardarCaloriasAuto();
     }, 600);
     return () => clearTimeout(timer);
-  }, [comidas, ejercicios, aguaMl, bmrCalculado, fechaSeleccionada, session, cargando]);
+  }, [comidas, ejercicios, aguaMl, bmrCalculado, fechaSeleccionada, session]);
 
   const guardarPerfil = async () => {
     const user = session?.user;
@@ -497,43 +505,53 @@ export default function Home() {
     if (!error) setHabitos(habitos.filter((h) => h.id !== id));
   };
 
-  // --- EJERCICIOS Y ENTRENAMIENTO ---
-  const agregarEjercicio = () => setEjercicios([
-    ...ejercicios, 
-    { id: Date.now().toString(), nombre: 'Nuevo Ejercicio', tipo: 'fuerza', series: 4, repeticiones: 10, peso: 0, duracion_minutos: 30, distancia_km: 0, calorias: 0 }
-  ]);
+  // --- EJERCICIOS Y ENTRENAMIENTO (CON AUTO GUARDADO) ---
+  const agregarEjercicio = () => {
+    const nuevo = [
+      ...ejercicios, 
+      { id: Date.now().toString(), nombre: 'Nuevo Ejercicio', tipo: 'fuerza' as TipoEjercicio, series: 4, repeticiones: 10, peso: 0, duracion_minutos: 20, distancia_km: 0, calorias: 0 }
+    ];
+    setEjercicios(nuevo);
+    guardarCaloriasAuto(nuevo, comidas);
+  };
   
-  const actualizarEjercicio = (id: string, campo: keyof EjercicioGimnasio, valor: any) => setEjercicios(ejercicios.map((item) => (item.id === id ? { ...item, [campo]: valor } : item)));
+  const actualizarEjercicio = (id: string, campo: keyof EjercicioGimnasio, valor: any) => {
+    const actualizados = ejercicios.map((item) => (item.id === id ? { ...item, [campo]: valor } : item));
+    setEjercicios(actualizados);
+    guardarCaloriasAuto(actualizados, comidas);
+  };
   
   const eliminarEjercicio = (id: string) => {
     if (!window.confirm('¿Eliminar ejercicio?')) return;
-    setEjercicios(ejercicios.filter((item) => item.id !== id));
+    const filtrados = ejercicios.filter((item) => item.id !== id);
+    setEjercicios(filtrados);
+    guardarCaloriasAuto(filtrados, comidas);
   };
 
-  const calcularCaloriasEjercicioIA = (item: EjercicioGimnasio) => {
+  const calcularCaloriasEjercicioManual = (item: EjercicioGimnasio) => {
     const pesoUser = perfil.peso || 70;
     let cal = 0;
 
     if (item.tipo === 'fuerza') {
       cal = (item.series || 1) * (item.repeticiones || 10) * ((item.peso || 0) * 0.012 + 0.4) * (pesoUser / 75);
     } else if (item.tipo === 'running') {
-      cal = (item.distancia_km || 1) * pesoUser * 1.03;
+      const dist = item.distancia_km || 0;
+      cal = dist > 0 ? dist * pesoUser * 1.03 : (item.duracion_minutos || 20) * (11.0 * 3.5 * pesoUser / 200);
     } else if (item.tipo === 'ciclismo' || item.tipo === 'boxeo' || item.tipo === 'natacion') {
-      cal = (item.duracion_minutos || 30) * (8.5 * 3.5 * pesoUser / 200);
+      cal = (item.duracion_minutos || 20) * (8.5 * 3.5 * pesoUser / 200);
     } else if (item.tipo === 'futbol' || item.tipo === 'funcional') {
-      cal = (item.duracion_minutos || 30) * (7.5 * 3.5 * pesoUser / 200);
+      cal = (item.duracion_minutos || 20) * (8.0 * 3.5 * pesoUser / 200);
     } else if (item.tipo === 'caminata') {
       cal = (item.distancia_km || 1) * pesoUser * 0.5;
     } else {
-      cal = (item.duracion_minutos || 30) * (6.0 * 3.5 * pesoUser / 200);
+      cal = (item.duracion_minutos || 20) * (6.0 * 3.5 * pesoUser / 200);
     }
 
     const resultadoFinal = Math.round(cal);
     actualizarEjercicio(item.id, 'calorias', resultadoFinal);
-    alert(`🤖 IA: ~${resultadoFinal} kcal quemadas estimada para ${item.tipo}.`);
   };
 
-  // CÁLCULO IA AUTOMÁTICO VÍA LINK DE YOUTUBE
+  // CÁLCULO VÍA LINK DE YOUTUBE
   const procesarVideoYoutubeIA = () => {
     if (!youtubeLink.trim()) return alert('⚠️ Ingresa un link válido de YouTube.');
     setProcesandoYoutube(true);
@@ -541,12 +559,15 @@ export default function Home() {
     setTimeout(() => {
       const pesoUser = perfil.peso || 70;
       const urlLower = youtubeLink.toLowerCase();
-      const esHiit = urlLower.includes('hiit') || urlLower.includes('tabata') || urlLower.includes('cardio');
+      
+      const matchMin = urlLower.match(/(\d+)\s*(min|m)/) || urlLower.match(/(\d+)\s*minutos/);
+      const duracionEst = matchMin ? parseInt(matchMin[1], 10) : 24;
+
+      const esHiit = urlLower.includes('hiit') || urlLower.includes('tabata') || urlLower.includes('cardio') || urlLower.includes('intenso') || urlLower.includes('quema');
       const esYoga = urlLower.includes('yoga') || urlLower.includes('stretching') || urlLower.includes('pilates');
       
-      let tipoDetectado: TipoEjercicio = esYoga ? 'funcional' : (esHiit ? 'funcional' : 'otro');
-      let duracionEst = esYoga ? 25 : 30;
-      let metEst = esYoga ? 3.2 : (esHiit ? 8.5 : 6.0);
+      let tipoDetectado: TipoEjercicio = esYoga ? 'funcional' : (esHiit ? 'funcional' : 'fuerza');
+      let metEst = esYoga ? 3.5 : (esHiit ? 10.0 : 8.5);
       let calEst = Math.round(duracionEst * (metEst * 3.5 * pesoUser / 200));
 
       const nuevoEj: EjercicioGimnasio = {
@@ -557,14 +578,16 @@ export default function Home() {
         calorias: calEst
       };
 
-      setEjercicios(prev => [...prev, nuevoEj]);
+      const nuevosEjercicios = [...ejercicios, nuevoEj];
+      setEjercicios(nuevosEjercicios);
       setYoutubeLink('');
       setProcesandoYoutube(false);
-      alert(`🤖 ¡Video Procesado! Se añadió la rutina automáticamente: ~${calEst} kcal estimadas.`);
-    }, 1100);
+      guardarCaloriasAuto(nuevosEjercicios, comidas);
+      alert(`⚡ ¡Video Procesado! (${duracionEst} min) -> ~${calEst} kcal estimadas.`);
+    }, 600);
   };
 
-  // --- COMIDAS ---
+  // --- COMIDAS CON ALGORITMO LÍNEA POR LÍNEA MÁS PRECISO ---
   const agregarComida = () => setComidas([...comidas, { id: Date.now().toString(), nombre: 'Nueva Comida', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 }]);
   const actualizarComida = (id: string, campo: keyof ItemComida, valor: any) => setComidas(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
   const eliminarComida = (id: string) => {
@@ -594,39 +617,62 @@ export default function Home() {
   const estimarComidaConIA = async () => {
     if (!comidaIaModal) return;
     setProcesandoIa(true);
-    const promptTexto = `${comidaIaModal.nombre} ${textoIaInput}`.trim().toLowerCase();
-    let resCal = 350, resP = 25, resC = 35, resG = 10;
 
-    const baseAlimentos = [
-      { nombres: ['arroz', 'fideos', 'pasta'], calPerGram: 1.3, pPerGram: 0.04, cPerGram: 0.28, gPerGram: 0.01, defaultPortion: 150 },
-      { nombres: ['pollo', 'pechuga'], calPerGram: 1.65, pPerGram: 0.31, cPerGram: 0, gPerGram: 0.035, defaultPortion: 150 },
-      { nombres: ['carne', 'vacuna', 'bife', 'lomo'], calPerGram: 2.1, pPerGram: 0.26, cPerGram: 0, gPerGram: 0.12, defaultPortion: 180 },
-      { nombres: ['huevo', 'huevos'], calPerGram: 1.4, pPerGram: 0.13, cPerGram: 0.01, gPerGram: 0.10, defaultPortion: 100 },
-      { nombres: ['avena'], calPerGram: 3.8, pPerGram: 0.13, cPerGram: 0.66, gPerGram: 0.07, defaultPortion: 50 },
-      { nombres: ['banana', 'plátano'], calPerGram: 0.9, pPerGram: 0.01, cPerGram: 0.23, gPerGram: 0.003, defaultPortion: 120 },
-      { nombres: ['manzana'], calPerGram: 0.52, pPerGram: 0.003, cPerGram: 0.14, gPerGram: 0.002, defaultPortion: 150 },
-      { nombres: ['pan', 'tostada'], calPerGram: 2.5, pPerGram: 0.09, cPerGram: 0.48, gPerGram: 0.03, defaultPortion: 60 }
+    const textoAnalizar = `${nombreIaModalInput}\n${textoIaInput}`;
+    const lineas = textoAnalizar.split('\n');
+
+    let totalCal = 0, totalP = 0, totalC = 0, totalG = 0;
+    let itemsEncontrados = 0;
+
+    // DICCIONARIO NUTRICIONAL DE ALIMENTOS REAL
+    const dbAlimentos = [
+      { keywords: ['leche descremada', 'leche desnatada'], cal: 0.35, p: 0.034, c: 0.05, g: 0.002 },
+      { keywords: ['leche entera', 'leche'], cal: 0.61, p: 0.032, c: 0.048, g: 0.032 },
+      { keywords: ['galleta de arroz', 'galletas de arroz'], cal: 3.8, p: 0.08, c: 0.81, g: 0.028 },
+      { keywords: ['pan integral'], cal: 2.5, p: 0.09, c: 0.45, g: 0.03 },
+      { keywords: ['pan blanco', 'pan'], cal: 2.65, p: 0.09, c: 0.49, g: 0.032 },
+      { keywords: ['huevo', 'huevos'], cal: 1.43, p: 0.126, c: 0.008, g: 0.095 },
+      { keywords: ['manzana', 'mañana'], cal: 0.52, p: 0.003, c: 0.14, g: 0.002 },
+      { keywords: ['almendra', 'almendras'], cal: 5.79, p: 0.21, c: 0.21, g: 0.50 },
+      { keywords: ['tomate'], cal: 0.18, p: 0.009, c: 0.039, g: 0.002 },
+      { keywords: ['lechuga'], cal: 0.15, p: 0.014, c: 0.029, g: 0.002 },
+      { keywords: ['arroz'], cal: 1.30, p: 0.027, c: 0.28, g: 0.003 },
+      { keywords: ['zanahoria'], cal: 0.41, p: 0.009, c: 0.096, g: 0.002 },
+      { keywords: ['aceite de oliva', 'aceite'], cal: 8.84, p: 0, c: 0, g: 1.0 },
+      { keywords: ['carne con huevo', 'carne con huevo y morron', 'carne con huevo y marrón', 'carne'], cal: 2.0, p: 0.22, c: 0.02, g: 0.11 },
+      { keywords: ['pollo', 'pechuga'], cal: 1.65, p: 0.31, c: 0, g: 0.036 },
+      { keywords: ['avena'], cal: 3.89, p: 0.169, c: 0.66, g: 0.069 },
+      { keywords: ['banana', 'platano'], cal: 0.89, p: 0.011, c: 0.228, g: 0.003 },
     ];
 
-    let matched = false, calAcc = 0, pAcc = 0, cAcc = 0, gAcc = 0;
-    for (const al of baseAlimentos) {
-      if (al.nombres.some(n => promptTexto.includes(n))) {
-        matched = true;
-        const matchNum = promptTexto.match(new RegExp(`(?:${al.nombres.join('|')})[^\\d]*(\\d+)`, 'i')) || promptTexto.match(/(\d+)/);
-        const gramos = matchNum ? parseInt(matchNum[1], 10) : al.defaultPortion;
-        const porcionReal = gramos > 5 && gramos < 1000 ? gramos : al.defaultPortion;
-        calAcc += al.calPerGram * porcionReal;
-        pAcc += al.pPerGram * porcionReal;
-        cAcc += al.cPerGram * porcionReal;
-        gAcc += al.gPerGram * porcionReal;
+    for (const rawLinea of lineas) {
+      const linea = rawLinea.toLowerCase().trim();
+      if (!linea) continue;
+
+      const matchGram = linea.match(/(\d+)\s*g?r?/);
+      const gramos = matchGram ? parseInt(matchGram[1], 10) : 0;
+
+      for (const item of dbAlimentos) {
+        if (item.keywords.some(k => linea.includes(k))) {
+          itemsEncontrados++;
+          const gFinal = gramos > 0 ? gramos : 100;
+          totalCal += item.cal * gFinal;
+          totalP += item.p * gFinal;
+          totalC += item.c * gFinal;
+          totalG += item.g * gFinal;
+          break;
+        }
       }
     }
 
-    if (matched && calAcc > 0) {
-      resCal = Math.round(calAcc); resP = Math.round(pAcc); resC = Math.round(cAcc); resG = Math.round(gAcc);
-    } else if (promptTexto.length > 3) {
-      resCal = 420; resP = 28; resC = 42; resG = 12;
+    if (itemsEncontrados === 0) {
+      totalCal = 350; totalP = 20; totalC = 35; totalG = 10;
     }
+
+    const resCal = Math.round(totalCal);
+    const resP = Math.round(totalP);
+    const resC = Math.round(totalC);
+    const resG = Math.round(totalG);
 
     const nuevoNombre = nombreIaModalInput.trim() || comidaIaModal.nombre;
     const nuevasComidas = comidas.map((item) =>
@@ -636,11 +682,7 @@ export default function Home() {
     setComidas(nuevasComidas);
     setProcesandoIa(false);
     setComidaIaModal(null);
-
-    if (session?.user) {
-      await supabase.from('registro_calorias').upsert({ user_id: session.user.id, fecha: fechaSeleccionada, base: bmrCalculado, agua_ml: aguaMl, ejercicios, comidas: nuevasComidas }, { onConflict: 'user_id,fecha' });
-    }
-    alert(`🤖 IA: Estimado "${nuevoNombre}" -> ${resCal} kcal | ${resP}g P | ${resC}g C | ${resG}g G`);
+    guardarCaloriasAuto(ejercicios, nuevasComidas);
   };
 
   const modificarAgua = async (deltaMl: number) => {
@@ -649,14 +691,6 @@ export default function Home() {
     const nuevaCantidad = Math.max(0, aguaMl + deltaMl);
     setAguaMl(nuevaCantidad);
     await supabase.from('registro_calorias').upsert({ user_id: user.id, fecha: fechaSeleccionada, agua_ml: nuevaCantidad, base: bmrCalculado, ejercicios, comidas }, { onConflict: 'user_id,fecha' });
-  };
-
-  const guardarCalorias = async () => {
-    const user = session?.user;
-    if (!user) return;
-    const { error } = await supabase.from('registro_calorias').upsert({ user_id: user.id, fecha: fechaSeleccionada, base: bmrCalculado, agua_ml: aguaMl, ejercicios, comidas }, { onConflict: 'user_id,fecha' });
-    if (error) alert('❌ Error: ' + error.message);
-    else alert('✅ Datos guardados correctamente');
   };
 
   const guardarSueno = async () => {
@@ -674,6 +708,16 @@ export default function Home() {
     const { error } = await supabase.from('registro_sueno').upsert(datosGuardar, { onConflict: 'user_id,fecha' });
     if (error) alert('❌ Error: ' + error.message);
     else { setSuenoHoy(datosGuardar); alert('✅ Sueño guardado correctamente'); }
+  };
+
+  const enviarSoporte = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mensajeSoporte.trim()) return;
+    const destinatario = 'stefanopintos.contact@gmail.com';
+    const asunto = encodeURIComponent(`[Fitness App] ${tipoSoporte}`);
+    const cuerpo = encodeURIComponent(`Tipo: ${tipoSoporte}\nUsuario: ${perfil.nombre || session?.user?.email}\n\nMensaje:\n${mensajeSoporte}`);
+    window.location.href = `mailto:${destinatario}?subject=${asunto}&body=${cuerpo}`;
+    setMensajeSoporte('');
   };
 
   // CÁLCULOS GENERALES
@@ -851,476 +895,499 @@ export default function Home() {
           {fraseDelDia}
         </div>
 
-        {cargando ? (
-          <div className="text-center py-20 text-slate-400 font-medium">Cargando tus datos... ⏳</div>
-        ) : (
-          <div>
-            {/* GENERAL */}
-            {seccionActiva === 'general' && (
-              <div className="space-y-6">
-                
-                <div className="bg-slate-900/80 border border-slate-800/80 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                  <div className="font-bold text-slate-200 flex items-center gap-1.5">💡 Guía de Progreso:</div>
-                  <div className="flex items-center gap-4 text-slate-400 flex-wrap justify-center">
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shadow-sm shadow-rose-500"></span> Rojo (&lt;40%)</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shadow-sm shadow-amber-500"></span> Naranja (40-79%)</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow-sm shadow-emerald-500"></span> Verde (&gt;80%)</span>
+        <div>
+          {/* GENERAL */}
+          {seccionActiva === 'general' && (
+            <div className="space-y-6">
+              
+              <div className="bg-slate-900/80 border border-slate-800/80 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="font-bold text-slate-200 flex items-center gap-1.5">💡 Guía de Progreso:</div>
+                <div className="flex items-center gap-4 text-slate-400 flex-wrap justify-center">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shadow-sm shadow-rose-500"></span> Rojo (&lt;40%)</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shadow-sm shadow-amber-500"></span> Naranja (40-79%)</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow-sm shadow-emerald-500"></span> Verde (&gt;80%)</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3.5">
+                {/* CALORÍAS */}
+                {(() => {
+                  const estilo = obtenerEstiloBarra(pctCalorias);
+                  return (
+                    <div onClick={() => cambiarSeccion('nutricion')} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
+                      <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                        <span>Balance Calórico</span>
+                        <span>🔥</span>
+                      </div>
+                      <p className={`text-2xl font-black mt-2 ${balanceCalorico < 0 ? 'text-amber-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs font-normal text-slate-500">kcal</span></p>
+                      <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
+                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* AGUA */}
+                {(() => {
+                  const estilo = obtenerEstiloBarra(pctAgua);
+                  return (
+                    <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('agua'); }} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
+                      <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                        <span>Agua Diaria</span>
+                        <span>💧</span>
+                      </div>
+                      <p className="text-2xl font-black text-cyan-400 mt-2">{(aguaMl / 1000).toFixed(2)}L <span className="text-xs font-normal text-slate-500">/ 2.5L</span></p>
+                      <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
+                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* HÁBITOS */}
+                {(() => {
+                  const estilo = obtenerEstiloBarra(porcentajeHabitos);
+                  return (
+                    <div onClick={() => cambiarSeccion('habitos')} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
+                      <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                        <span>Hábitos</span>
+                        <span>⚡</span>
+                      </div>
+                      <p className="text-2xl font-black text-indigo-400 mt-2">{porcentajeHabitos}%</p>
+                      <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
+                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* PESO / ÉXITO */}
+                {(() => {
+                  const estilo = obtenerEstiloBarra(perfil.porcentaje_probabilidad);
+                  return (
+                    <div onClick={() => cambiarSeccion('perfil')} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
+                      <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                        <span>Peso / Éxito</span>
+                        <span>🎯</span>
+                      </div>
+                      <p className="text-2xl font-black text-slate-200 mt-2">{perfil.peso} <span className="text-xs font-normal text-slate-500">kg</span></p>
+                      <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
+                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* SUEÑO */}
+                {(() => {
+                  const estilo = obtenerEstiloBarra(pctSueno);
+                  return (
+                    <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('sueno'); }} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
+                      <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
+                        <span>Sueño</span>
+                        <span>😴</span>
+                      </div>
+                      <p className="text-2xl font-black text-violet-400 mt-2">{suenoHoy.horas_totales} <span className="text-xs font-normal text-slate-500">hrs</span></p>
+                      <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
+                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* MI PERFIL Y OBJETIVOS CENTRADOS */}
+          {seccionActiva === 'perfil' && (
+            <section className={`${CARD_CLS} max-w-2xl mx-auto space-y-6 text-center`}>
+              <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
+                <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionPerfil === 'perfil' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>👤 Datos Personales</button>
+                <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionPerfil === 'objetivo' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🎯 Mi Objetivo</button>
+              </div>
+
+              {subSeccionPerfil === 'perfil' ? (
+                <div className="space-y-4 bg-slate-950/40 p-5 rounded-2xl border border-slate-800/80 text-center max-w-md mx-auto">
+                  <div>
+                    <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Nombre</label>
+                    <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={`${INPUT_CLS} text-center`} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Fecha de Nacimiento</label>
+                    <input type="date" value={perfil.fecha_nacimiento} onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} className={`${INPUT_CLS} text-center`} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Peso (kg)</label>
+                      <input type="number" step="0.1" value={perfil.peso} onChange={(e) => setPerfil({...perfil, peso: Number(e.target.value)})} className={`${INPUT_CLS} text-center`} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Altura (cm)</label>
+                      <input type="number" value={perfil.altura} onChange={(e) => setPerfil({...perfil, altura: Number(e.target.value)})} className={`${INPUT_CLS} text-center`} />
+                    </div>
                   </div>
                 </div>
+              ) : (
+                <div className="space-y-4 bg-slate-950/40 p-5 rounded-2xl border border-slate-800/80 text-center max-w-md mx-auto">
+                  <div>
+                    <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Objetivo Principal</label>
+                    <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={`${INPUT_CLS} text-center`}>
+                      <option value="bajar">🔥 Bajar de peso (Déficit Calórico)</option>
+                      <option value="mantener">⚖️ Mantener peso corporal</option>
+                      <option value="subir">💪 Subir de peso (Masa muscular)</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Kilos Objetivo</label>
+                      <input type="number" step="0.1" value={perfil.kilos_objetivo} onChange={(e) => setPerfil({...perfil, kilos_objetivo: Number(e.target.value)})} className={`${INPUT_CLS} text-center`} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Plazo (Meses)</label>
+                      <input type="number" value={perfil.tiempo_objetivo_meses} onChange={(e) => setPerfil({...perfil, tiempo_objetivo_meses: Number(e.target.value)})} className={`${INPUT_CLS} text-center`} />
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3.5">
-                  {/* CALORÍAS */}
-                  {(() => {
-                    const estilo = obtenerEstiloBarra(pctCalorias);
-                    return (
-                      <div onClick={() => cambiarSeccion('nutricion')} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
-                        <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
-                          <span>Balance Calórico</span>
-                          <span>🔥</span>
-                        </div>
-                        <p className={`text-2xl font-black mt-2 ${balanceCalorico < 0 ? 'text-amber-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs font-normal text-slate-500">kcal</span></p>
-                        <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
-                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+              <button onClick={guardarPerfil} disabled={guardandoPerfil} className={`${BTN_PRIMARY} max-w-xs mx-auto block`}>
+                {guardandoPerfil ? 'Guardando...' : '💾 Guardar Perfil'}
+              </button>
+            </section>
+          )}
+
+          {/* HÁBITOS CON HORA CORREGIDA */}
+          {seccionActiva === 'habitos' && (
+            <section className={`${CARD_CLS} space-y-6 max-w-3xl mx-auto`}>
+              <div className="flex justify-between items-center">
+                <h3 className="text-base font-bold text-indigo-400 flex items-center gap-2">⚡ Hábitos Diarios</h3>
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300">
+                  {totalCompletados}/{habitos.length} ({porcentajeHabitos}%)
+                </span>
+              </div>
+
+              <form onSubmit={agregarHabito} className="flex flex-col sm:flex-row gap-2.5 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80 items-stretch sm:items-center">
+                <input type="text" placeholder="Escribe un nuevo hábito..." value={nuevoHabito} onChange={(e) => setNuevoHabito(e.target.value)} className={INPUT_CLS} />
+                <div className="shrink-0 w-full sm:w-32">
+                  <input type="time" value={horaObjetivo} onChange={(e) => setHoraObjetivo(e.target.value)} className={`${INPUT_CLS} text-center font-mono`} />
+                </div>
+                <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-xl text-xs cursor-pointer shrink-0 transition">Añadir</button>
+              </form>
+
+              <div className="space-y-2.5">
+                {habitosOrdenados.map((h) => {
+                  const completado = !!registrosHoy[h.id]?.completado;
+                  const racha = rachasHabitos[h.id] || 0;
+                  return (
+                    <div key={h.id} className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${completado ? 'bg-indigo-950/30 border-indigo-800/60' : 'bg-slate-950/40 border-slate-800/80'}`}>
+                      <div className="flex items-center gap-3.5">
+                        <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center cursor-pointer transition ${completado ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' : 'border-slate-700 hover:border-indigo-500'}`}>
+                          {completado && '✓'}
+                        </button>
+                        <div>
+                          <p className={`text-xs sm:text-sm font-semibold ${completado ? 'line-through text-slate-400' : 'text-slate-100'}`}>{h.texto}</p>
+                          <p className="text-[10px] text-slate-400">Hora: <span className="text-indigo-300 font-mono">{h.hora_objetivo}</span></p>
                         </div>
                       </div>
-                    );
-                  })()}
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-amber-950/80 border border-amber-800/60 text-amber-400 font-bold">🔥 {racha}d</span>
+                        <button onClick={() => eliminarHabito(h.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
-                  {/* AGUA */}
+          {/* NUTRICIÓN Y ENTRENAMIENTO */}
+          {seccionActiva === 'nutricion' && (
+            <section className={`${CARD_CLS} max-w-4xl mx-auto space-y-6`}>
+              <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
+                <button onClick={() => setSubSeccionNutricion('nutricion')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionNutricion === 'nutricion' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400 hover:text-slate-200'}`}>🥗 Nutrición y Macros</button>
+                <button onClick={() => setSubSeccionNutricion('entrenamiento')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionNutricion === 'entrenamiento' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🏋️ Actividad Física</button>
+              </div>
+
+              {subSeccionNutricion === 'nutricion' ? (
+                <div className="space-y-6">
+                  <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 flex flex-col sm:flex-row items-center gap-4">
+                    <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 text-center min-w-[100px]">
+                      <span className="text-3xl font-black text-amber-400">{evaluacionNutricion.nota}/10</span>
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wide">Objetivo: <span className="text-amber-400">{perfil.objetivo}</span></h3>
+                      <p className="text-xs text-slate-400 mt-1">{evaluacionNutricion.mensaje}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80"><span className="text-[11px] text-rose-400 font-bold block">Proteínas</span><span className="text-base sm:text-lg font-black text-rose-300">{totalProteinas}g</span></div>
+                    <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80"><span className="text-[11px] text-amber-400 font-bold block">Carbs</span><span className="text-base sm:text-lg font-black text-amber-300">{totalCarbs}g</span></div>
+                    <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80"><span className="text-[11px] text-cyan-400 font-bold block">Grasas</span><span className="text-base sm:text-lg font-black text-cyan-300">{totalGrasas}g</span></div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">🥗 Comidas del Día</h3>
+                      <button onClick={agregarComida} className="text-xs text-amber-400 font-bold hover:underline cursor-pointer">+ Agregar Comida</button>
+                    </div>
+                    
+                    {comidas.map((item) => (
+                      <div key={item.id} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-3">
+                        <div className="flex gap-2 items-center">
+                          <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
+                          <button onClick={() => abrirModalIaComida(item)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 px-3 py-2 rounded-xl text-xs cursor-pointer hover:bg-cyan-900 transition">📷</button>
+                          <button onClick={() => eliminarComida(item.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 text-xs">
+                          <div><label className="text-[10px] text-slate-400 block mb-1">Kcal</label><input type="number" value={item.calorias} onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
+                          <div><label className="text-[10px] text-rose-400 block mb-1">Prot (g)</label><input type="number" value={item.proteinas || 0} onChange={(e) => actualizarComida(item.id, 'proteinas', Number(e.target.value))} className={INPUT_CLS} /></div>
+                          <div><label className="text-[10px] text-amber-400 block mb-1">Carbs (g)</label><input type="number" value={item.carbs || 0} onChange={(e) => actualizarComida(item.id, 'carbs', Number(e.target.value))} className={INPUT_CLS} /></div>
+                          <div><label className="text-[10px] text-cyan-400 block mb-1">Grasas (g)</label><input type="number" value={item.grasas || 0} onChange={(e) => actualizarComida(item.id, 'grasas', Number(e.target.value))} className={INPUT_CLS} /></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                /* PESTAÑA ENTRENAMIENTO CON GUARDADO AUTOMÁTICO */
+                <div className="space-y-6">
+                  
+                  {/* RECUADRO YOUTUBE */}
+                  <div className="bg-slate-950/80 border border-red-900/40 p-5 rounded-2xl space-y-4 text-center shadow-lg">
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-2xl animate-pulse">▶️</span>
+                      <h3 className="text-xs sm:text-sm font-extrabold text-red-400 uppercase tracking-wide">Calcular Entrenamiento vía YouTube</h3>
+                    </div>
+                    <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                      Ingresa el enlace del video de YouTube que vas a realizar y el sistema estimará tu consumo calórico y rutina automáticamente.
+                    </p>
+                    
+                    <div className="flex flex-col items-center gap-3 max-w-md mx-auto w-full">
+                      <input 
+                        type="url" 
+                        placeholder="https://www.youtube.com/watch?v=..." 
+                        value={youtubeLink} 
+                        onChange={(e) => setYoutubeLink(e.target.value)} 
+                        className={`${INPUT_CLS} text-center border-slate-700/80 focus:border-red-500`} 
+                      />
+                      <button 
+                        onClick={procesarVideoYoutubeIA} 
+                        disabled={procesandoYoutube} 
+                        className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-2.5 px-5 rounded-xl text-xs cursor-pointer disabled:opacity-50 transition shadow-lg shadow-red-950/40 active:scale-[0.98]"
+                      >
+                        {procesandoYoutube ? '⏳ Procesando video...' : '⚡ Procesar Video'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-2">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">🏋️ Actividades Registradas (Auto-guardadas)</h3>
+                      <button onClick={agregarEjercicio} className="text-xs text-indigo-400 font-bold hover:underline cursor-pointer">+ Agregar Ejercicio</button>
+                    </div>
+
+                    {ejercicios.map((item) => (
+                      <div key={item.id} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-3">
+                        <div className="flex flex-col sm:flex-row gap-2.5 items-start sm:items-center">
+                          <input type="text" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
+                          
+                          <select 
+                            value={item.tipo || 'fuerza'} 
+                            onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} 
+                            className={`${INPUT_CLS} sm:w-44 text-indigo-300 font-bold`}
+                          >
+                            <option value="fuerza">🏋️ Fuerza / Gym</option>
+                            <option value="running">🏃 Running</option>
+                            <option value="ciclismo">🚴 Ciclismo</option>
+                            <option value="boxeo">🥊 Boxeo</option>
+                            <option value="futbol">⚽ Fútbol</option>
+                            <option value="natacion">🏊 Natación</option>
+                            <option value="caminata">🚶 Caminata</option>
+                            <option value="funcional">🧘 Funcional / HIIT</option>
+                            <option value="otro">⚽ Otro</option>
+                          </select>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button onClick={() => calcularCaloriasEjercicioManual(item)} className="bg-indigo-950 border border-indigo-800 text-indigo-300 px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer hover:bg-indigo-900 transition">⚡ Calcular</button>
+                            <button onClick={() => eliminarEjercicio(item.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
+                          </div>
+                        </div>
+
+                        {/* CAMPOS Y KCAL CALCULADAS ABAJO */}
+                        {item.tipo === 'fuerza' ? (
+                          <div className="grid grid-cols-4 gap-2 text-xs">
+                            <div><label className="text-[10px] text-slate-400 block mb-1">Series</label><input type="number" value={item.series || 0} onChange={(e) => actualizarEjercicio(item.id, 'series', Number(e.target.value))} className={INPUT_CLS} /></div>
+                            <div><label className="text-[10px] text-slate-400 block mb-1">Reps</label><input type="number" value={item.repeticiones || 0} onChange={(e) => actualizarEjercicio(item.id, 'repeticiones', Number(e.target.value))} className={INPUT_CLS} /></div>
+                            <div><label className="text-[10px] text-slate-400 block mb-1">Peso (kg)</label><input type="number" value={item.peso || 0} onChange={(e) => actualizarEjercicio(item.id, 'peso', Number(e.target.value))} className={INPUT_CLS} /></div>
+                            <div><label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
+                          </div>
+                        ) : (item.tipo === 'running' || item.tipo === 'ciclismo' || item.tipo === 'caminata') ? (
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div><label className="text-[10px] text-slate-400 block mb-1">Distancia (km)</label><input type="number" step="0.1" value={item.distancia_km || 0} onChange={(e) => actualizarEjercicio(item.id, 'distancia_km', Number(e.target.value))} className={INPUT_CLS} /></div>
+                            <div><label className="text-[10px] text-slate-400 block mb-1">Duración (min)</label><input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className={INPUT_CLS} /></div>
+                            <div><label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div><label className="text-[10px] text-slate-400 block mb-1">Duración (min)</label><input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className={INPUT_CLS} /></div>
+                            <div><label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
+                          </div>
+                        )}
+
+                        {item.calorias > 0 && (
+                          <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 text-center text-xs text-amber-400 font-semibold">
+                            🔥 Consumo estimado: <strong className="text-amber-300">{item.calorias} kcal</strong>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* HIDRATACIÓN Y SUEÑO CON BOTONES ACOMODADOS */}
+          {seccionActiva === 'extra' && (
+            <section className={`${CARD_CLS} max-w-lg mx-auto space-y-6`}>
+              <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
+                <button onClick={() => setSubSeccionExtra('agua')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionExtra === 'agua' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}>💧 Hidratación</button>
+                <button onClick={() => setSubSeccionExtra('sueno')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionExtra === 'sueno' ? 'text-violet-400 border-b-2 border-violet-400' : 'text-slate-400 hover:text-slate-200'}`}>😴 Descanso y Sueño</button>
+              </div>
+
+              {subSeccionExtra === 'agua' ? (
+                <div className="space-y-5 text-center bg-slate-950/60 p-6 rounded-2xl border border-slate-800/80">
+                  <span className="text-5xl inline-block animate-bounce">💧</span>
+                  <h3 className="text-lg font-black text-cyan-300">Control de Hidratación</h3>
+                  <p className="text-3xl font-black text-cyan-400">{(aguaMl / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-500">/ 2.50 L</span></p>
                   {(() => {
                     const estilo = obtenerEstiloBarra(pctAgua);
                     return (
-                      <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('agua'); }} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
-                        <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
-                          <span>Agua Diaria</span>
-                          <span>💧</span>
-                        </div>
-                        <p className="text-2xl font-black text-cyan-400 mt-2">{(aguaMl / 1000).toFixed(2)}L <span className="text-xs font-normal text-slate-500">/ 2.5L</span></p>
-                        <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
-                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                        </div>
+                      <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
+                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
                       </div>
                     );
                   })()}
-
-                  {/* HÁBITOS */}
-                  {(() => {
-                    const estilo = obtenerEstiloBarra(porcentajeHabitos);
-                    return (
-                      <div onClick={() => cambiarSeccion('habitos')} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
-                        <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
-                          <span>Hábitos</span>
-                          <span>⚡</span>
-                        </div>
-                        <p className="text-2xl font-black text-indigo-400 mt-2">{porcentajeHabitos}%</p>
-                        <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
-                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* PESO / ÉXITO */}
-                  {(() => {
-                    const estilo = obtenerEstiloBarra(perfil.porcentaje_probabilidad);
-                    return (
-                      <div onClick={() => cambiarSeccion('perfil')} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
-                        <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
-                          <span>Peso / Éxito</span>
-                          <span>🎯</span>
-                        </div>
-                        <p className="text-2xl font-black text-slate-200 mt-2">{perfil.peso} <span className="text-xs font-normal text-slate-500">kg</span></p>
-                        <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
-                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* SUEÑO */}
+                  <div className="flex justify-center gap-2.5 pt-2">
+                    <button onClick={() => modificarAgua(250)} className="bg-cyan-950/80 border border-cyan-800 text-cyan-300 font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-cyan-900 transition">+250 ml 🥛</button>
+                    <button onClick={() => modificarAgua(500)} className="bg-cyan-950/80 border border-cyan-800 text-cyan-300 font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-cyan-900 transition">+500 ml 🍾</button>
+                    <button onClick={() => modificarAgua(-250)} className="bg-slate-900 border border-slate-800 text-slate-400 px-3 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-slate-800 transition">-250 ml</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5 text-center bg-slate-950/60 p-6 rounded-2xl border border-slate-800/80">
+                  <span className="text-5xl inline-block animate-pulse">😴</span>
+                  <h3 className="text-lg font-black text-violet-300">Control de Sueño</h3>
+                  <p className="text-3xl font-black text-violet-400">{suenoHoy.horas_totales} <span className="text-sm font-normal text-slate-500">/ 8.0 hrs</span></p>
                   {(() => {
                     const estilo = obtenerEstiloBarra(pctSueno);
                     return (
-                      <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('sueno'); }} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
-                        <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
-                          <span>Sueño</span>
-                          <span>😴</span>
-                        </div>
-                        <p className="text-2xl font-black text-violet-400 mt-2">{suenoHoy.horas_totales} <span className="text-xs font-normal text-slate-500">hrs</span></p>
-                        <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
-                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                        </div>
+                      <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
+                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
                       </div>
                     );
                   })()}
+                  
+                  {/* HORAS ACOMODADAS EN GRID RESPONSIVO SIN PISARSE */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-center pt-2 max-w-md mx-auto w-full">
+                    <div className="w-full">
+                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Acostarse</label>
+                      <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className={`${INPUT_CLS} text-center font-mono w-full`} />
+                    </div>
+                    <div className="w-full">
+                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Levantarse</label>
+                      <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className={`${INPUT_CLS} text-center font-mono w-full`} />
+                    </div>
+                  </div>
+
+                  <div className="text-center pt-2">
+                    <label className="text-xs text-slate-400 font-medium block mb-1">Calidad del Sueño</label>
+                    <div className="flex gap-2 justify-center py-1">
+                      {[1, 2, 3, 4, 5].map((estrella) => (
+                        <button key={estrella} type="button" onClick={() => setSuenoHoy({...suenoHoy, calidad: estrella})} className={`text-2xl cursor-pointer transition ${suenoHoy.calidad >= estrella ? 'text-amber-400 scale-110' : 'text-slate-700'}`}>★</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button onClick={guardarSueno} className={BTN_PRIMARY}>
+                    💾 Guardar Sueño
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ESTADÍSTICAS */}
+          {seccionActiva === 'estadisticas' && (
+            <section className={`${CARD_CLS} max-w-3xl mx-auto space-y-6`}>
+              <h3 className="text-base font-bold text-indigo-400 flex items-center gap-2">📈 Visualización y Estadísticas</h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-1">
+                  <span className="text-[11px] font-bold uppercase text-slate-400">🍽️ Ingerido</span>
+                  <p className="text-2xl font-black text-amber-400">{totalIngeridoCal} <span className="text-xs font-normal text-slate-500">kcal</span></p>
+                </div>
+
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-1">
+                  <span className="text-[11px] font-bold uppercase text-slate-400">🔥 Gastado</span>
+                  <p className="text-2xl font-black text-rose-400">{totalGastadoCal} <span className="text-xs font-normal text-slate-500">kcal</span></p>
+                </div>
+
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-1">
+                  <span className="text-[11px] font-bold uppercase text-slate-400">⚖️ Balance</span>
+                  <p className={`text-2xl font-black ${balanceCalorico < 0 ? 'text-cyan-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs font-normal text-slate-500">kcal</span></p>
                 </div>
               </div>
-            )}
 
-            {/* MI PERFIL Y OBJETIVOS */}
-            {seccionActiva === 'perfil' && (
-              <section className={`${CARD_CLS} max-w-3xl mx-auto space-y-6`}>
-                <div className="flex border-b border-slate-800 pb-3 gap-6">
-                  <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionPerfil === 'perfil' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>👤 Datos Personales</button>
-                  <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionPerfil === 'objetivo' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🎯 Mi Objetivo</button>
-                </div>
+              <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 space-y-2">
+                <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wide">📊 Resumen de Rendimiento</h4>
+                <p className="text-xs text-slate-400 leading-relaxed">Tus hábitos y registro nutricional muestran una constancia del <strong className="text-indigo-400">{porcentajeHabitos}%</strong>. Continúa enfocado en tu meta de <strong className="text-amber-400">{perfil.objetivo}</strong>.</p>
+              </div>
+            </section>
+          )}
 
-                {subSeccionPerfil === 'perfil' ? (
-                  <div className="space-y-4 bg-slate-950/40 p-5 rounded-2xl border border-slate-800/80">
-                    <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1.5">Nombre Completo</label>
-                      <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={INPUT_CLS} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1.5">Fecha de Nacimiento</label>
-                      <input type="date" value={perfil.fecha_nacimiento} onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} className={INPUT_CLS} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs text-slate-400 font-medium block mb-1.5">Peso (kg)</label>
-                        <input type="number" step="0.1" value={perfil.peso} onChange={(e) => setPerfil({...perfil, peso: Number(e.target.value)})} className={INPUT_CLS} />
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-400 font-medium block mb-1.5">Altura (cm)</label>
-                        <input type="number" value={perfil.altura} onChange={(e) => setPerfil({...perfil, altura: Number(e.target.value)})} className={INPUT_CLS} />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4 bg-slate-950/40 p-5 rounded-2xl border border-slate-800/80">
-                    <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1.5">Objetivo Principal</label>
-                      <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={INPUT_CLS}>
-                        <option value="bajar">🔥 Bajar de peso (Déficit Calórico)</option>
-                        <option value="mantener">⚖️ Mantener peso corporal</option>
-                        <option value="subir">💪 Subir de peso (Masa muscular)</option>
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs text-slate-400 font-medium block mb-1.5">Kilos Objetivo</label>
-                        <input type="number" step="0.1" value={perfil.kilos_objetivo} onChange={(e) => setPerfil({...perfil, kilos_objetivo: Number(e.target.value)})} className={INPUT_CLS} />
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-400 font-medium block mb-1.5">Plazo (Meses)</label>
-                        <input type="number" value={perfil.tiempo_objetivo_meses} onChange={(e) => setPerfil({...perfil, tiempo_objetivo_meses: Number(e.target.value)})} className={INPUT_CLS} />
-                      </div>
-                    </div>
-                  </div>
-                )}
+          {/* NOVEDADES Y SOPORTE DIVIDIDO EN PESTAÑAS */}
+          {seccionActiva === 'actualizaciones' && (
+            <section className={`${CARD_CLS} max-w-xl mx-auto space-y-6`}>
+              <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
+                <button onClick={() => setSubSeccionActualizaciones('novedades')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionActualizaciones === 'novedades' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🚀 Novedades</button>
+                <button onClick={() => setSubSeccionActualizaciones('soporte')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionActualizaciones === 'soporte' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>💬 Soporte</button>
+              </div>
 
-                <button onClick={guardarPerfil} disabled={guardandoPerfil} className={BTN_PRIMARY}>
-                  {guardandoPerfil ? 'Guardando...' : '💾 Guardar Perfil'}
-                </button>
-              </section>
-            )}
-
-            {/* HÁBITOS */}
-            {seccionActiva === 'habitos' && (
-              <section className={`${CARD_CLS} space-y-6 max-w-3xl mx-auto`}>
-                <div className="flex justify-between items-center">
-                  <h3 className="text-base font-bold text-indigo-400 flex items-center gap-2">⚡ Hábitos Diarios</h3>
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300">
-                    {totalCompletados}/{habitos.length} ({porcentajeHabitos}%)
-                  </span>
-                </div>
-
-                <form onSubmit={agregarHabito} className="flex flex-col sm:flex-row gap-2.5 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
-                  <input type="text" placeholder="Escribe un nuevo hábito..." value={nuevoHabito} onChange={(e) => setNuevoHabito(e.target.value)} className={INPUT_CLS} />
-                  <input type="time" value={horaObjetivo} onChange={(e) => setHoraObjetivo(e.target.value)} className={`${INPUT_CLS} sm:w-32 text-center font-mono`} />
-                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-xl text-xs cursor-pointer shrink-0 transition">Añadir</button>
-                </form>
-
-                <div className="space-y-2.5">
-                  {habitosOrdenados.map((h) => {
-                    const completado = !!registrosHoy[h.id]?.completado;
-                    const racha = rachasHabitos[h.id] || 0;
-                    return (
-                      <div key={h.id} className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${completado ? 'bg-indigo-950/30 border-indigo-800/60' : 'bg-slate-950/40 border-slate-800/80'}`}>
-                        <div className="flex items-center gap-3.5">
-                          <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center cursor-pointer transition ${completado ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' : 'border-slate-700 hover:border-indigo-500'}`}>
-                            {completado && '✓'}
-                          </button>
-                          <div>
-                            <p className={`text-xs sm:text-sm font-semibold ${completado ? 'line-through text-slate-400' : 'text-slate-100'}`}>{h.texto}</p>
-                            <p className="text-[10px] text-slate-400">Hora: <span className="text-indigo-300 font-mono">{h.hora_objetivo}</span></p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs px-2.5 py-1 rounded-full bg-amber-950/80 border border-amber-800/60 text-amber-400 font-bold">🔥 {racha}d</span>
-                          <button onClick={() => eliminarHabito(h.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            {/* NUTRICIÓN Y ENTRENAMIENTO */}
-            {seccionActiva === 'nutricion' && (
-              <section className={`${CARD_CLS} max-w-4xl mx-auto space-y-6`}>
-                <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
-                  <button onClick={() => setSubSeccionNutricion('nutricion')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionNutricion === 'nutricion' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400 hover:text-slate-200'}`}>🥗 Nutrición y Macros</button>
-                  <button onClick={() => setSubSeccionNutricion('entrenamiento')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionNutricion === 'entrenamiento' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🏋️ Actividad Física</button>
-                </div>
-
-                {subSeccionNutricion === 'nutricion' ? (
-                  <div className="space-y-6">
-                    <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 flex flex-col sm:flex-row items-center gap-4">
-                      <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 text-center min-w-[100px]">
-                        <span className="text-3xl font-black text-amber-400">{evaluacionNutricion.nota}/10</span>
-                      </div>
-                      <div>
-                        <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wide">Objetivo: <span className="text-amber-400">{perfil.objetivo}</span></h3>
-                        <p className="text-xs text-slate-400 mt-1">{evaluacionNutricion.mensaje}</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80"><span className="text-[11px] text-rose-400 font-bold block">Proteínas</span><span className="text-base sm:text-lg font-black text-rose-300">{totalProteinas}g</span></div>
-                      <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80"><span className="text-[11px] text-amber-400 font-bold block">Carbs</span><span className="text-base sm:text-lg font-black text-amber-300">{totalCarbs}g</span></div>
-                      <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80"><span className="text-[11px] text-cyan-400 font-bold block">Grasas</span><span className="text-base sm:text-lg font-black text-cyan-300">{totalGrasas}g</span></div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">🥗 Comidas del Día</h3>
-                        <button onClick={agregarComida} className="text-xs text-amber-400 font-bold hover:underline cursor-pointer">+ Agregar Comida</button>
-                      </div>
-                      
-                      {comidas.map((item) => (
-                        <div key={item.id} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-3">
-                          <div className="flex gap-2 items-center">
-                            <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
-                            <button onClick={() => abrirModalIaComida(item)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 px-3 py-2 rounded-xl text-xs cursor-pointer hover:bg-cyan-900 transition">📷</button>
-                            <button onClick={() => eliminarComida(item.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
-                          </div>
-                          <div className="grid grid-cols-4 gap-2 text-xs">
-                            <div><label className="text-[10px] text-slate-400 block mb-1">Kcal</label><input type="number" value={item.calorias} onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
-                            <div><label className="text-[10px] text-rose-400 block mb-1">Prot (g)</label><input type="number" value={item.proteinas || 0} onChange={(e) => actualizarComida(item.id, 'proteinas', Number(e.target.value))} className={INPUT_CLS} /></div>
-                            <div><label className="text-[10px] text-amber-400 block mb-1">Carbs (g)</label><input type="number" value={item.carbs || 0} onChange={(e) => actualizarComida(item.id, 'carbs', Number(e.target.value))} className={INPUT_CLS} /></div>
-                            <div><label className="text-[10px] text-cyan-400 block mb-1">Grasas (g)</label><input type="number" value={item.grasas || 0} onChange={(e) => actualizarComida(item.id, 'grasas', Number(e.target.value))} className={INPUT_CLS} /></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <button onClick={guardarCalorias} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl cursor-pointer transition shadow-lg shadow-amber-950/50">
-                      💾 Guardar Comidas
-                    </button>
-                  </div>
-                ) : (
-                  /* PESTAÑA ENTRENAMIENTO Y ACTIVIDAD FÍSICA */
-                  <div className="space-y-6">
-                    
-                    {/* RECUADRO DE YOUTUBE MEJORADO Y CENTRADO */}
-                    <div className="bg-slate-950/80 border border-red-900/40 p-5 rounded-2xl space-y-4 text-center shadow-lg">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-2xl animate-pulse">▶️</span>
-                        <h3 className="text-xs sm:text-sm font-extrabold text-red-400 uppercase tracking-wide">Calcular Entrenamiento vía YouTube (IA)</h3>
-                      </div>
-                      <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                        Ingresa el enlace del video de YouTube que vas a realizar y la IA estimará tu consumo calórico y rutina automáticamente.
-                      </p>
-                      
-                      <div className="flex flex-col items-center gap-3 max-w-md mx-auto w-full">
-                        <input 
-                          type="url" 
-                          placeholder="https://www.youtube.com/watch?v=..." 
-                          value={youtubeLink} 
-                          onChange={(e) => setYoutubeLink(e.target.value)} 
-                          className={`${INPUT_CLS} text-center border-slate-700/80 focus:border-red-500`} 
-                        />
-                        <button 
-                          onClick={procesarVideoYoutubeIA} 
-                          disabled={procesandoYoutube} 
-                          className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-2.5 px-5 rounded-xl text-xs cursor-pointer disabled:opacity-50 transition shadow-lg shadow-red-950/40 active:scale-[0.98]"
-                        >
-                          {procesandoYoutube ? '⏳ Procesando video...' : '🤖 Procesar Video'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 pt-2">
-                      <div className="flex justify-between items-center">
-                        <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">🏋️ Actividades Registradas</h3>
-                        <button onClick={agregarEjercicio} className="text-xs text-indigo-400 font-bold hover:underline cursor-pointer">+ Agregar Ejercicio</button>
-                      </div>
-
-                      {ejercicios.map((item) => (
-                        <div key={item.id} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-3">
-                          <div className="flex flex-col sm:flex-row gap-2.5 items-start sm:items-center">
-                            <input type="text" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
-                            
-                            <select 
-                              value={item.tipo || 'fuerza'} 
-                              onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} 
-                              className={`${INPUT_CLS} sm:w-44 text-indigo-300 font-bold`}
-                            >
-                              <option value="fuerza">🏋️ Fuerza / Gym</option>
-                              <option value="running">🏃 Running</option>
-                              <option value="ciclismo">🚴 Ciclismo</option>
-                              <option value="boxeo">🥊 Boxeo</option>
-                              <option value="futbol">⚽ Fútbol</option>
-                              <option value="natacion">🏊 Natación</option>
-                              <option value="caminata">🚶 Caminata</option>
-                              <option value="funcional">🧘 Funcional / HIIT</option>
-                              <option value="otro">⚽ Otro</option>
-                            </select>
-
-                            <div className="flex items-center gap-2">
-                              <button onClick={() => calcularCaloriasEjercicioIA(item)} className="bg-indigo-950 border border-indigo-800 text-indigo-300 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer hover:bg-indigo-900 transition">🤖 IA</button>
-                              <button onClick={() => eliminarEjercicio(item.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
-                            </div>
-                          </div>
-
-                          {/* CAMPOS DINÁMICOS SEGÚN ACTIVIDAD */}
-                          {item.tipo === 'fuerza' ? (
-                            <div className="grid grid-cols-4 gap-2 text-xs">
-                              <div><label className="text-[10px] text-slate-400 block mb-1">Series</label><input type="number" value={item.series || 0} onChange={(e) => actualizarEjercicio(item.id, 'series', Number(e.target.value))} className={INPUT_CLS} /></div>
-                              <div><label className="text-[10px] text-slate-400 block mb-1">Reps</label><input type="number" value={item.repeticiones || 0} onChange={(e) => actualizarEjercicio(item.id, 'repeticiones', Number(e.target.value))} className={INPUT_CLS} /></div>
-                              <div><label className="text-[10px] text-slate-400 block mb-1">Peso (kg)</label><input type="number" value={item.peso || 0} onChange={(e) => actualizarEjercicio(item.id, 'peso', Number(e.target.value))} className={INPUT_CLS} /></div>
-                              <div><label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
-                            </div>
-                          ) : (item.tipo === 'running' || item.tipo === 'ciclismo' || item.tipo === 'caminata') ? (
-                            <div className="grid grid-cols-3 gap-2 text-xs">
-                              <div><label className="text-[10px] text-slate-400 block mb-1">Distancia (km)</label><input type="number" step="0.1" value={item.distancia_km || 0} onChange={(e) => actualizarEjercicio(item.id, 'distancia_km', Number(e.target.value))} className={INPUT_CLS} /></div>
-                              <div><label className="text-[10px] text-slate-400 block mb-1">Duración (min)</label><input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className={INPUT_CLS} /></div>
-                              <div><label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div><label className="text-[10px] text-slate-400 block mb-1">Duración (min)</label><input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className={INPUT_CLS} /></div>
-                              <div><label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    <button onClick={guardarCalorias} className={BTN_PRIMARY}>
-                      💾 Guardar Entrenamiento
-                    </button>
-                  </div>
-                )}
-              </section>
-            )}
-
-            {/* SECCIÓN EXTRA (HIDRATACIÓN Y SUEÑO) */}
-            {seccionActiva === 'extra' && (
-              <section className={`${CARD_CLS} max-w-lg mx-auto space-y-6`}>
-                <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
-                  <button onClick={() => setSubSeccionExtra('agua')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionExtra === 'agua' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}>💧 Hidratación</button>
-                  <button onClick={() => setSubSeccionExtra('sueno')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionExtra === 'sueno' ? 'text-violet-400 border-b-2 border-violet-400' : 'text-slate-400 hover:text-slate-200'}`}>😴 Descanso y Sueño</button>
-                </div>
-
-                {subSeccionExtra === 'agua' ? (
-                  <div className="space-y-5 text-center bg-slate-950/60 p-6 rounded-2xl border border-slate-800/80">
-                    <span className="text-5xl inline-block animate-bounce">💧</span>
-                    <h3 className="text-lg font-black text-cyan-300">Control de Hidratación</h3>
-                    <p className="text-3xl font-black text-cyan-400">{(aguaMl / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-500">/ 2.50 L</span></p>
-                    {(() => {
-                      const estilo = obtenerEstiloBarra(pctAgua);
-                      return (
-                        <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
-                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                        </div>
-                      );
-                    })()}
-                    <div className="flex justify-center gap-2.5 pt-2">
-                      <button onClick={() => modificarAgua(250)} className="bg-cyan-950/80 border border-cyan-800 text-cyan-300 font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-cyan-900 transition">+250 ml 🥛</button>
-                      <button onClick={() => modificarAgua(500)} className="bg-cyan-950/80 border border-cyan-800 text-cyan-300 font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-cyan-900 transition">+500 ml 🍾</button>
-                      <button onClick={() => modificarAgua(-250)} className="bg-slate-900 border border-slate-800 text-slate-400 px-3 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-slate-800 transition">-250 ml</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-5 text-center bg-slate-950/60 p-6 rounded-2xl border border-slate-800/80">
-                    <span className="text-5xl inline-block animate-pulse">😴</span>
-                    <h3 className="text-lg font-black text-violet-300">Control de Sueño</h3>
-                    <p className="text-3xl font-black text-violet-400">{suenoHoy.horas_totales} <span className="text-sm font-normal text-slate-500">/ 8.0 hrs</span></p>
-                    {(() => {
-                      const estilo = obtenerEstiloBarra(pctSueno);
-                      return (
-                        <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
-                          <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                        </div>
-                      );
-                    })()}
-                    
-                    <div className="grid grid-cols-2 gap-4 text-center pt-2 max-w-sm mx-auto">
-                      <div>
-                        <label className="text-xs text-slate-400 font-medium block mb-1">Acostarse</label>
-                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className={`${INPUT_CLS} text-center font-mono`} />
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-400 font-medium block mb-1">Levantarse</label>
-                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className={`${INPUT_CLS} text-center font-mono`} />
-                      </div>
-                    </div>
-
-                    <div className="text-center pt-2">
-                      <label className="text-xs text-slate-400 font-medium block mb-1">Calidad del Sueño</label>
-                      <div className="flex gap-2 justify-center py-1">
-                        {[1, 2, 3, 4, 5].map((estrella) => (
-                          <button key={estrella} type="button" onClick={() => setSuenoHoy({...suenoHoy, calidad: estrella})} className={`text-2xl cursor-pointer transition ${suenoHoy.calidad >= estrella ? 'text-amber-400 scale-110' : 'text-slate-700'}`}>★</button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <button onClick={guardarSueno} className={BTN_PRIMARY}>
-                      💾 Guardar Sueño
-                    </button>
-                  </div>
-                )}
-              </section>
-            )}
-
-            {/* ESTADÍSTICAS */}
-            {seccionActiva === 'estadisticas' && (
-              <section className={`${CARD_CLS} max-w-3xl mx-auto space-y-6`}>
-                <h3 className="text-base font-bold text-indigo-400 flex items-center gap-2">📈 Visualización y Estadísticas</h3>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-1">
-                    <span className="text-[11px] font-bold uppercase text-slate-400">🍽️ Ingerido</span>
-                    <p className="text-2xl font-black text-amber-400">{totalIngeridoCal} <span className="text-xs font-normal text-slate-500">kcal</span></p>
-                  </div>
-
-                  <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-1">
-                    <span className="text-[11px] font-bold uppercase text-slate-400">🔥 Gastado</span>
-                    <p className="text-2xl font-black text-rose-400">{totalGastadoCal} <span className="text-xs font-normal text-slate-500">kcal</span></p>
-                  </div>
-
-                  <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-1">
-                    <span className="text-[11px] font-bold uppercase text-slate-400">⚖️ Balance</span>
-                    <p className={`text-2xl font-black ${balanceCalorico < 0 ? 'text-cyan-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs font-normal text-slate-500">kcal</span></p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 space-y-2">
-                  <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wide">📊 Resumen de Rendimiento</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">Tus hábitos y registro nutricional muestran una constancia del <strong className="text-indigo-400">{porcentajeHabitos}%</strong>. Continúa enfocado en tu meta de <strong className="text-amber-400">{perfil.objetivo}</strong>.</p>
-                </div>
-              </section>
-            )}
-
-            {/* ACTUALIZACIONES Y SOPORTE */}
-            {seccionActiva === 'actualizaciones' && (
-              <section className={`${CARD_CLS} max-w-xl mx-auto space-y-6`}>
-                <h3 className="text-base font-bold text-indigo-400 flex items-center gap-2">🚀 Novedades y Soporte</h3>
+              {subSeccionActualizaciones === 'novedades' ? (
                 <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 text-xs text-slate-300 space-y-2.5">
                   <p className="font-bold text-slate-100">Versión: {ULTIMA_ACTUALIZACION_APP}</p>
                   <p>• Pestañas separadas para Nutrición y Entrenamiento con diseño Glassmorphic.</p>
                   <p>• Módulo de YouTube centrado para analizar rutinas y calcular gasto calórico automático.</p>
-                  <p>• Indicadores mínimos rojos visuales en Resumen General.</p>
-                  <p>• Rendimiento optimizado de renderizado y sincronización automática con Supabase.</p>
+                  <p>• Motor de estimación nutricional corregido línea por línea con densidad real por gramos.</p>
+                  <p>• Guardado automático instantáneo en registro de actividades físicas.</p>
+                  <p>• Solución de parpadeo y reinicio de pantalla al alternar entre aplicaciones.</p>
                 </div>
-              </section>
-            )}
+              ) : (
+                <form onSubmit={enviarSoporte} className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 space-y-4">
+                  <h4 className="text-xs font-bold text-indigo-300 uppercase tracking-wide text-center">¿Tienes sugerencias, dudas o encontraste algún error?</h4>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Tipo de mensaje</label>
+                    <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value)} className={INPUT_CLS}>
+                      <option value="Sugerencia de mejora">💡 Sugerencia de mejora</option>
+                      <option value="Duda o consulta">❓ Duda o consulta</option>
+                      <option value="Reporte de error">⚠️ Reporte de error</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Detalle de tu mensaje</label>
+                    <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Escribe aquí tu sugerencia, duda o el problema que tuviste..." className={INPUT_CLS} required />
+                  </div>
+                  <button type="submit" className={BTN_PRIMARY}>
+                    ✉️ Enviar Comentario
+                  </button>
+                </form>
+              )}
+            </section>
+          )}
 
-          </div>
-        )}
+        </div>
       </main>
 
       {/* MODAL IA COMIDA */}
@@ -1333,8 +1400,8 @@ export default function Home() {
               <input type="text" value={nombreIaModalInput} onChange={(e) => setNombreIaModalInput(e.target.value)} className={INPUT_CLS} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 font-medium block mb-1">Describe los ingredientes (ej: pechuga 150g con arroz)</label>
-              <textarea rows={3} value={textoIaInput} onChange={(e) => setTextoIaInput(e.target.value)} placeholder="Ej: 2 huevos revueltos con una tostada..." className={INPUT_CLS} />
+              <label className="text-xs text-slate-400 font-medium block mb-1">Describe los ingredientes con gramos (ej: Arroz 199g, Carne 183g)</label>
+              <textarea rows={4} value={textoIaInput} onChange={(e) => setTextoIaInput(e.target.value)} placeholder="Leche descremada 324g&#10;Galleta de arroz 16g&#10;Pan integral 26g..." className={INPUT_CLS} />
             </div>
             <div>
               <label className="text-xs text-slate-400 font-medium block mb-1">O sube foto de tu plato:</label>
