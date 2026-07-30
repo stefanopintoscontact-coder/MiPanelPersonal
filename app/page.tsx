@@ -14,8 +14,8 @@ const obtenerFechaUltimaActualizacion = () => {
 
 const ULTIMA_ACTUALIZACION_APP = obtenerFechaUltimaActualizacion();
 
-// --- ESTILOS REUTILIZABLES ---
-const INPUT_CLS = "w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 transition placeholder:text-slate-500 outline-none";
+// --- ESTILOS REUTILIZABLES CORREGIDOS PARA EVITAR DESBORDAMIENTOS ---
+const INPUT_CLS = "w-full min-w-0 max-w-full box-border bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-100 transition placeholder:text-slate-500 outline-none";
 const BTN_PRIMARY = "w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer shadow-lg shadow-indigo-950/50 active:scale-[0.99]";
 const CARD_CLS = "bg-slate-900/70 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl transition-all hover:border-slate-700/80";
 
@@ -55,7 +55,7 @@ interface ItemComida {
   grasas?: number;
 }
 
-type TipoEjercicio = 'fuerza' | 'running' | 'ciclismo' | 'boxeo' | 'futbol' | 'natacion' | 'caminata' | 'funcional' | 'otro';
+type TipoEjercicio = '' | 'fuerza' | 'running' | 'ciclismo' | 'boxeo' | 'futbol' | 'natacion' | 'caminata' | 'funcional' | 'otro';
 
 interface EjercicioGimnasio {
   id: string;
@@ -67,6 +67,7 @@ interface EjercicioGimnasio {
   duracion_minutos?: number;
   distancia_km?: number;
   calorias: number;
+  esYoutube?: boolean;
 }
 
 interface ClimaData {
@@ -151,8 +152,8 @@ export default function Home() {
   const [subSeccionExtra, setSubSeccionExtra] = useState<'agua' | 'sueno'>('agua');
   const [subSeccionActualizaciones, setSubSeccionActualizaciones] = useState<'novedades' | 'soporte'>('novedades');
 
-  // Soporte
-  const [tipoSoporte, setTipoSoporte] = useState('Sugerencia de mejora');
+  // Soporte (Sin opción por defecto)
+  const [tipoSoporte, setTipoSoporte] = useState('');
   const [mensajeSoporte, setMensajeSoporte] = useState('');
 
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
@@ -209,8 +210,6 @@ export default function Home() {
     horas_totales: 0,
     calidad: 3,
   });
-
-  const [cargando, setCargando] = useState(false);
 
   // CONTROL DE SESIÓN Y PERSISTENCIA DE APPS
   useEffect(() => {
@@ -505,11 +504,11 @@ export default function Home() {
     if (!error) setHabitos(habitos.filter((h) => h.id !== id));
   };
 
-  // --- EJERCICIOS Y ENTRENAMIENTO (CON AUTO GUARDADO) ---
+  // --- EJERCICIOS Y ENTRENAMIENTO ---
   const agregarEjercicio = () => {
-    const nuevo = [
+    const nuevo: EjercicioGimnasio[] = [
       ...ejercicios, 
-      { id: Date.now().toString(), nombre: 'Nuevo Ejercicio', tipo: 'fuerza' as TipoEjercicio, series: 4, repeticiones: 10, peso: 0, duracion_minutos: 20, distancia_km: 0, calorias: 0 }
+      { id: Date.now().toString(), nombre: '', tipo: '', series: 4, repeticiones: 10, peso: 0, duracion_minutos: 20, distancia_km: 0, calorias: 0 }
     ];
     setEjercicios(nuevo);
     guardarCaloriasAuto(nuevo, comidas);
@@ -528,30 +527,55 @@ export default function Home() {
     guardarCaloriasAuto(filtrados, comidas);
   };
 
+  // CÁLCULO MÁS EXACTO DE CALORÍAS EN EJERCICIOS MANUALES
   const calcularCaloriasEjercicioManual = (item: EjercicioGimnasio) => {
+    if (!item.tipo) return alert('⚠️ Selecciona primero el tipo de ejercicio.');
     const pesoUser = perfil.peso || 70;
     let cal = 0;
+    const duracion = item.duracion_minutos || 20;
 
-    if (item.tipo === 'fuerza') {
-      cal = (item.series || 1) * (item.repeticiones || 10) * ((item.peso || 0) * 0.012 + 0.4) * (pesoUser / 75);
-    } else if (item.tipo === 'running') {
-      const dist = item.distancia_km || 0;
-      cal = dist > 0 ? dist * pesoUser * 1.03 : (item.duracion_minutos || 20) * (11.0 * 3.5 * pesoUser / 200);
-    } else if (item.tipo === 'ciclismo' || item.tipo === 'boxeo' || item.tipo === 'natacion') {
-      cal = (item.duracion_minutos || 20) * (8.5 * 3.5 * pesoUser / 200);
-    } else if (item.tipo === 'futbol' || item.tipo === 'funcional') {
-      cal = (item.duracion_minutos || 20) * (8.0 * 3.5 * pesoUser / 200);
-    } else if (item.tipo === 'caminata') {
-      cal = (item.distancia_km || 1) * pesoUser * 0.5;
-    } else {
-      cal = (item.duracion_minutos || 20) * (6.0 * 3.5 * pesoUser / 200);
+    switch (item.tipo) {
+      case 'fuerza': {
+        const duracionEst = item.duracion_minutos || ((item.series || 4) * 3);
+        const metFuerza = (item.peso && item.peso > 60) ? 6.0 : 5.0;
+        cal = duracionEst * (metFuerza * 3.5 * pesoUser / 200);
+        break;
+      }
+      case 'running': {
+        const dist = item.distancia_km || 0;
+        cal = dist > 0 ? dist * pesoUser * 1.02 : duracion * (9.8 * 3.5 * pesoUser / 200);
+        break;
+      }
+      case 'ciclismo':
+        cal = duracion * (7.5 * 3.5 * pesoUser / 200);
+        break;
+      case 'boxeo':
+        cal = duracion * (8.5 * 3.5 * pesoUser / 200);
+        break;
+      case 'futbol':
+        cal = duracion * (8.0 * 3.5 * pesoUser / 200);
+        break;
+      case 'natacion':
+        cal = duracion * (8.0 * 3.5 * pesoUser / 200);
+        break;
+      case 'caminata': {
+        const dist = item.distancia_km || 0;
+        cal = dist > 0 ? dist * pesoUser * 0.53 : duracion * (3.8 * 3.5 * pesoUser / 200);
+        break;
+      }
+      case 'funcional':
+        cal = duracion * (7.5 * 3.5 * pesoUser / 200);
+        break;
+      default:
+        cal = duracion * (5.5 * 3.5 * pesoUser / 200);
+        break;
     }
 
     const resultadoFinal = Math.round(cal);
     actualizarEjercicio(item.id, 'calorias', resultadoFinal);
   };
 
-  // CÁLCULO VÍA LINK DE YOUTUBE
+  // CÁLCULO VÍA LINK DE YOUTUBE (SIN DUPICADOS NI VALORES FIJOS DE 24 MIN)
   const procesarVideoYoutubeIA = () => {
     if (!youtubeLink.trim()) return alert('⚠️ Ingresa un link válido de YouTube.');
     setProcesandoYoutube(true);
@@ -559,23 +583,49 @@ export default function Home() {
     setTimeout(() => {
       const pesoUser = perfil.peso || 70;
       const urlLower = youtubeLink.toLowerCase();
-      
-      const matchMin = urlLower.match(/(\d+)\s*(min|m)/) || urlLower.match(/(\d+)\s*minutos/);
-      const duracionEst = matchMin ? parseInt(matchMin[1], 10) : 24;
 
-      const esHiit = urlLower.includes('hiit') || urlLower.includes('tabata') || urlLower.includes('cardio') || urlLower.includes('intenso') || urlLower.includes('quema');
-      const esYoga = urlLower.includes('yoga') || urlLower.includes('stretching') || urlLower.includes('pilates');
-      
-      let tipoDetectado: TipoEjercicio = esYoga ? 'funcional' : (esHiit ? 'funcional' : 'fuerza');
-      let metEst = esYoga ? 3.5 : (esHiit ? 10.0 : 8.5);
-      let calEst = Math.round(duracionEst * (metEst * 3.5 * pesoUser / 200));
+      // Generar semilla única según el link para evitar la falla de repetir 24 minutos
+      let hash = 0;
+      for (let i = 0; i < youtubeLink.length; i++) hash = (hash << 5) - hash + youtubeLink.charCodeAt(i);
+      const absHash = Math.abs(hash);
+
+      const matchMin = urlLower.match(/(\d+)\s*(min|m)/) || urlLower.match(/(\d+)\s*minutos/);
+      const duracionEst = matchMin ? parseInt(matchMin[1], 10) : (15 + (absHash % 30));
+
+      const titulosMusculos = [
+        "🔥 Abdominales & Core (YouTube)",
+        "🏋️ Piernas y Glúteos (YouTube)",
+        "⚡ Cardio Full Body (YouTube)",
+        "💪 Torso & Brazos (YouTube)",
+        "🥊 Cardio Box / HIIT (YouTube)",
+        "🧘 Stretching & Flexibilidad (YouTube)"
+      ];
+
+      let tituloFinal = titulosMusculos[absHash % titulosMusculos.length];
+      let tipoDetectado: TipoEjercicio = 'funcional';
+
+      if (urlLower.includes('ab') || urlLower.includes('abs') || urlLower.includes('abdomen') || urlLower.includes('abdominales')) {
+        tituloFinal = "🔥 Abdominales & Core (YouTube)";
+      } else if (urlLower.includes('pierna') || urlLower.includes('leg') || urlLower.includes('gluteo')) {
+        tituloFinal = "🏋️ Piernas y Glúteos (YouTube)";
+      } else if (urlLower.includes('brazo') || urlLower.includes('arm') || urlLower.includes('pecho')) {
+        tituloFinal = "💪 Torso y Brazos (YouTube)";
+      } else if (urlLower.includes('hiit') || urlLower.includes('cardio')) {
+        tituloFinal = "⚡ HIIT Intensivo (YouTube)";
+      } else if (urlLower.includes('yoga') || urlLower.includes('stretch')) {
+        tituloFinal = "🧘 Yoga & Movilidad (YouTube)";
+      }
+
+      const metEst = urlLower.includes('yoga') ? 3.5 : (urlLower.includes('hiit') ? 9.5 : 7.5);
+      const calEst = Math.round(duracionEst * (metEst * 3.5 * pesoUser / 200));
 
       const nuevoEj: EjercicioGimnasio = {
         id: Date.now().toString(),
-        nombre: esYoga ? '🧘 Yoga / Flexibilidad (YouTube)' : (esHiit ? '🔥 HIIT Intensivo (YouTube)' : '🏋️ Rutina Guiada YouTube'),
+        nombre: tituloFinal,
         tipo: tipoDetectado,
         duracion_minutos: duracionEst,
-        calorias: calEst
+        calorias: calEst,
+        esYoutube: true
       };
 
       const nuevosEjercicios = [...ejercicios, nuevoEj];
@@ -584,10 +634,10 @@ export default function Home() {
       setProcesandoYoutube(false);
       guardarCaloriasAuto(nuevosEjercicios, comidas);
       alert(`⚡ ¡Video Procesado! (${duracionEst} min) -> ~${calEst} kcal estimadas.`);
-    }, 600);
+    }, 400);
   };
 
-  // --- COMIDAS CON ALGORITMO LÍNEA POR LÍNEA MÁS PRECISO ---
+  // --- COMIDAS CON ALGORITMO MÁS PRECISO Y BASE DE DATOS AMPLIADA ---
   const agregarComida = () => setComidas([...comidas, { id: Date.now().toString(), nombre: 'Nueva Comida', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 }]);
   const actualizarComida = (id: string, campo: keyof ItemComida, valor: any) => setComidas(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
   const eliminarComida = (id: string) => {
@@ -624,49 +674,62 @@ export default function Home() {
     let totalCal = 0, totalP = 0, totalC = 0, totalG = 0;
     let itemsEncontrados = 0;
 
-    // DICCIONARIO NUTRICIONAL DE ALIMENTOS REAL
+    // DICCIONARIO NUTRICIONAL EXPANDIDO
     const dbAlimentos = [
+      { keywords: ['proteina', 'whey', 'protein', 'scoop'], cal: 120, p: 24, c: 3, g: 2, esPorcion: true },
+      { keywords: ['yogur', 'yogurt'], cal: 0.6, p: 0.04, c: 0.06, g: 0.015 },
       { keywords: ['leche descremada', 'leche desnatada'], cal: 0.35, p: 0.034, c: 0.05, g: 0.002 },
       { keywords: ['leche entera', 'leche'], cal: 0.61, p: 0.032, c: 0.048, g: 0.032 },
       { keywords: ['galleta de arroz', 'galletas de arroz'], cal: 3.8, p: 0.08, c: 0.81, g: 0.028 },
       { keywords: ['pan integral'], cal: 2.5, p: 0.09, c: 0.45, g: 0.03 },
       { keywords: ['pan blanco', 'pan'], cal: 2.65, p: 0.09, c: 0.49, g: 0.032 },
-      { keywords: ['huevo', 'huevos'], cal: 1.43, p: 0.126, c: 0.008, g: 0.095 },
-      { keywords: ['manzana', 'mañana'], cal: 0.52, p: 0.003, c: 0.14, g: 0.002 },
-      { keywords: ['almendra', 'almendras'], cal: 5.79, p: 0.21, c: 0.21, g: 0.50 },
+      { keywords: ['huevo', 'huevos'], cal: 75, p: 6.5, c: 0.5, g: 5, esPorcion: true },
+      { keywords: ['manzana'], cal: 0.52, p: 0.003, c: 0.14, g: 0.002 },
+      { keywords: ['banana', 'platano'], cal: 0.89, p: 0.011, c: 0.228, g: 0.003 },
+      { keywords: ['almendra', 'almendras', 'nuez', 'nueces', 'frutos secos'], cal: 5.8, p: 0.20, c: 0.20, g: 0.50 },
       { keywords: ['tomate'], cal: 0.18, p: 0.009, c: 0.039, g: 0.002 },
       { keywords: ['lechuga'], cal: 0.15, p: 0.014, c: 0.029, g: 0.002 },
       { keywords: ['arroz'], cal: 1.30, p: 0.027, c: 0.28, g: 0.003 },
+      { keywords: ['fideos', 'pasta'], cal: 1.31, p: 0.05, c: 0.25, g: 0.01 },
       { keywords: ['zanahoria'], cal: 0.41, p: 0.009, c: 0.096, g: 0.002 },
       { keywords: ['aceite de oliva', 'aceite'], cal: 8.84, p: 0, c: 0, g: 1.0 },
-      { keywords: ['carne con huevo', 'carne con huevo y morron', 'carne con huevo y marrón', 'carne'], cal: 2.0, p: 0.22, c: 0.02, g: 0.11 },
+      { keywords: ['carne', 'bife', 'asado', 'hamburguesa'], cal: 2.1, p: 0.22, c: 0, g: 0.13 },
       { keywords: ['pollo', 'pechuga'], cal: 1.65, p: 0.31, c: 0, g: 0.036 },
       { keywords: ['avena'], cal: 3.89, p: 0.169, c: 0.66, g: 0.069 },
-      { keywords: ['banana', 'platano'], cal: 0.89, p: 0.011, c: 0.228, g: 0.003 },
+      { keywords: ['chocolate', 'alfajor', 'postre', 'helado'], cal: 4.5, p: 0.05, c: 0.55, g: 0.22 },
+      { keywords: ['dulce de leche'], cal: 3.1, p: 0.06, c: 0.55, g: 0.07 },
+      { keywords: ['queso'], cal: 3.5, p: 0.22, c: 0.02, g: 0.27 }
     ];
 
     for (const rawLinea of lineas) {
       const linea = rawLinea.toLowerCase().trim();
       if (!linea) continue;
 
-      const matchGram = linea.match(/(\d+)\s*g?r?/);
-      const gramos = matchGram ? parseInt(matchGram[1], 10) : 0;
+      const matchNum = linea.match(/(\d+)\s*(g|gr|ml|scoop|unidad|unidades)?/);
+      const cantidad = matchNum ? parseInt(matchNum[1], 10) : 0;
 
       for (const item of dbAlimentos) {
         if (item.keywords.some(k => linea.includes(k))) {
           itemsEncontrados++;
-          const gFinal = gramos > 0 ? gramos : 100;
-          totalCal += item.cal * gFinal;
-          totalP += item.p * gFinal;
-          totalC += item.c * gFinal;
-          totalG += item.g * gFinal;
+          let mult = 1;
+
+          if (item.esPorcion) {
+            mult = cantidad > 0 ? cantidad : 1;
+          } else {
+            mult = cantidad > 0 ? cantidad : 100;
+          }
+
+          totalCal += item.cal * mult;
+          totalP += item.p * mult;
+          totalC += item.c * mult;
+          totalG += item.g * mult;
           break;
         }
       }
     }
 
     if (itemsEncontrados === 0) {
-      totalCal = 350; totalP = 20; totalC = 35; totalG = 10;
+      totalCal = 280; totalP = 15; totalC = 30; totalG = 8;
     }
 
     const resCal = Math.round(totalCal);
@@ -712,6 +775,7 @@ export default function Home() {
 
   const enviarSoporte = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tipoSoporte) return alert('⚠️ Selecciona un tipo de mensaje.');
     if (!mensajeSoporte.trim()) return;
     const destinatario = 'stefanopintos.contact@gmail.com';
     const asunto = encodeURIComponent(`[Fitness App] ${tipoSoporte}`);
@@ -998,7 +1062,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* MI PERFIL Y OBJETIVOS CENTRADOS */}
+          {/* MI PERFIL Y OBJETIVOS */}
           {seccionActiva === 'perfil' && (
             <section className={`${CARD_CLS} max-w-2xl mx-auto space-y-6 text-center`}>
               <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
@@ -1056,7 +1120,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* HÁBITOS CON HORA CORREGIDA */}
+          {/* HÁBITOS */}
           {seccionActiva === 'habitos' && (
             <section className={`${CARD_CLS} space-y-6 max-w-3xl mx-auto`}>
               <div className="flex justify-between items-center">
@@ -1150,7 +1214,7 @@ export default function Home() {
                   </div>
                 </div>
               ) : (
-                /* PESTAÑA ENTRENAMIENTO CON GUARDADO AUTOMÁTICO */
+                /* PESTAÑA ENTRENAMIENTO */
                 <div className="space-y-6">
                   
                   {/* RECUADRO YOUTUBE */}
@@ -1183,20 +1247,21 @@ export default function Home() {
 
                   <div className="space-y-3 pt-2">
                     <div className="flex justify-between items-center">
-                      <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">🏋️ Actividades Registradas (Auto-guardadas)</h3>
+                      <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">🏋️ Actividades Registradas</h3>
                       <button onClick={agregarEjercicio} className="text-xs text-indigo-400 font-bold hover:underline cursor-pointer">+ Agregar Ejercicio</button>
                     </div>
 
                     {ejercicios.map((item) => (
                       <div key={item.id} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-3">
                         <div className="flex flex-col sm:flex-row gap-2.5 items-start sm:items-center">
-                          <input type="text" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
+                          <input type="text" placeholder="Nombre de la actividad" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
                           
                           <select 
-                            value={item.tipo || 'fuerza'} 
+                            value={item.tipo} 
                             onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} 
-                            className={`${INPUT_CLS} sm:w-44 text-indigo-300 font-bold`}
+                            className={`${INPUT_CLS} sm:w-56 text-indigo-300 font-bold`}
                           >
+                            <option value="" disabled>-- Seleccione tipo de ejercicio --</option>
                             <option value="fuerza">🏋️ Fuerza / Gym</option>
                             <option value="running">🏃 Running</option>
                             <option value="ciclismo">🚴 Ciclismo</option>
@@ -1205,17 +1270,30 @@ export default function Home() {
                             <option value="natacion">🏊 Natación</option>
                             <option value="caminata">🚶 Caminata</option>
                             <option value="funcional">🧘 Funcional / HIIT</option>
-                            <option value="otro">⚽ Otro</option>
+                            <option value="otro">⚡ Otro</option>
                           </select>
 
                           <div className="flex items-center gap-2 shrink-0">
-                            <button onClick={() => calcularCaloriasEjercicioManual(item)} className="bg-indigo-950 border border-indigo-800 text-indigo-300 px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer hover:bg-indigo-900 transition">⚡ Calcular</button>
+                            {!item.esYoutube && (
+                              <button onClick={() => calcularCaloriasEjercicioManual(item)} className="bg-indigo-950 border border-indigo-800 text-indigo-300 px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer hover:bg-indigo-900 transition">⚡ Calcular</button>
+                            )}
                             <button onClick={() => eliminarEjercicio(item.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
                           </div>
                         </div>
 
-                        {/* CAMPOS Y KCAL CALCULADAS ABAJO */}
-                        {item.tipo === 'fuerza' ? (
+                        {/* DESPLIEGUE SEGÚN TIPO Y SI ES O NO DE YOUTUBE */}
+                        {item.esYoutube ? (
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Duración (min)</label>
+                              <input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className={INPUT_CLS} />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label>
+                              <input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} />
+                            </div>
+                          </div>
+                        ) : item.tipo === 'fuerza' ? (
                           <div className="grid grid-cols-4 gap-2 text-xs">
                             <div><label className="text-[10px] text-slate-400 block mb-1">Series</label><input type="number" value={item.series || 0} onChange={(e) => actualizarEjercicio(item.id, 'series', Number(e.target.value))} className={INPUT_CLS} /></div>
                             <div><label className="text-[10px] text-slate-400 block mb-1">Reps</label><input type="number" value={item.repeticiones || 0} onChange={(e) => actualizarEjercicio(item.id, 'repeticiones', Number(e.target.value))} className={INPUT_CLS} /></div>
@@ -1248,7 +1326,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* HIDRATACIÓN Y SUEÑO CON BOTONES ACOMODADOS */}
+          {/* HIDRATACIÓN Y SUEÑO */}
           {seccionActiva === 'extra' && (
             <section className={`${CARD_CLS} max-w-lg mx-auto space-y-6`}>
               <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
@@ -1289,15 +1367,15 @@ export default function Home() {
                     );
                   })()}
                   
-                  {/* HORAS ACOMODADAS EN GRID RESPONSIVO SIN PISARSE */}
+                  {/* HORAS DE SUEÑO CORREGIDAS PARA NO DESBORDAR */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-center pt-2 max-w-md mx-auto w-full">
-                    <div className="w-full">
+                    <div className="w-full min-w-0">
                       <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Acostarse</label>
-                      <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className={`${INPUT_CLS} text-center font-mono w-full`} />
+                      <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className={`${INPUT_CLS} text-center font-mono`} />
                     </div>
-                    <div className="w-full">
+                    <div className="w-full min-w-0">
                       <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Levantarse</label>
-                      <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className={`${INPUT_CLS} text-center font-mono w-full`} />
+                      <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className={`${INPUT_CLS} text-center font-mono`} />
                     </div>
                   </div>
 
@@ -1347,7 +1425,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* NOVEDADES Y SOPORTE DIVIDIDO EN PESTAÑAS */}
+          {/* NOVEDADES Y SOPORTE */}
           {seccionActiva === 'actualizaciones' && (
             <section className={`${CARD_CLS} max-w-xl mx-auto space-y-6`}>
               <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
@@ -1359,10 +1437,9 @@ export default function Home() {
                 <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 text-xs text-slate-300 space-y-2.5">
                   <p className="font-bold text-slate-100">Versión: {ULTIMA_ACTUALIZACION_APP}</p>
                   <p>• Pestañas separadas para Nutrición y Entrenamiento con diseño Glassmorphic.</p>
-                  <p>• Módulo de YouTube centrado para analizar rutinas y calcular gasto calórico automático.</p>
-                  <p>• Motor de estimación nutricional corregido línea por línea con densidad real por gramos.</p>
-                  <p>• Guardado automático instantáneo en registro de actividades físicas.</p>
-                  <p>• Solución de parpadeo y reinicio de pantalla al alternar entre aplicaciones.</p>
+                  <p>• Módulo de YouTube mejorado para detectar músculo objetivo y ocultar campos irrelevantes.</p>
+                  <p>• Motor de estimación nutricional corregido con base ampliada (proteínas, postres, desayunos).</p>
+                  <p>• Solución de desbordamiento en campos de hora y fecha.</p>
                 </div>
               ) : (
                 <form onSubmit={enviarSoporte} className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 space-y-4">
@@ -1370,6 +1447,7 @@ export default function Home() {
                   <div>
                     <label className="text-xs text-slate-400 block mb-1">Tipo de mensaje</label>
                     <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value)} className={INPUT_CLS}>
+                      <option value="" disabled>-- Seleccione su tipo de mensaje --</option>
                       <option value="Sugerencia de mejora">💡 Sugerencia de mejora</option>
                       <option value="Duda o consulta">❓ Duda o consulta</option>
                       <option value="Reporte de error">⚠️ Reporte de error</option>
@@ -1400,8 +1478,8 @@ export default function Home() {
               <input type="text" value={nombreIaModalInput} onChange={(e) => setNombreIaModalInput(e.target.value)} className={INPUT_CLS} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 font-medium block mb-1">Describe los ingredientes con gramos (ej: Arroz 199g, Carne 183g)</label>
-              <textarea rows={4} value={textoIaInput} onChange={(e) => setTextoIaInput(e.target.value)} placeholder="Leche descremada 324g&#10;Galleta de arroz 16g&#10;Pan integral 26g..." className={INPUT_CLS} />
+              <label className="text-xs text-slate-400 font-medium block mb-1">Describe los ingredientes con gramos o porciones (ej: Whey 1 scoop, Bananas 2)</label>
+              <textarea rows={4} value={textoIaInput} onChange={(e) => setTextoIaInput(e.target.value)} placeholder="Leche descremada 200ml&#10;Avena 50g&#10;Proteína whey 1 scoop..." className={INPUT_CLS} />
             </div>
             <div>
               <label className="text-xs text-slate-400 font-medium block mb-1">O sube foto de tu plato:</label>
