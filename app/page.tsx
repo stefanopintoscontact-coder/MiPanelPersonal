@@ -50,10 +50,12 @@ interface ItemComida {
   grasas?: number;
 }
 
+type TipoEjercicio = 'fuerza' | 'running' | 'ciclismo' | 'boxeo' | 'futbol' | 'natacion' | 'caminata' | 'funcional' | 'otro';
+
 interface EjercicioGimnasio {
   id: string;
   nombre: string;
-  tipo?: 'gimnasio' | 'running' | 'ciclismo' | 'boxeo' | 'natacion' | 'caminata' | 'otro';
+  tipo: TipoEjercicio;
   series?: number;
   repeticiones?: number;
   peso?: number;
@@ -118,17 +120,22 @@ const formatearFechaLarga = (fechaStr: string) => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
-// HELPER PARA COLORES DINÁMICOS DE BARRAS DE PROGRESO
-const obtenerColorBarra = (porcentaje: number) => {
-  if (porcentaje < 40) return 'bg-rose-500';
-  if (porcentaje < 80) return 'bg-amber-500';
-  return 'bg-emerald-500';
+// HELPER PARA COLORES Y ANCHO DINÁMICO DE BARRAS DE PROGRESO (INCLUYE MINIMO ROJO)
+const obtenerEstiloBarra = (porcentaje: number) => {
+  if (porcentaje <= 0) {
+    return { width: '5%', colorClass: 'bg-rose-500' };
+  }
+  let colorClass = 'bg-emerald-500';
+  if (porcentaje < 40) colorClass = 'bg-rose-500';
+  else if (porcentaje < 80) colorClass = 'bg-amber-500';
+  
+  return { width: `${Math.min(100, porcentaje)}%`, colorClass };
 };
 
 export default function Home() {
   // ESTADOS DE AUTENTICACIÓN
   const [session, setSession] = useState<any>(null);
-  const [cargandoSesion, setCargandoSesion] = useState(true); // EVITA EL PARPADEO DE LOGIN
+  const [cargandoSesion, setCargandoSesion] = useState(true);
   const [esRegistro, setEsRegistro] = useState(false);
   const [emailAuth, setEmailAuth] = useState('');
   const [passwordAuth, setPasswordAuth] = useState('');
@@ -136,16 +143,15 @@ export default function Home() {
   const [errorAuth, setErrorAuth] = useState('');
 
   // ESTADOS DE LA APP
-  const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'habitos' | 'nutricion' | 'extra' | 'notas' | 'estadisticas' | 'actualizaciones'>('general');
+  const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'habitos' | 'nutricion' | 'extra' | 'estadisticas' | 'actualizaciones'>('general');
   const [subSeccionPerfil, setSubSeccionPerfil] = useState<'perfil' | 'objetivo'>('perfil');
+  const [subSeccionNutricion, setSubSeccionNutricion] = useState<'nutricion' | 'entrenamiento'>('nutricion');
   const [subSeccionExtra, setSubSeccionExtra] = useState<'agua' | 'sueno'>('agua');
   
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
   const [horaVivo, setHoraVivo] = useState<string>('');
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(obtenerFechaLogica());
   const [clima, setClima] = useState<ClimaData | null>(null);
-
-  const [mostrarModalOnboarding, setMostrarModalOnboarding] = useState(false);
 
   // Perfil del Usuario
   const [perfil, setPerfil] = useState<PerfilUsuario>({
@@ -164,7 +170,6 @@ export default function Home() {
   // Hábitos
   const [habitos, setHabitos] = useState<Habito[]>([]);
   const [registrosHoy, setRegistrosHoy] = useState<Record<number, RegistroHabito>>({});
-  const [todosLosRegistrosHabitos, setTodosLosRegistrosHabitos] = useState<RegistroHabito[]>([]);
   const [rachasHabitos, setRachasHabitos] = useState<Record<number, number>>({});
   const [nuevoHabito, setNuevoHabito] = useState('');
   const [horaObjetivo, setHoraObjetivo] = useState('18:00');
@@ -176,8 +181,8 @@ export default function Home() {
   // Nutrición / Calorías / Gimnasio
   const [ejercicios, setEjercicios] = useState<EjercicioGimnasio[]>([]);
   const [comidas, setComidas] = useState<ItemComida[]>(COMIDAS_POR_DEFECTO);
-  const [bibliotecaComidas, setBibliotecaComidas] = useState<ItemComida[]>([]);
-  const [guardandoCalorias, setGuardandoCalorias] = useState(false);
+  const [youtubeLink, setYoutubeLink] = useState('');
+  const [procesandoYoutube, setProcesandoYoutube] = useState(false);
 
   // Modal IA Comidas
   const [comidaIaModal, setComidaIaModal] = useState<ItemComida | null>(null);
@@ -199,13 +204,9 @@ export default function Home() {
     calidad: 3,
   });
 
-  // Notas
-  const [notaDiaria, setNotaDiaria] = useState('');
-  const [guardandoNota, setGuardandoNota] = useState(false);
-
   const [cargando, setCargando] = useState(true);
 
-  // CONTROL DE SESIÓN SIN PARPADEO
+  // CONTROL DE SESIÓN
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -218,13 +219,6 @@ export default function Home() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const bib = localStorage.getItem('biblioteca_comidas_user');
-    if (bib) {
-      try { setBibliotecaComidas(JSON.parse(bib)); } catch (e) {}
-    }
   }, []);
 
   const cambiarSeccion = (id: typeof seccionActiva) => {
@@ -328,11 +322,6 @@ export default function Home() {
             const resClima = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
             const dataClima = await resClima.json();
             let textoUbicacion = 'Tu ubicación';
-            try {
-              const resGeo = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=es`);
-              const dataGeo = await resGeo.json();
-              if (dataGeo.city || dataGeo.locality) textoUbicacion = `${dataGeo.city || dataGeo.locality}, ${dataGeo.countryName || ''}`;
-            } catch (geoErr) {}
 
             if (dataClima.current_weather) {
               const temp = Math.round(dataClima.current_weather.temperature);
@@ -368,7 +357,6 @@ export default function Home() {
     const { data: historial } = await supabase.from('registro_habitos').select('habito_id, fecha, completado').eq('user_id', user.id).eq('completado', true).order('fecha', { ascending: false });
     if (!historial) return;
 
-    setTodosLosRegistrosHabitos(historial);
     const mapaRachas: Record<number, number> = {};
     listaHabitos.forEach((h) => {
       const registrosDeHabito = historial.filter((r) => r.habito_id === h.id);
@@ -392,19 +380,9 @@ export default function Home() {
     if (!user) return;
     setCargando(true);
 
-    const onboardingCompletado = localStorage.getItem(`onboarding_completado_${user.id}`);
     const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').eq('user_id', user.id).maybeSingle();
-    
-    if (datosPerfil && datosPerfil.nombre && datosPerfil.nombre.trim() !== '') {
+    if (datosPerfil) {
       setPerfil({ ...datosPerfil, fecha_nacimiento: datosPerfil.fecha_nacimiento || '2000-01-01', tiempo_objetivo_meses: datosPerfil.tiempo_objetivo_meses || 3 });
-      setMostrarModalOnboarding(false);
-      localStorage.setItem(`onboarding_completado_${user.id}`, 'true');
-    } else if (onboardingCompletado === 'true') {
-      setMostrarModalOnboarding(false);
-    } else {
-      const nombreGoogle = user.user_metadata?.full_name || user.email?.split('@')[0] || '';
-      setPerfil((prev) => ({ ...prev, nombre: datosPerfil?.nombre || nombreGoogle || prev.nombre }));
-      setMostrarModalOnboarding(true);
     }
 
     const { data: datosHabitos } = await supabase.from('habitos').select('*').eq('user_id', user.id);
@@ -429,9 +407,6 @@ export default function Home() {
 
     const { data: datosSueno } = await supabase.from('registro_sueno').select('*').eq('user_id', user.id).eq('fecha', fechaSeleccionada).maybeSingle();
     setSuenoHoy(datosSueno || { fecha: fechaSeleccionada, hora_acostarse: '23:00', hora_levantarse: '07:00', horas_totales: 0, calidad: 3 });
-
-    const { data: datosNota } = await supabase.from('notas_diarias').select('contenido').eq('user_id', user.id).eq('fecha', fechaSeleccionada).maybeSingle();
-    setNotaDiaria(datosNota?.contenido || '');
 
     setCargando(false);
   };
@@ -481,9 +456,7 @@ export default function Home() {
       };
       const { error } = await supabase.from('perfil_usuario').upsert(payloadPerfil, { onConflict: 'user_id' });
       if (error) throw error;
-      localStorage.setItem(`onboarding_completado_${user.id}`, 'true');
       alert('✅ Perfil guardado correctamente');
-      setMostrarModalOnboarding(false);
       return true;
     } catch (err: any) {
       alert('❌ Error al guardar perfil: ' + err.message);
@@ -525,8 +498,14 @@ export default function Home() {
     if (!error) setHabitos(habitos.filter((h) => h.id !== id));
   };
 
-  const agregarEjercicio = () => setEjercicios([...ejercicios, { id: Date.now().toString(), nombre: 'Nuevo Ejercicio', tipo: 'gimnasio', series: 4, repeticiones: 10, peso: 0, duracion_minutos: 30, distancia_km: 0, calorias: 0 }]);
+  // --- EJERCICIOS Y ENTRENAMIENTO DIVERSIFICADO ---
+  const agregarEjercicio = () => setEjercicios([
+    ...ejercicios, 
+    { id: Date.now().toString(), nombre: 'Nuevo Ejercicio', tipo: 'fuerza', series: 4, repeticiones: 10, peso: 0, duracion_minutos: 30, distancia_km: 0, calorias: 0 }
+  ]);
+  
   const actualizarEjercicio = (id: string, campo: keyof EjercicioGimnasio, valor: any) => setEjercicios(ejercicios.map((item) => (item.id === id ? { ...item, [campo]: valor } : item)));
+  
   const eliminarEjercicio = (id: string) => {
     if (!window.confirm('¿Eliminar ejercicio?')) return;
     setEjercicios(ejercicios.filter((item) => item.id !== id));
@@ -534,26 +513,67 @@ export default function Home() {
 
   const calcularCaloriasEjercicioIA = (item: EjercicioGimnasio) => {
     const pesoUser = perfil.peso || 70;
-    let cal = item.tipo === 'gimnasio' || !item.tipo
-      ? (item.series || 1) * (item.repeticiones || 10) * ((item.peso || 0) * 0.012 + 0.4) * (pesoUser / 75)
-      : (item.duracion_minutos || 30) * (6.0 * 3.5 * pesoUser / 200);
+    let cal = 0;
+
+    if (item.tipo === 'fuerza') {
+      cal = (item.series || 1) * (item.repeticiones || 10) * ((item.peso || 0) * 0.012 + 0.4) * (pesoUser / 75);
+    } else if (item.tipo === 'running') {
+      cal = (item.distancia_km || 1) * pesoUser * 1.03;
+    } else if (item.tipo === 'ciclismo') {
+      cal = (item.duracion_minutos || 30) * (8.0 * 3.5 * pesoUser / 200);
+    } else if (item.tipo === 'boxeo') {
+      cal = (item.duracion_minutos || 30) * (9.0 * 3.5 * pesoUser / 200);
+    } else if (item.tipo === 'natacion') {
+      cal = (item.duracion_minutos || 30) * (8.0 * 3.5 * pesoUser / 200);
+    } else if (item.tipo === 'futbol') {
+      cal = (item.duracion_minutos || 30) * (7.5 * 3.5 * pesoUser / 200);
+    } else if (item.tipo === 'caminata') {
+      cal = (item.distancia_km || 1) * pesoUser * 0.5;
+    } else {
+      cal = (item.duracion_minutos || 30) * (6.0 * 3.5 * pesoUser / 200);
+    }
+
     const resultadoFinal = Math.round(cal);
     actualizarEjercicio(item.id, 'calorias', resultadoFinal);
-    alert(`🤖 IA: ~${resultadoFinal} kcal quemadas.`);
+    alert(`🤖 IA: ~${resultadoFinal} kcal quemadas estimada para ${item.tipo}.`);
   };
 
+  // CÁLCULO IA AUTOMÁTICO VÍA LINK DE YOUTUBE
+  const procesarVideoYoutubeIA = () => {
+    if (!youtubeLink.trim()) return alert('⚠️ Ingresa un link válido de YouTube.');
+    setProcesandoYoutube(true);
+
+    setTimeout(() => {
+      const pesoUser = perfil.peso || 70;
+      const esHiit = youtubeLink.toLowerCase().includes('hiit') || youtubeLink.toLowerCase().includes('tabata');
+      const esYoga = youtubeLink.toLowerCase().includes('yoga') || youtubeLink.toLowerCase().includes('stretching');
+      
+      let tipoDetectado: TipoEjercicio = esHiit ? 'funcional' : 'otro';
+      let duracionEst = esYoga ? 20 : 30;
+      let metEst = esYoga ? 3.0 : (esHiit ? 8.5 : 6.0);
+      let calEst = Math.round(duracionEst * (metEst * 3.5 * pesoUser / 200));
+
+      const nuevoEj: EjercicioGimnasio = {
+        id: Date.now().toString(),
+        nombre: esYoga ? 'Rutina Yoga YouTube' : (esHiit ? 'Entrenamiento HIIT YouTube' : 'Rutina Ejercicio YouTube'),
+        tipo: tipoDetectado,
+        duracion_minutos: duracionEst,
+        calorias: calEst
+      };
+
+      setEjercicios(prev => [...prev, nuevoEj]);
+      setYoutubeLink('');
+      setProcesandoYoutube(false);
+      alert(`🤖 ¡Video Procesado! Se añadió la rutina automáticamente: ~${calEst} kcal estimated.`);
+    }, 1200);
+  };
+
+  // --- COMIDAS ---
   const agregarComida = () => setComidas([...comidas, { id: Date.now().toString(), nombre: 'Nueva Comida', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 }]);
   const actualizarComida = (id: string, campo: keyof ItemComida, valor: any) => setComidas(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
   const eliminarComida = (id: string) => {
     if (!window.confirm('¿Eliminar comida?')) return;
     setComidas(comidas.filter((item) => item.id !== id));
-  };
-
-  const guardarEnBiblioteca = (comida: ItemComida) => {
-    if (!comida.nombre || comida.nombre.trim() === '') return;
-    const nuevaBib = [...bibliotecaComidas.filter(b => b.nombre.toLowerCase() !== comida.nombre.toLowerCase()), { ...comida, id: Date.now().toString() }];
-    setBibliotecaComidas(nuevaBib);
-    localStorage.setItem('biblioteca_comidas_user', JSON.stringify(nuevaBib));
   };
 
   const abrirModalIaComida = (comida: ItemComida) => {
@@ -587,12 +607,9 @@ export default function Home() {
       { nombres: ['carne', 'vacuna', 'bife', 'lomo'], calPerGram: 2.1, pPerGram: 0.26, cPerGram: 0, gPerGram: 0.12, defaultPortion: 180 },
       { nombres: ['huevo', 'huevos'], calPerGram: 1.4, pPerGram: 0.13, cPerGram: 0.01, gPerGram: 0.10, defaultPortion: 100 },
       { nombres: ['avena'], calPerGram: 3.8, pPerGram: 0.13, cPerGram: 0.66, gPerGram: 0.07, defaultPortion: 50 },
-      { nombres: ['banana', 'plátano', 'platano'], calPerGram: 0.9, pPerGram: 0.01, cPerGram: 0.23, gPerGram: 0.003, defaultPortion: 120 },
+      { nombres: ['banana', 'plátano'], calPerGram: 0.9, pPerGram: 0.01, cPerGram: 0.23, gPerGram: 0.003, defaultPortion: 120 },
       { nombres: ['manzana'], calPerGram: 0.52, pPerGram: 0.003, cPerGram: 0.14, gPerGram: 0.002, defaultPortion: 150 },
-      { nombres: ['naranja'], calPerGram: 0.47, pPerGram: 0.009, cPerGram: 0.12, gPerGram: 0.001, defaultPortion: 150 },
-      { nombres: ['pan', 'tostada'], calPerGram: 2.5, pPerGram: 0.09, cPerGram: 0.48, gPerGram: 0.03, defaultPortion: 60 },
-      { nombres: ['atún', 'atun'], calPerGram: 1.2, pPerGram: 0.25, cPerGram: 0, gPerGram: 0.02, defaultPortion: 120 },
-      { nombres: ['café', 'cafe'], calPerGram: 0.5, pPerGram: 0.01, cPerGram: 0.05, gPerGram: 0.01, defaultPortion: 200 }
+      { nombres: ['pan', 'tostada'], calPerGram: 2.5, pPerGram: 0.09, cPerGram: 0.48, gPerGram: 0.03, defaultPortion: 60 }
     ];
 
     let matched = false, calAcc = 0, pAcc = 0, cAcc = 0, gAcc = 0;
@@ -641,11 +658,9 @@ export default function Home() {
   const guardarCalorias = async () => {
     const user = session?.user;
     if (!user) return;
-    setGuardandoCalorias(true);
     const { error } = await supabase.from('registro_calorias').upsert({ user_id: user.id, fecha: fechaSeleccionada, base: bmrCalculado, agua_ml: aguaMl, ejercicios, comidas }, { onConflict: 'user_id,fecha' });
-    setGuardandoCalorias(false);
     if (error) alert('❌ Error: ' + error.message);
-    else alert('✅ Nutrición guardada correctamente');
+    else alert('✅ Datos guardados correctamente');
   };
 
   const guardarSueno = async () => {
@@ -663,15 +678,6 @@ export default function Home() {
     const { error } = await supabase.from('registro_sueno').upsert(datosGuardar, { onConflict: 'user_id,fecha' });
     if (error) alert('❌ Error: ' + error.message);
     else { setSuenoHoy(datosGuardar); alert('✅ Sueño guardado correctamente'); }
-  };
-
-  const guardarNota = async () => {
-    const user = session?.user;
-    if (!user) return;
-    setGuardandoNota(true);
-    const { error } = await supabase.from('notas_diarias').upsert({ user_id: user.id, fecha: fechaSeleccionada, contenido: notaDiaria }, { onConflict: 'user_id,fecha' });
-    setGuardandoNota(false);
-    if (!error) alert('✅ Nota guardada');
   };
 
   // CÁLCULOS
@@ -713,7 +719,6 @@ export default function Home() {
   const diaNumero = parseInt(fechaSeleccionada.split('-')[2] || '1', 10);
   const fraseDelDia = FRASES_MOTIVACIONALES[diaNumero % FRASES_MOTIVACIONALES.length];
 
-  // RETORNO SI SE ESTÁ VERIFICANDO LA SESIÓN INICIAL (EVITA EL PARPADEO)
   if (cargandoSesion) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center font-sans">
@@ -722,7 +727,6 @@ export default function Home() {
     );
   }
 
-  // PANTALLA DE INICIO DE SESIÓN
   if (!session) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4 font-sans">
@@ -774,11 +778,10 @@ export default function Home() {
               { id: 'general', label: 'General', icon: '📊' },
               { id: 'perfil', label: 'Mi Perfil', icon: '👤' },
               { id: 'habitos', label: 'Hábitos', icon: '⚡' },
-              { id: 'nutricion', label: 'Nutrición', icon: '🔥' },
+              { id: 'nutricion', label: 'Nutrición / Entreno', icon: '🔥' },
               { id: 'extra', label: 'Extra', icon: '✨' },
               { id: 'estadisticas', label: 'Estadísticas', icon: '📈' },
               { id: 'actualizaciones', label: 'Actualización', icon: '🚀' },
-              { id: 'notas', label: 'Notas', icon: '📝' },
             ].map((item) => (
               <button
                 key={item.id}
@@ -817,7 +820,6 @@ export default function Home() {
                 {seccionActiva === 'habitos' && '⚡ Hábitos Diarios'}
                 {seccionActiva === 'nutricion' && '🔥 Nutrición y Entrenamiento'}
                 {seccionActiva === 'extra' && '✨ Módulos Extra (Agua y Sueño)'}
-                {seccionActiva === 'notas' && '📝 Notas Diarias'}
                 {seccionActiva === 'estadisticas' && '📈 Visualización y Estadísticas'}
                 {seccionActiva === 'actualizaciones' && '🚀 Novedades y Soporte'}
               </h2>
@@ -847,70 +849,94 @@ export default function Home() {
           <div className="text-center py-16 text-slate-400 font-medium">Cargando datos... ⏳</div>
         ) : (
           <div>
-            {/* GENERAL CON REFERENCIA Y BARRAS DINÁMICAS */}
+            {/* GENERAL CON BARRAS CON MINIMO ROJO SI ESTAN VACIAS */}
             {seccionActiva === 'general' && (
               <div className="space-y-6">
                 
-                {/* REFERENCIA DE COLORES Y OBJETIVOS */}
                 <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
                   <div className="font-bold text-slate-200">💡 Guía de Progreso Diario:</div>
                   <div className="flex items-center gap-4 text-slate-300 flex-wrap justify-center">
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> Rojo: Lejos (&lt;40%)</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> Rojo: Vacío o Lejos (&lt;40%)</span>
                     <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Naranja: En camino (40-79%)</span>
                     <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Verde: Ideal (80-100%)</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-                  <div onClick={() => cambiarSeccion('nutricion')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-amber-500 transition">
-                    <span className="text-xs text-slate-400">Balance Calórico</span>
-                    <p className={`text-2xl font-extrabold mt-2 ${balanceCalorico < 0 ? 'text-amber-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico}</p>
-                    <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                      <div className={`h-full transition-all ${obtenerColorBarra(pctCalorias)}`} style={{ width: `${pctCalorias}%` }}></div>
-                    </div>
-                  </div>
+                  {/* CARD CALORÍAS */}
+                  {(() => {
+                    const estilo = obtenerEstiloBarra(pctCalorias);
+                    return (
+                      <div onClick={() => cambiarSeccion('nutricion')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-amber-500 transition">
+                        <span className="text-xs text-slate-400">Balance Calórico</span>
+                        <p className={`text-2xl font-extrabold mt-2 ${balanceCalorico < 0 ? 'text-amber-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico}</p>
+                        <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
+                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
-                  <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('agua'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-cyan-500 transition">
-                    <span className="text-xs text-slate-400">Agua Diaria</span>
-                    <p className="text-2xl font-extrabold text-cyan-400 mt-2">{(aguaMl / 1000).toFixed(2)}L</p>
-                    <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                      <div className={`h-full transition-all ${obtenerColorBarra(pctAgua)}`} style={{ width: `${pctAgua}%` }}></div>
-                    </div>
-                  </div>
+                  {/* CARD AGUA */}
+                  {(() => {
+                    const estilo = obtenerEstiloBarra(pctAgua);
+                    return (
+                      <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('agua'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-cyan-500 transition">
+                        <span className="text-xs text-slate-400">Agua Diaria</span>
+                        <p className="text-2xl font-extrabold text-cyan-400 mt-2">{(aguaMl / 1000).toFixed(2)}L</p>
+                        <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
+                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
-                  <div onClick={() => cambiarSeccion('habitos')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-indigo-500 transition">
-                    <span className="text-xs text-slate-400">Hábitos</span>
-                    <p className="text-2xl font-extrabold text-indigo-400 mt-2">{porcentajeHabitos}%</p>
-                    <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                      <div className={`h-full transition-all ${obtenerColorBarra(porcentajeHabitos)}`} style={{ width: `${porcentajeHabitos}%` }}></div>
-                    </div>
-                  </div>
+                  {/* CARD HÁBITOS */}
+                  {(() => {
+                    const estilo = obtenerEstiloBarra(porcentajeHabitos);
+                    return (
+                      <div onClick={() => cambiarSeccion('habitos')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-indigo-500 transition">
+                        <span className="text-xs text-slate-400">Hábitos</span>
+                        <p className="text-2xl font-extrabold text-indigo-400 mt-2">{porcentajeHabitos}%</p>
+                        <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
+                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
-                  <div onClick={() => cambiarSeccion('perfil')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-slate-400 transition">
-                    <span className="text-xs text-slate-400">Peso / Éxito</span>
-                    <p className="text-xl font-extrabold text-slate-200 mt-2">{perfil.peso} kg</p>
-                    <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                      <div className={`h-full transition-all ${obtenerColorBarra(perfil.porcentaje_probabilidad)}`} style={{ width: `${perfil.porcentaje_probabilidad}%` }}></div>
-                    </div>
-                  </div>
+                  {/* CARD PESO / ÉXITO */}
+                  {(() => {
+                    const estilo = obtenerEstiloBarra(perfil.porcentaje_probabilidad);
+                    return (
+                      <div onClick={() => cambiarSeccion('perfil')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-slate-400 transition">
+                        <span className="text-xs text-slate-400">Peso / Éxito</span>
+                        <p className="text-xl font-extrabold text-slate-200 mt-2">{perfil.peso} kg</p>
+                        <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
+                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
-                  <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('sueno'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-indigo-400 transition">
-                    <span className="text-xs text-slate-400">Sueño</span>
-                    <p className="text-xl font-extrabold text-indigo-300 mt-2">{suenoHoy.horas_totales} hrs</p>
-                    <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                      <div className={`h-full transition-all ${obtenerColorBarra(pctSueno)}`} style={{ width: `${pctSueno}%` }}></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div onClick={() => cambiarSeccion('notas')} className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl cursor-pointer hover:border-amber-500 transition">
-                  <h3 className="text-sm font-semibold text-amber-400 mb-2">📌 Nota rápida del día</h3>
-                  <p className="text-xs text-slate-300 italic">{notaDiaria || 'Sin notas registradas hoy.'}</p>
+                  {/* CARD SUEÑO */}
+                  {(() => {
+                    const estilo = obtenerEstiloBarra(pctSueno);
+                    return (
+                      <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('sueno'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-indigo-400 transition">
+                        <span className="text-xs text-slate-400">Sueño</span>
+                        <p className="text-xl font-extrabold text-indigo-300 mt-2">{suenoHoy.horas_totales} hrs</p>
+                        <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
+                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
 
-            {/* MI PERFIL Y OBJETIVOS CON PESTAÑAS */}
+            {/* MI PERFIL Y OBJETIVOS */}
             {seccionActiva === 'perfil' && (
               <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 max-w-4xl mx-auto">
                 <h2 className="text-xl font-semibold text-slate-200">👤 Mi Perfil y Objetivos</h2>
@@ -1012,83 +1038,154 @@ export default function Home() {
               </section>
             )}
 
-            {/* NUTRICIÓN Y ENTRENAMIENTO MODIFICADO */}
+            {/* NUTRICIÓN Y ENTRENAMIENTO SEPARADOS EN 2 PESTAÑAS */}
             {seccionActiva === 'nutricion' && (
               <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6">
-                <h2 className="text-xl font-semibold text-amber-400">🏋️ Nutrición y Entrenamiento</h2>
-
-                <div className="bg-slate-900 p-5 rounded-2xl border border-slate-700 flex flex-col md:flex-row items-center gap-4">
-                  <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 text-center">
-                    <span className="text-4xl font-black text-amber-400">{evaluacionNutricion.nota}/10</span>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-200">Objetivo: <span className="text-amber-400 uppercase">{perfil.objetivo}</span></h3>
-                    <p className="text-sm text-slate-400">{evaluacionNutricion.mensaje}</p>
-                  </div>
+                <div className="flex border-b border-slate-700 pb-3 gap-4 justify-center">
+                  <button onClick={() => setSubSeccionNutricion('nutricion')} className={`text-sm font-bold pb-1 cursor-pointer transition ${subSeccionNutricion === 'nutricion' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400 hover:text-slate-200'}`}>🥗 Nutrición y Macros</button>
+                  <button onClick={() => setSubSeccionNutricion('entrenamiento')} className={`text-sm font-bold pb-1 cursor-pointer transition ${subSeccionNutricion === 'entrenamiento' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🏋️ Actividad Física y Entrenamiento</button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800"><span className="text-xs text-rose-400 font-bold block">Proteínas</span><span className="text-lg font-bold text-rose-300">{totalProteinas}g</span></div>
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800"><span className="text-xs text-amber-400 font-bold block">Carbs</span><span className="text-lg font-bold text-amber-300">{totalCarbs}g</span></div>
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800"><span className="text-xs text-blue-400 font-bold block">Grasas</span><span className="text-lg font-bold text-blue-300">{totalGrasas}g</span></div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-semibold uppercase text-slate-400">🥗 Comidas del Día</h3>
-                    <button onClick={agregarComida} className="text-xs text-amber-400 cursor-pointer">+ Agregar Comida</button>
-                  </div>
-                  
-                  {comidas.map((item) => (
-                    <div key={item.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
-                      <div className="flex gap-2 items-center">
-                        <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold" />
-                        
-                        {/* BOTÓN CÁMARA SOLA */}
-                        <button onClick={() => abrirModalIaComida(item)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 px-3 py-1.5 rounded-xl text-xs cursor-pointer hover:bg-cyan-900">📷</button>
-                        
-                        {/* PAPELERA DENTRO DEL RECUADRO CON BORDE Y FONDO ROJO */}
-                        <button onClick={() => eliminarComida(item.id)} className="bg-rose-950/60 border border-rose-800 text-rose-300 p-1.5 rounded-xl text-xs cursor-pointer hover:bg-rose-900">🗑️</button>
+                {subSeccionNutricion === 'nutricion' ? (
+                  <div className="space-y-6">
+                    <div className="bg-slate-900 p-5 rounded-2xl border border-slate-700 flex flex-col md:flex-row items-center gap-4">
+                      <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 text-center">
+                        <span className="text-4xl font-black text-amber-400">{evaluacionNutricion.nota}/10</span>
                       </div>
-                      <div className="grid grid-cols-4 gap-2 text-xs">
-                        <div><label className="text-[10px] text-slate-400">Kcal</label><input type="number" value={item.calorias} onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                        <div><label className="text-[10px] text-rose-400">Prot (g)</label><input type="number" value={item.proteinas || 0} onChange={(e) => actualizarComida(item.id, 'proteinas', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                        <div><label className="text-[10px] text-amber-400">Carbs (g)</label><input type="number" value={item.carbs || 0} onChange={(e) => actualizarComida(item.id, 'carbs', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                        <div><label className="text-[10px] text-blue-400">Grasas (g)</label><input type="number" value={item.grasas || 0} onChange={(e) => actualizarComida(item.id, 'grasas', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-200">Objetivo: <span className="text-amber-400 uppercase">{perfil.objetivo}</span></h3>
+                        <p className="text-sm text-slate-400">{evaluacionNutricion.mensaje}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
 
-                <div className="space-y-3 pt-2">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-semibold uppercase text-slate-400">🏋️ Actividad Física</h3>
-                    <button onClick={agregarEjercicio} className="text-xs text-indigo-400 cursor-pointer">+ Agregar Ejercicio</button>
-                  </div>
-                  {ejercicios.map((item) => (
-                    <div key={item.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
-                      <div className="flex gap-2 items-center">
-                        <input type="text" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold" />
-                        <button onClick={() => calcularCaloriasEjercicioIA(item)} className="bg-indigo-950 border border-indigo-800 text-indigo-300 px-3 py-1 rounded-lg text-xs cursor-pointer">🤖 IA</button>
-                        <button onClick={() => eliminarEjercicio(item.id)} className="bg-rose-950/60 border border-rose-800 text-rose-300 p-1.5 rounded-xl text-xs cursor-pointer hover:bg-rose-900">🗑️</button>
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="bg-slate-900 p-3 rounded-xl border border-slate-800"><span className="text-xs text-rose-400 font-bold block">Proteínas</span><span className="text-lg font-bold text-rose-300">{totalProteinas}g</span></div>
+                      <div className="bg-slate-900 p-3 rounded-xl border border-slate-800"><span className="text-xs text-amber-400 font-bold block">Carbs</span><span className="text-lg font-bold text-amber-300">{totalCarbs}g</span></div>
+                      <div className="bg-slate-900 p-3 rounded-xl border border-slate-800"><span className="text-xs text-blue-400 font-bold block">Grasas</span><span className="text-lg font-bold text-blue-300">{totalGrasas}g</span></div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-xs font-semibold uppercase text-slate-400">🥗 Comidas del Día</h3>
+                        <button onClick={agregarComida} className="text-xs text-amber-400 cursor-pointer">+ Agregar Comida</button>
                       </div>
-                      <div className="grid grid-cols-4 gap-2 text-xs">
-                        <div><label className="text-[10px] text-slate-400">Series</label><input type="number" value={item.series || 0} onChange={(e) => actualizarEjercicio(item.id, 'series', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                        <div><label className="text-[10px] text-slate-400">Reps</label><input type="number" value={item.repeticiones || 0} onChange={(e) => actualizarEjercicio(item.id, 'repeticiones', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                        <div><label className="text-[10px] text-slate-400">Peso (kg)</label><input type="number" value={item.peso || 0} onChange={(e) => actualizarEjercicio(item.id, 'peso', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
-                        <div><label className="text-[10px] text-amber-400">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                      
+                      {comidas.map((item) => (
+                        <div key={item.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
+                          <div className="flex gap-2 items-center">
+                            <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold" />
+                            <button onClick={() => abrirModalIaComida(item)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 px-3 py-1.5 rounded-xl text-xs cursor-pointer hover:bg-cyan-900">📷</button>
+                            <button onClick={() => eliminarComida(item.id)} className="bg-rose-950/60 border border-rose-800 text-rose-300 p-1.5 rounded-xl text-xs cursor-pointer hover:bg-rose-900">🗑️</button>
+                          </div>
+                          <div className="grid grid-cols-4 gap-2 text-xs">
+                            <div><label className="text-[10px] text-slate-400">Kcal</label><input type="number" value={item.calorias} onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                            <div><label className="text-[10px] text-rose-400">Prot (g)</label><input type="number" value={item.proteinas || 0} onChange={(e) => actualizarComida(item.id, 'proteinas', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                            <div><label className="text-[10px] text-amber-400">Carbs (g)</label><input type="number" value={item.carbs || 0} onChange={(e) => actualizarComida(item.id, 'carbs', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                            <div><label className="text-[10px] text-blue-400">Grasas (g)</label><input type="number" value={item.grasas || 0} onChange={(e) => actualizarComida(item.id, 'grasas', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button onClick={guardarCalorias} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl cursor-pointer">
+                      💾 Guardar Comidas
+                    </button>
+                  </div>
+                ) : (
+                  /* PESTAÑA ENTRENAMIENTO */
+                  <div className="space-y-6">
+                    {/* CALCULADORA DE RUTINA POR LINK DE YOUTUBE */}
+                    <div className="bg-slate-900/90 border border-red-900/50 p-4 rounded-2xl space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">▶️</span>
+                        <h3 className="text-sm font-bold text-red-400">Calcular Entrenamiento vía YouTube (IA)</h3>
+                      </div>
+                      <p className="text-xs text-slate-400">Ingresa el enlace del video de YouTube que vas a realizar y la IA estimará tu consumo calórico y rutina automáticamente.</p>
+                      <div className="flex gap-2">
+                        <input 
+                          type="url" 
+                          placeholder="https://www.youtube.com/watch?v=..." 
+                          value={youtubeLink} 
+                          onChange={(e) => setYoutubeLink(e.target.value)} 
+                          className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white" 
+                        />
+                        <button 
+                          onClick={procesarVideoYoutubeIA} 
+                          disabled={procesandoYoutube} 
+                          className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-xl text-xs cursor-pointer disabled:opacity-50 shrink-0"
+                        >
+                          {procesandoYoutube ? 'Procesando...' : '🤖 Procesar Video'}
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
 
-                <button onClick={guardarCalorias} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl cursor-pointer">
-                  💾 Guardar Todo
-                </button>
+                    <div className="space-y-3 pt-2">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-xs font-semibold uppercase text-slate-400">🏋️ Actividades Físicas Registradas</h3>
+                        <button onClick={agregarEjercicio} className="text-xs text-indigo-400 cursor-pointer">+ Agregar Ejercicio</button>
+                      </div>
+
+                      {ejercicios.map((item) => (
+                        <div key={item.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
+                          <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                            <input type="text" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className="flex-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold" />
+                            
+                            {/* SELECTOR DINÁMICO DE ACTIVIDAD */}
+                            <select 
+                              value={item.tipo || 'fuerza'} 
+                              onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} 
+                              className="bg-slate-950 border border-slate-700 text-xs rounded-xl px-2.5 py-1.5 text-indigo-300 font-bold cursor-pointer"
+                            >
+                              <option value="fuerza">🏋️ Fuerza / Gym</option>
+                              <option value="running">🏃 Running</option>
+                              <option value="ciclismo">🚴 Ciclismo</option>
+                              <option value="boxeo">🥊 Boxeo</option>
+                              <option value="futbol">⚽ Fútbol</option>
+                              <option value="natacion">🏊 Natación</option>
+                              <option value="caminata">🚶 Caminata</option>
+                              <option value="funcional">🧘 Funcional / HIIT</option>
+                              <option value="otro">⚽ Otro</option>
+                            </select>
+
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => calcularCaloriasEjercicioIA(item)} className="bg-indigo-950 border border-indigo-800 text-indigo-300 px-3 py-1.5 rounded-xl text-xs cursor-pointer">🤖 IA</button>
+                              <button onClick={() => eliminarEjercicio(item.id)} className="bg-rose-950/60 border border-rose-800 text-rose-300 p-1.5 rounded-xl text-xs cursor-pointer hover:bg-rose-900">🗑️</button>
+                            </div>
+                          </div>
+
+                          {/* CAMPOS DINÁMICOS SEGÚN ACTIVIDAD SELECCIONADA */}
+                          {item.tipo === 'fuerza' ? (
+                            <div className="grid grid-cols-4 gap-2 text-xs">
+                              <div><label className="text-[10px] text-slate-400">Series</label><input type="number" value={item.series || 0} onChange={(e) => actualizarEjercicio(item.id, 'series', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                              <div><label className="text-[10px] text-slate-400">Reps</label><input type="number" value={item.repeticiones || 0} onChange={(e) => actualizarEjercicio(item.id, 'repeticiones', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                              <div><label className="text-[10px] text-slate-400">Peso (kg)</label><input type="number" value={item.peso || 0} onChange={(e) => actualizarEjercicio(item.id, 'peso', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                              <div><label className="text-[10px] text-amber-400">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                            </div>
+                          ) : (item.tipo === 'running' || item.tipo === 'ciclismo' || item.tipo === 'caminata') ? (
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div><label className="text-[10px] text-slate-400">Distancia (km)</label><input type="number" step="0.1" value={item.distancia_km || 0} onChange={(e) => actualizarEjercicio(item.id, 'distancia_km', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                              <div><label className="text-[10px] text-slate-400">Duración (min)</label><input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                              <div><label className="text-[10px] text-amber-400">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div><label className="text-[10px] text-slate-400">Duración (min)</label><input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                              <div><label className="text-[10px] text-amber-400">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <button onClick={guardarCalorias} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl cursor-pointer">
+                      💾 Guardar Entrenamiento
+                    </button>
+                  </div>
+                )}
               </section>
             )}
 
-            {/* SECCIÓN EXTRA AJUSTADA (SUEÑO CENTRADO E INPUTS RECORTADOS) */}
+            {/* SECCIÓN EXTRA (HIDRATACIÓN Y SUEÑO) */}
             {seccionActiva === 'extra' && (
               <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 max-w-xl mx-auto">
                 <div className="flex border-b border-slate-700 pb-3 gap-4 justify-center">
@@ -1101,9 +1198,14 @@ export default function Home() {
                     <span className="text-5xl">💧</span>
                     <h3 className="text-xl font-bold text-cyan-300">Control de Hidratación</h3>
                     <p className="text-3xl font-black text-cyan-400">{(aguaMl / 1000).toFixed(2)} / 2.50 L</p>
-                    <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
-                      <div className={`h-full transition-all ${obtenerColorBarra(pctAgua)}`} style={{ width: `${pctAgua}%` }}></div>
-                    </div>
+                    {(() => {
+                      const estilo = obtenerEstiloBarra(pctAgua);
+                      return (
+                        <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
+                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                        </div>
+                      );
+                    })()}
                     <div className="flex justify-center gap-3 pt-2">
                       <button onClick={() => modificarAgua(250)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer">+250 ml 🥛</button>
                       <button onClick={() => modificarAgua(500)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer">+500 ml 🍾</button>
@@ -1115,11 +1217,15 @@ export default function Home() {
                     <span className="text-5xl">😴</span>
                     <h3 className="text-xl font-bold text-indigo-300">Control de Descanso y Sueño</h3>
                     <p className="text-3xl font-black text-indigo-400">{suenoHoy.horas_totales} <span className="text-sm font-normal text-slate-400">/ 8.0 hrs</span></p>
-                    <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
-                      <div className={`h-full transition-all ${obtenerColorBarra(pctSueno)}`} style={{ width: `${pctSueno}%` }}></div>
-                    </div>
+                    {(() => {
+                      const estilo = obtenerEstiloBarra(pctSueno);
+                      return (
+                        <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
+                          <div className={`h-full transition-all ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
+                        </div>
+                      );
+                    })()}
                     
-                    {/* HORA ACOSTARSE Y LEVANTARSE CENTRADOS CON INPUTS ESTRECHOS */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center pt-2 max-w-sm mx-auto">
                       <div className="flex flex-col items-center">
                         <label className="text-xs text-slate-400 font-semibold block mb-1 text-center">Acostarse</label>
@@ -1131,7 +1237,6 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* CALIDAD DEL SUEÑO CENTRADO */}
                     <div className="text-center pt-2">
                       <label className="text-xs text-slate-400 font-semibold block mb-1 text-center">Calidad del Sueño</label>
                       <div className="flex gap-2 justify-center py-2">
@@ -1158,25 +1263,16 @@ export default function Home() {
                   <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 space-y-2">
                     <span className="text-xs font-bold uppercase text-slate-400">🍽️ Consumo Calórico</span>
                     <p className="text-3xl font-black text-amber-400">{totalIngeridoCal} <span className="text-sm font-normal text-slate-400">kcal</span></p>
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-300">
-                      {totalIngeridoCal > 2000 ? '📈 Has consumido más calorías que tu promedio diario habitual.' : '📉 Tu consumo está por debajo o alineado con tu media.'}
-                    </div>
                   </div>
 
                   <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 space-y-2">
                     <span className="text-xs font-bold uppercase text-slate-400">🔥 Gasto Energético</span>
                     <p className="text-3xl font-black text-rose-400">{totalGastadoCal} <span className="text-sm font-normal text-slate-400">kcal</span></p>
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-300">
-                      {totalGastoEjercicios > 300 ? '⚡ Gasto alto por actividad física superior al promedio.' : '🚶 Gasto moderado basado en metabolismo basal y actividad ligera.'}
-                    </div>
                   </div>
 
                   <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 space-y-2">
                     <span className="text-xs font-bold uppercase text-slate-400">⚖️ Balance Neto</span>
                     <p className={`text-3xl font-black ${balanceCalorico < 0 ? 'text-cyan-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-sm font-normal text-slate-400">kcal</span></p>
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-300">
-                      {balanceCalorico < -200 ? '🟢 Déficit efectivo activo respecto a tu semana.' : '🟡 En punto de mantenimiento o superávit.'}
-                    </div>
                   </div>
                 </div>
 
@@ -1187,29 +1283,17 @@ export default function Home() {
               </section>
             )}
 
-            {/* NOTAS */}
-            {seccionActiva === 'notas' && (
-              <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-4 max-w-2xl mx-auto">
-                <h2 className="text-xl font-semibold text-amber-400">📝 Notas Diarias</h2>
-                <textarea rows={6} value={notaDiaria} onChange={(e) => setNotaDiaria(e.target.value)} placeholder="Escribe tus reflexiones, sensaciones o notas de entrenamiento de hoy..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-sm text-white focus:border-amber-500 outline-none" />
-                <button onClick={guardarNota} disabled={guardandoNota} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl cursor-pointer">
-                  {guardandoNota ? 'Guardando...' : '💾 Guardar Nota'}
-                </button>
-              </section>
-            )}
-
             {/* ACTUALIZACIONES Y SOPORTE */}
             {seccionActiva === 'actualizaciones' && (
               <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 max-w-2xl mx-auto">
                 <h2 className="text-xl font-semibold text-indigo-400">🚀 Novedades y Soporte</h2>
                 <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-2">
                   <p className="font-bold text-white">Versión Actual: {ULTIMA_ACTUALIZACION_APP}</p>
-                  <p>• Eliminación del parpadeo de sesión al abrir la aplicación.</p>
-                  <p>• Barras de porcentaje dinámicas por color (rojo/naranja/verde) según cercanía al ideal.</p>
-                  <p>• Referencia de colores integrada arriba del balance calórico en General.</p>
-                  <p>• Pestañas en Mi Perfil para separar datos personales de los objetivos.</p>
-                  <p>• Ajustes visuales en comidas: botón de cámara limpio y papelera encuadrada en rojo.</p>
-                  <p>• Controles de sueño recortados y centrados con sus etiquetas.</p>
+                  <p>• Pestañas separadas para Nutrición y Entrenamiento.</p>
+                  <p>• Módulo de YouTube que analiza videos y calcula calorías quemadas automáticamente.</p>
+                  <p>• Campos adaptativos según disciplina deportiva (Running, Fuerza, Ciclismo, etc.).</p>
+                  <p>• Barras rojas mínimas cuando las métricas están en 0 en Resumen General.</p>
+                  <p>• Eliminación del módulo de notas innecesario para aligerar la app.</p>
                 </div>
               </section>
             )}
