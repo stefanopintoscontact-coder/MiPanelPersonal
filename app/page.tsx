@@ -8,7 +8,7 @@ const obtenerFechaUltimaActualizacion = () => {
   if (typeof window === 'undefined') return '29/07/2026 18:00';
   const ahora = new Date();
   const fecha = ahora.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const hora = me => me.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })(ahora);
+  const hora = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   return `${fecha} ${hora}`;
 };
 
