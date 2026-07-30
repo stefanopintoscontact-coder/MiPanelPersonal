@@ -19,7 +19,7 @@ interface PerfilUsuario {
   nombre: string;
   fecha_nacimiento: string;
   peso: number;
-  altura: number; // en cm
+  altura: number;
   sexo: 'masculino' | 'femenino';
   objetivo: 'bajar' | 'subir' | 'mantener';
   kilos_objetivo: number;
@@ -56,7 +56,7 @@ interface EjercicioGimnasio {
   tipo?: 'gimnasio' | 'running' | 'ciclismo' | 'boxeo' | 'natacion' | 'caminata' | 'otro';
   series?: number;
   repeticiones?: number;
-  peso?: number; // en kg
+  peso?: number;
   duracion_minutos?: number;
   distancia_km?: number;
   calorias: number;
@@ -107,27 +107,28 @@ const obtenerFechaLogica = () => {
 
 const obtenerHora24 = (fechaISO?: string) => {
   const d = fechaISO ? new Date(fechaISO) : new Date();
-  const horas = String(d.getHours()).padStart(2, '0');
-  const minutos = String(d.getMinutes()).padStart(2, '0');
-  return `${horas}:${minutos}`;
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
 const formatearFechaLarga = (fechaStr: string) => {
   if (!fechaStr) return '';
   const [year, month, day] = fechaStr.split('-').map(Number);
   const fecha = new Date(year, month - 1, day);
-  const str = fecha.toLocaleDateString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+  const str = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+// HELPER PARA COLORES DINÁMICOS DE BARRAS DE PROGRESO
+const obtenerColorBarra = (porcentaje: number) => {
+  if (porcentaje < 40) return 'bg-rose-500';
+  if (porcentaje < 80) return 'bg-amber-500';
+  return 'bg-emerald-500';
 };
 
 export default function Home() {
   // ESTADOS DE AUTENTICACIÓN
   const [session, setSession] = useState<any>(null);
+  const [cargandoSesion, setCargandoSesion] = useState(true); // EVITA EL PARPADEO DE LOGIN
   const [esRegistro, setEsRegistro] = useState(false);
   const [emailAuth, setEmailAuth] = useState('');
   const [passwordAuth, setPasswordAuth] = useState('');
@@ -136,6 +137,7 @@ export default function Home() {
 
   // ESTADOS DE LA APP
   const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'habitos' | 'nutricion' | 'extra' | 'notas' | 'estadisticas' | 'actualizaciones'>('general');
+  const [subSeccionPerfil, setSubSeccionPerfil] = useState<'perfil' | 'objetivo'>('perfil');
   const [subSeccionExtra, setSubSeccionExtra] = useState<'agua' | 'sueno'>('agua');
   
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
@@ -168,11 +170,7 @@ export default function Home() {
   const [horaObjetivo, setHoraObjetivo] = useState('18:00');
 
   const habitosOrdenados = useMemo(() => {
-    return [...habitos].sort((a, b) => {
-      const hA = a.hora_objetivo || '00:00';
-      const hB = b.hora_objetivo || '00:00';
-      return hA.localeCompare(hB);
-    });
+    return [...habitos].sort((a, b) => (a.hora_objetivo || '00:00').localeCompare(b.hora_objetivo || '00:00'));
   }, [habitos]);
 
   // Nutrición / Calorías / Gimnasio
@@ -207,13 +205,16 @@ export default function Home() {
 
   const [cargando, setCargando] = useState(true);
 
+  // CONTROL DE SESIÓN SIN PARPADEO
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      setCargandoSesion(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      setCargandoSesion(false);
     });
 
     return () => subscription.unsubscribe();
@@ -234,11 +235,7 @@ export default function Home() {
   useEffect(() => {
     const actualizarReloj = () => {
       const ahora = new Date();
-      const h = String(ahora.getHours()).padStart(2, '0');
-      const m = String(ahora.getMinutes()).padStart(2, '0');
-      const s = String(ahora.getSeconds()).padStart(2, '0');
-      setHoraVivo(`${h}:${m}:${s}`);
-
+      setHoraVivo(`${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:${String(ahora.getSeconds()).padStart(2, '0')}`);
       const nuevaFechaLogica = obtenerFechaLogica();
       setFechaSeleccionada((prev) => (prev !== nuevaFechaLogica ? nuevaFechaLogica : prev));
     };
@@ -252,9 +249,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (session?.user) {
-      cargarDatos();
-    }
+    if (session?.user) cargarDatos();
   }, [fechaSeleccionada, session]);
 
   const manejarAuth = async (e: React.FormEvent) => {
@@ -273,10 +268,7 @@ export default function Home() {
         if (error) throw error;
         alert('✅ Registro exitoso. Se envió un correo de confirmación a tu casilla.');
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: emailAuth,
-          password: passwordAuth,
-        });
+        const { error } = await supabase.auth.signInWithPassword({ email: emailAuth, password: passwordAuth });
         if (error) throw error;
       }
     } catch (err: any) {
@@ -291,10 +283,7 @@ export default function Home() {
     setCargandoAuth(true);
     try {
       const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: redirectUrl },
-      });
+      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectUrl } });
       if (error) throw error;
     } catch (err: any) {
       setErrorAuth(err.message || 'Error al iniciar sesión con Google.');
@@ -328,10 +317,7 @@ export default function Home() {
     const ahora = Date.now();
 
     if (cacheClima && cacheTime && (ahora - Number(cacheTime) < 3600000)) {
-      try {
-        setClima(JSON.parse(cacheClima));
-        return;
-      } catch (e) {}
+      try { setClima(JSON.parse(cacheClima)); return; } catch (e) {}
     }
 
     if ('geolocation' in navigator) {
@@ -341,14 +327,11 @@ export default function Home() {
           try {
             const resClima = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
             const dataClima = await resClima.json();
-
             let textoUbicacion = 'Tu ubicación';
             try {
               const resGeo = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=es`);
               const dataGeo = await resGeo.json();
-              const ciudad = dataGeo.city || dataGeo.locality || '';
-              const pais = dataGeo.countryName || '';
-              if (ciudad && pais) textoUbicacion = `${ciudad}, ${pais}`;
+              if (dataGeo.city || dataGeo.locality) textoUbicacion = `${dataGeo.city || dataGeo.locality}, ${dataGeo.countryName || ''}`;
             } catch (geoErr) {}
 
             if (dataClima.current_weather) {
@@ -361,7 +344,6 @@ export default function Home() {
               let desc = esNoche ? 'Noche Despejada' : 'Despejado';
               let icono = esNoche ? '🌙' : '☀️';
               let rec = 'Día ideal para realizar tus actividades físicas.';
-
               if (code >= 51 && code <= 67) { desc = 'Lluvia'; icono = '🌧️'; rec = '⚠️ Lluvia en tu zona. Entrená en interiores.'; }
 
               const objClima = { temp, codigoClima: code, descripcion: desc, recomendacion: rec, ubicacion: textoUbicacion, icono };
@@ -387,7 +369,6 @@ export default function Home() {
     if (!historial) return;
 
     setTodosLosRegistrosHabitos(historial);
-
     const mapaRachas: Record<number, number> = {};
     listaHabitos.forEach((h) => {
       const registrosDeHabito = historial.filter((r) => r.habito_id === h.id);
@@ -415,21 +396,14 @@ export default function Home() {
     const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').eq('user_id', user.id).maybeSingle();
     
     if (datosPerfil && datosPerfil.nombre && datosPerfil.nombre.trim() !== '') {
-      setPerfil({
-        ...datosPerfil,
-        fecha_nacimiento: datosPerfil.fecha_nacimiento || '2000-01-01',
-        tiempo_objetivo_meses: datosPerfil.tiempo_objetivo_meses || 3
-      });
+      setPerfil({ ...datosPerfil, fecha_nacimiento: datosPerfil.fecha_nacimiento || '2000-01-01', tiempo_objetivo_meses: datosPerfil.tiempo_objetivo_meses || 3 });
       setMostrarModalOnboarding(false);
       localStorage.setItem(`onboarding_completado_${user.id}`, 'true');
     } else if (onboardingCompletado === 'true') {
       setMostrarModalOnboarding(false);
     } else {
       const nombreGoogle = user.user_metadata?.full_name || user.email?.split('@')[0] || '';
-      setPerfil((prev) => ({
-        ...prev,
-        nombre: datosPerfil?.nombre || nombreGoogle || prev.nombre,
-      }));
+      setPerfil((prev) => ({ ...prev, nombre: datosPerfil?.nombre || nombreGoogle || prev.nombre }));
       setMostrarModalOnboarding(true);
     }
 
@@ -448,23 +422,13 @@ export default function Home() {
     if (datosCalorias) {
       setAguaMl(datosCalorias.agua_ml ?? 0);
       setEjercicios(datosCalorias.ejercicios && Array.isArray(datosCalorias.ejercicios) ? datosCalorias.ejercicios : []);
-      if (datosCalorias.comidas && Array.isArray(datosCalorias.comidas) && datosCalorias.comidas.length > 0) {
-        setComidas(datosCalorias.comidas);
-      } else {
-        setComidas(COMIDAS_POR_DEFECTO);
-      }
+      setComidas(datosCalorias.comidas && Array.isArray(datosCalorias.comidas) && datosCalorias.comidas.length > 0 ? datosCalorias.comidas : COMIDAS_POR_DEFECTO);
     } else {
-      setAguaMl(0);
-      setEjercicios([]);
-      setComidas(COMIDAS_POR_DEFECTO);
+      setAguaMl(0); setEjercicios([]); setComidas(COMIDAS_POR_DEFECTO);
     }
 
     const { data: datosSueno } = await supabase.from('registro_sueno').select('*').eq('user_id', user.id).eq('fecha', fechaSeleccionada).maybeSingle();
-    if (datosSueno) {
-      setSuenoHoy(datosSueno);
-    } else {
-      setSuenoHoy({ fecha: fechaSeleccionada, hora_acostarse: '23:00', hora_levantarse: '07:00', horas_totales: 0, calidad: 3 });
-    }
+    setSuenoHoy(datosSueno || { fecha: fechaSeleccionada, hora_acostarse: '23:00', hora_levantarse: '07:00', horas_totales: 0, calidad: 3 });
 
     const { data: datosNota } = await supabase.from('notas_diarias').select('contenido').eq('user_id', user.id).eq('fecha', fechaSeleccionada).maybeSingle();
     setNotaDiaria(datosNota?.contenido || '');
@@ -479,7 +443,6 @@ export default function Home() {
     let edad = hoy.getFullYear() - cumple.getFullYear();
     const m = hoy.getMonth() - cumple.getMonth();
     if (m < 0 || (m === 0 && hoy.getDate() < cumple.getDate())) edad--;
-
     let bmr = (10 * perfil.peso) + (6.25 * perfil.altura) - (5 * (isNaN(edad) ? 25 : edad));
     return Math.round(perfil.sexo === 'masculino' ? bmr + 5 : bmr - 161);
   }, [perfil]);
@@ -496,14 +459,12 @@ export default function Home() {
         comidas
       }, { onConflict: 'user_id,fecha' });
     }, 600);
-
     return () => clearTimeout(timer);
   }, [comidas, ejercicios, aguaMl, bmrCalculado, fechaSeleccionada, session, cargando]);
 
   const guardarPerfil = async () => {
     const user = session?.user;
     if (!user) return false;
-
     setGuardandoPerfil(true);
     try {
       const payloadPerfil = {
@@ -518,10 +479,8 @@ export default function Home() {
         tiempo_objetivo_meses: Number(perfil.tiempo_objetivo_meses) || 1,
         porcentaje_probabilidad: Number(perfil.porcentaje_probabilidad) || 50
       };
-
       const { error } = await supabase.from('perfil_usuario').upsert(payloadPerfil, { onConflict: 'user_id' });
       if (error) throw error;
-
       localStorage.setItem(`onboarding_completado_${user.id}`, 'true');
       alert('✅ Perfil guardado correctamente');
       setMostrarModalOnboarding(false);
@@ -541,31 +500,21 @@ export default function Home() {
 
     const { data, error } = await supabase.from('habitos').insert([{ user_id: user.id, texto: nuevoHabito, hora_objetivo: horaObjetivo }]).select();
     if (error) alert('❌ Error: ' + error.message);
-    else if (data) { 
-      setHabitos([...habitos, data[0]]); 
-      setNuevoHabito(''); 
-    }
+    else if (data) { setHabitos([...habitos, data[0]]); setNuevoHabito(''); }
   };
 
   const alternarHabito = async (habitoId: number) => {
     const user = session?.user;
     if (!user) return;
-
     const estaCompletado = !!registrosHoy[habitoId]?.completado;
     const horaActual = obtenerHora24();
 
     if (!estaCompletado) {
       const { error } = await supabase.from('registro_habitos').upsert({ user_id: user.id, habito_id: habitoId, fecha: fechaSeleccionada, completado: true, hora_completado: horaActual }, { onConflict: 'user_id,habito_id,fecha' });
-      if (!error) {
-        setRegistrosHoy((prev) => ({ ...prev, [habitoId]: { habito_id: habitoId, completado: true, hora_completado: horaActual } }));
-        calcularRachas(habitos);
-      }
+      if (!error) { setRegistrosHoy((prev) => ({ ...prev, [habitoId]: { habito_id: habitoId, completado: true, hora_completado: horaActual } })); calcularRachas(habitos); }
     } else {
       const { error } = await supabase.from('registro_habitos').delete().eq('user_id', user.id).eq('habito_id', habitoId).eq('fecha', fechaSeleccionada);
-      if (!error) {
-        setRegistrosHoy((prev) => { const copia = { ...prev }; delete copia[habitoId]; return copia; });
-        calcularRachas(habitos);
-      }
+      if (!error) { setRegistrosHoy((prev) => { const copia = { ...prev }; delete copia[habitoId]; return copia; }); calcularRachas(habitos); }
     }
   };
 
@@ -576,20 +525,8 @@ export default function Home() {
     if (!error) setHabitos(habitos.filter((h) => h.id !== id));
   };
 
-  const agregarEjercicio = () => setEjercicios([...ejercicios, { 
-    id: Date.now().toString(), 
-    nombre: 'Nuevo Ejercicio', 
-    tipo: 'gimnasio', 
-    series: 4, 
-    repeticiones: 10, 
-    peso: 0, 
-    duracion_minutos: 30, 
-    distancia_km: 0, 
-    calorias: 0 
-  }]);
-
+  const agregarEjercicio = () => setEjercicios([...ejercicios, { id: Date.now().toString(), nombre: 'Nuevo Ejercicio', tipo: 'gimnasio', series: 4, repeticiones: 10, peso: 0, duracion_minutos: 30, distancia_km: 0, calorias: 0 }]);
   const actualizarEjercicio = (id: string, campo: keyof EjercicioGimnasio, valor: any) => setEjercicios(ejercicios.map((item) => (item.id === id ? { ...item, [campo]: valor } : item)));
-  
   const eliminarEjercicio = (id: string) => {
     if (!window.confirm('¿Eliminar ejercicio?')) return;
     setEjercicios(ejercicios.filter((item) => item.id !== id));
@@ -597,25 +534,16 @@ export default function Home() {
 
   const calcularCaloriasEjercicioIA = (item: EjercicioGimnasio) => {
     const pesoUser = perfil.peso || 70;
-    let cal = 0;
-    if (item.tipo === 'gimnasio' || !item.tipo) {
-      cal = (item.series || 1) * (item.repeticiones || 10) * ((item.peso || 0) * 0.012 + 0.4) * (pesoUser / 75);
-    } else {
-      cal = (item.duracion_minutos || 30) * (6.0 * 3.5 * pesoUser / 200);
-    }
+    let cal = item.tipo === 'gimnasio' || !item.tipo
+      ? (item.series || 1) * (item.repeticiones || 10) * ((item.peso || 0) * 0.012 + 0.4) * (pesoUser / 75)
+      : (item.duracion_minutos || 30) * (6.0 * 3.5 * pesoUser / 200);
     const resultadoFinal = Math.round(cal);
     actualizarEjercicio(item.id, 'calorias', resultadoFinal);
     alert(`🤖 IA: ~${resultadoFinal} kcal quemadas.`);
   };
 
   const agregarComida = () => setComidas([...comidas, { id: Date.now().toString(), nombre: 'Nueva Comida', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 }]);
-  
-  const actualizarComida = (id: string, campo: keyof ItemComida, valor: any) => {
-    setComidas((prevComidas) =>
-      prevComidas.map((item) => (item.id === id ? { ...item, [campo]: valor } : item))
-    );
-  };
-  
+  const actualizarComida = (id: string, campo: keyof ItemComida, valor: any) => setComidas(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
   const eliminarComida = (id: string) => {
     if (!window.confirm('¿Eliminar comida?')) return;
     setComidas(comidas.filter((item) => item.id !== id));
@@ -626,7 +554,6 @@ export default function Home() {
     const nuevaBib = [...bibliotecaComidas.filter(b => b.nombre.toLowerCase() !== comida.nombre.toLowerCase()), { ...comida, id: Date.now().toString() }];
     setBibliotecaComidas(nuevaBib);
     localStorage.setItem('biblioteca_comidas_user', JSON.stringify(nuevaBib));
-    alert(`⭐ Guardado en Biblioteca.`);
   };
 
   const abrirModalIaComida = (comida: ItemComida) => {
@@ -641,9 +568,7 @@ export default function Home() {
     if (files && files.length > 0) {
       Array.from(files).forEach((file) => {
         const reader = new FileReader();
-        reader.onloadend = () => {
-          if (reader.result) setImagenesIaInput((prev) => [...prev, reader.result as string]);
-        };
+        reader.onloadend = () => { if (reader.result) setImagenesIaInput((prev) => [...prev, reader.result as string]); };
         reader.readAsDataURL(file);
       });
     }
@@ -653,7 +578,6 @@ export default function Home() {
   const estimarComidaConIA = async () => {
     if (!comidaIaModal) return;
     setProcesandoIa(true);
-
     const promptTexto = `${comidaIaModal.nombre} ${textoIaInput}`.trim().toLowerCase();
     let resCal = 350, resP = 25, resC = 35, resG = 10;
 
@@ -671,12 +595,9 @@ export default function Home() {
       { nombres: ['café', 'cafe'], calPerGram: 0.5, pPerGram: 0.01, cPerGram: 0.05, gPerGram: 0.01, defaultPortion: 200 }
     ];
 
-    let matched = false;
-    let calAcc = 0, pAcc = 0, cAcc = 0, gAcc = 0;
-
+    let matched = false, calAcc = 0, pAcc = 0, cAcc = 0, gAcc = 0;
     for (const al of baseAlimentos) {
-      const found = al.nombres.some(n => promptTexto.includes(n));
-      if (found) {
+      if (al.nombres.some(n => promptTexto.includes(n))) {
         matched = true;
         const matchNum = promptTexto.match(new RegExp(`(?:${al.nombres.join('|')})[^\\d]*(\\d+)`, 'i')) || promptTexto.match(/(\d+)/);
         const gramos = matchNum ? parseInt(matchNum[1], 10) : al.defaultPortion;
@@ -689,23 +610,14 @@ export default function Home() {
     }
 
     if (matched && calAcc > 0) {
-      resCal = Math.round(calAcc);
-      resP = Math.round(pAcc);
-      resC = Math.round(cAcc);
-      resG = Math.round(gAcc);
+      resCal = Math.round(calAcc); resP = Math.round(pAcc); resC = Math.round(cAcc); resG = Math.round(gAcc);
     } else if (promptTexto.length > 3) {
-      resCal = 420;
-      resP = 28;
-      resC = 42;
-      resG = 12;
+      resCal = 420; resP = 28; resC = 42; resG = 12;
     }
 
     const nuevoNombre = nombreIaModalInput.trim() || comidaIaModal.nombre;
-
     const nuevasComidas = comidas.map((item) =>
-      item.id === comidaIaModal.id
-        ? { ...item, nombre: nuevoNombre, calorias: resCal, proteinas: resP, carbs: resC, grasas: resG }
-        : item
+      item.id === comidaIaModal.id ? { ...item, nombre: nuevoNombre, calorias: resCal, proteinas: resP, carbs: resC, grasas: resG } : item
     );
 
     setComidas(nuevasComidas);
@@ -713,16 +625,8 @@ export default function Home() {
     setComidaIaModal(null);
 
     if (session?.user) {
-      await supabase.from('registro_calorias').upsert({
-        user_id: session.user.id,
-        fecha: fechaSeleccionada,
-        base: bmrCalculado,
-        agua_ml: aguaMl,
-        ejercicios,
-        comidas: nuevasComidas
-      }, { onConflict: 'user_id,fecha' });
+      await supabase.from('registro_calorias').upsert({ user_id: session.user.id, fecha: fechaSeleccionada, base: bmrCalculado, agua_ml: aguaMl, ejercicios, comidas: nuevasComidas }, { onConflict: 'user_id,fecha' });
     }
-
     alert(`🤖 IA: Estimado "${nuevoNombre}" -> ${resCal} kcal | ${resP}g P | ${resC}g C | ${resG}g G`);
   };
 
@@ -758,10 +662,7 @@ export default function Home() {
     const datosGuardar = { ...suenoHoy, user_id: user.id, fecha: fechaSeleccionada, horas_totales: duracionHoras };
     const { error } = await supabase.from('registro_sueno').upsert(datosGuardar, { onConflict: 'user_id,fecha' });
     if (error) alert('❌ Error: ' + error.message);
-    else {
-      setSuenoHoy(datosGuardar);
-      alert('✅ Sueño guardado correctamente');
-    }
+    else { setSuenoHoy(datosGuardar); alert('✅ Sueño guardado correctamente'); }
   };
 
   const guardarNota = async () => {
@@ -787,8 +688,7 @@ export default function Home() {
   const totalGrasas = comidas.reduce((acc, item) => acc + Number(item.grasas || 0), 0);
 
   const evaluacionNutricion = useMemo(() => {
-    let nota = 0;
-    let mensaje = '';
+    let nota = 0, mensaje = '';
     const b = balanceCalorico;
     
     if (perfil.objetivo === 'bajar') {
@@ -808,11 +708,21 @@ export default function Home() {
 
   const pctCalorias = evaluacionNutricion.nota * 10;
   const pctAgua = Math.min(100, Math.round((aguaMl / metaAguaMl) * 100));
-  const pctSueño = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
+  const pctSueno = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
 
   const diaNumero = parseInt(fechaSeleccionada.split('-')[2] || '1', 10);
   const fraseDelDia = FRASES_MOTIVACIONALES[diaNumero % FRASES_MOTIVACIONALES.length];
 
+  // RETORNO SI SE ESTÁ VERIFICANDO LA SESIÓN INICIAL (EVITA EL PARPADEO)
+  if (cargandoSesion) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center font-sans">
+        <div className="text-slate-400 font-medium animate-pulse">Cargando aplicación... ⏳</div>
+      </div>
+    );
+  }
+
+  // PANTALLA DE INICIO DE SESIÓN
   if (!session) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4 font-sans">
@@ -937,43 +847,58 @@ export default function Home() {
           <div className="text-center py-16 text-slate-400 font-medium">Cargando datos... ⏳</div>
         ) : (
           <div>
-            {/* GENERAL CON BARRAS DE PORCENTAJE */}
+            {/* GENERAL CON REFERENCIA Y BARRAS DINÁMICAS */}
             {seccionActiva === 'general' && (
               <div className="space-y-6">
+                
+                {/* REFERENCIA DE COLORES Y OBJETIVOS */}
+                <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                  <div className="font-bold text-slate-200">💡 Guía de Progreso Diario:</div>
+                  <div className="flex items-center gap-4 text-slate-300 flex-wrap justify-center">
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> Rojo: Lejos (&lt;40%)</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Naranja: En camino (40-79%)</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Verde: Ideal (80-100%)</span>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                   <div onClick={() => cambiarSeccion('nutricion')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-amber-500 transition">
                     <span className="text-xs text-slate-400">Balance Calórico</span>
                     <p className={`text-2xl font-extrabold mt-2 ${balanceCalorico < 0 ? 'text-amber-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico}</p>
                     <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                      <div className="bg-amber-500 h-full transition-all" style={{ width: `${pctCalorias}%` }}></div>
+                      <div className={`h-full transition-all ${obtenerColorBarra(pctCalorias)}`} style={{ width: `${pctCalorias}%` }}></div>
                     </div>
                   </div>
+
                   <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('agua'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-cyan-500 transition">
                     <span className="text-xs text-slate-400">Agua Diaria</span>
                     <p className="text-2xl font-extrabold text-cyan-400 mt-2">{(aguaMl / 1000).toFixed(2)}L</p>
                     <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                      <div className="bg-cyan-500 h-full transition-all" style={{ width: `${pctAgua}%` }}></div>
+                      <div className={`h-full transition-all ${obtenerColorBarra(pctAgua)}`} style={{ width: `${pctAgua}%` }}></div>
                     </div>
                   </div>
+
                   <div onClick={() => cambiarSeccion('habitos')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-indigo-500 transition">
                     <span className="text-xs text-slate-400">Hábitos</span>
                     <p className="text-2xl font-extrabold text-indigo-400 mt-2">{porcentajeHabitos}%</p>
                     <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                      <div className="bg-indigo-500 h-full transition-all" style={{ width: `${porcentajeHabitos}%` }}></div>
+                      <div className={`h-full transition-all ${obtenerColorBarra(porcentajeHabitos)}`} style={{ width: `${porcentajeHabitos}%` }}></div>
                     </div>
                   </div>
+
                   <div onClick={() => cambiarSeccion('perfil')} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-slate-400 transition">
                     <span className="text-xs text-slate-400">Peso / Éxito</span>
                     <p className="text-xl font-extrabold text-slate-200 mt-2">{perfil.peso} kg</p>
                     <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                      <div className="bg-emerald-500 h-full transition-all" style={{ width: `${perfil.porcentaje_probabilidad}%` }}></div>
+                      <div className={`h-full transition-all ${obtenerColorBarra(perfil.porcentaje_probabilidad)}`} style={{ width: `${perfil.porcentaje_probabilidad}%` }}></div>
                     </div>
                   </div>
+
                   <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('sueno'); }} className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl cursor-pointer hover:border-indigo-400 transition">
                     <span className="text-xs text-slate-400">Sueño</span>
                     <p className="text-xl font-extrabold text-indigo-300 mt-2">{suenoHoy.horas_totales} hrs</p>
                     <div className="w-full bg-slate-950 rounded-full h-1.5 mt-2 border border-slate-800 overflow-hidden">
-                      <div className="bg-indigo-500 h-full transition-all" style={{ width: `${pctSueño}%` }}></div>
+                      <div className={`h-full transition-all ${obtenerColorBarra(pctSueno)}`} style={{ width: `${pctSueno}%` }}></div>
                     </div>
                   </div>
                 </div>
@@ -985,11 +910,17 @@ export default function Home() {
               </div>
             )}
 
-            {/* PERFIL */}
+            {/* MI PERFIL Y OBJETIVOS CON PESTAÑAS */}
             {seccionActiva === 'perfil' && (
               <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 max-w-4xl mx-auto">
                 <h2 className="text-xl font-semibold text-slate-200">👤 Mi Perfil y Objetivos</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <div className="flex border-b border-slate-700 pb-3 gap-4">
+                  <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-sm font-bold pb-1 cursor-pointer transition ${subSeccionPerfil === 'perfil' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>👤 Datos Personales</button>
+                  <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-sm font-bold pb-1 cursor-pointer transition ${subSeccionPerfil === 'objetivo' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🎯 Mi Objetivo</button>
+                </div>
+
+                {subSeccionPerfil === 'perfil' ? (
                   <div className="space-y-4 bg-slate-900/50 p-5 rounded-xl border border-slate-800">
                     <div>
                       <label className="text-xs text-slate-400 block mb-1">Nombre</label>
@@ -1010,7 +941,7 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-
+                ) : (
                   <div className="space-y-4 bg-slate-900/50 p-5 rounded-xl border border-slate-800">
                     <div>
                       <label className="text-xs text-slate-400 block mb-1">Objetivo Principal</label>
@@ -1031,7 +962,8 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
+
                 <button onClick={guardarPerfil} disabled={guardandoPerfil} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl cursor-pointer">
                   {guardandoPerfil ? 'Guardando...' : '💾 Guardar Perfil'}
                 </button>
@@ -1071,7 +1003,7 @@ export default function Home() {
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs px-2 py-0.5 rounded bg-amber-950 border border-amber-800 text-amber-400">🔥 {racha} días</span>
-                          <button onClick={() => eliminarHabito(h.id)} className="text-slate-500 hover:text-rose-400 cursor-pointer">🗑️</button>
+                          <button onClick={() => eliminarHabito(h.id)} className="bg-rose-950/60 border border-rose-800 text-rose-300 p-1.5 rounded-xl text-xs cursor-pointer hover:bg-rose-900">🗑️</button>
                         </div>
                       </div>
                     );
@@ -1080,7 +1012,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* NUTRICIÓN Y ENTRENAMIENTO */}
+            {/* NUTRICIÓN Y ENTRENAMIENTO MODIFICADO */}
             {seccionActiva === 'nutricion' && (
               <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6">
                 <h2 className="text-xl font-semibold text-amber-400">🏋️ Nutrición y Entrenamiento</h2>
@@ -1111,9 +1043,12 @@ export default function Home() {
                     <div key={item.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
                       <div className="flex gap-2 items-center">
                         <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold" />
-                        <button onClick={() => abrirModalIaComida(item)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 px-3 py-1 rounded-lg text-xs cursor-pointer">📷 IA</button>
-                        <button onClick={() => guardarEnBiblioteca(item)} className="bg-amber-950 border border-amber-800 text-amber-300 px-2 py-1 rounded-lg text-xs cursor-pointer">⭐</button>
-                        <button onClick={() => eliminarComida(item.id)} className="text-slate-500 hover:text-rose-400 cursor-pointer">🗑️</button>
+                        
+                        {/* BOTÓN CÁMARA SOLA */}
+                        <button onClick={() => abrirModalIaComida(item)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 px-3 py-1.5 rounded-xl text-xs cursor-pointer hover:bg-cyan-900">📷</button>
+                        
+                        {/* PAPELERA DENTRO DEL RECUADRO CON BORDE Y FONDO ROJO */}
+                        <button onClick={() => eliminarComida(item.id)} className="bg-rose-950/60 border border-rose-800 text-rose-300 p-1.5 rounded-xl text-xs cursor-pointer hover:bg-rose-900">🗑️</button>
                       </div>
                       <div className="grid grid-cols-4 gap-2 text-xs">
                         <div><label className="text-[10px] text-slate-400">Kcal</label><input type="number" value={item.calorias} onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
@@ -1135,7 +1070,7 @@ export default function Home() {
                       <div className="flex gap-2 items-center">
                         <input type="text" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold" />
                         <button onClick={() => calcularCaloriasEjercicioIA(item)} className="bg-indigo-950 border border-indigo-800 text-indigo-300 px-3 py-1 rounded-lg text-xs cursor-pointer">🤖 IA</button>
-                        <button onClick={() => eliminarEjercicio(item.id)} className="text-slate-500 hover:text-rose-400 cursor-pointer">🗑️</button>
+                        <button onClick={() => eliminarEjercicio(item.id)} className="bg-rose-950/60 border border-rose-800 text-rose-300 p-1.5 rounded-xl text-xs cursor-pointer hover:bg-rose-900">🗑️</button>
                       </div>
                       <div className="grid grid-cols-4 gap-2 text-xs">
                         <div><label className="text-[10px] text-slate-400">Series</label><input type="number" value={item.series || 0} onChange={(e) => actualizarEjercicio(item.id, 'series', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1" /></div>
@@ -1153,10 +1088,10 @@ export default function Home() {
               </section>
             )}
 
-            {/* SECCIÓN EXTRA */}
+            {/* SECCIÓN EXTRA AJUSTADA (SUEÑO CENTRADO E INPUTS RECORTADOS) */}
             {seccionActiva === 'extra' && (
               <section className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 max-w-xl mx-auto">
-                <div className="flex border-b border-slate-700 pb-3 gap-4">
+                <div className="flex border-b border-slate-700 pb-3 gap-4 justify-center">
                   <button onClick={() => setSubSeccionExtra('agua')} className={`text-sm font-bold pb-1 cursor-pointer ${subSeccionExtra === 'agua' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400'}`}>💧 Hidratación</button>
                   <button onClick={() => setSubSeccionExtra('sueno')} className={`text-sm font-bold pb-1 cursor-pointer ${subSeccionExtra === 'sueno' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400'}`}>😴 Descanso y Sueño</button>
                 </div>
@@ -1167,7 +1102,7 @@ export default function Home() {
                     <h3 className="text-xl font-bold text-cyan-300">Control de Hidratación</h3>
                     <p className="text-3xl font-black text-cyan-400">{(aguaMl / 1000).toFixed(2)} / 2.50 L</p>
                     <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
-                      <div className="bg-cyan-500 h-full transition-all" style={{ width: `${pctAgua}%` }}></div>
+                      <div className={`h-full transition-all ${obtenerColorBarra(pctAgua)}`} style={{ width: `${pctAgua}%` }}></div>
                     </div>
                     <div className="flex justify-center gap-3 pt-2">
                       <button onClick={() => modificarAgua(250)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer">+250 ml 🥛</button>
@@ -1176,27 +1111,29 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-4 text-center bg-slate-900 p-6 rounded-2xl border border-slate-800">
+                  <div className="space-y-5 text-center bg-slate-900 p-6 rounded-2xl border border-slate-800">
                     <span className="text-5xl">😴</span>
                     <h3 className="text-xl font-bold text-indigo-300">Control de Descanso y Sueño</h3>
                     <p className="text-3xl font-black text-indigo-400">{suenoHoy.horas_totales} <span className="text-sm font-normal text-slate-400">/ 8.0 hrs</span></p>
                     <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
-                      <div className="bg-indigo-500 h-full transition-all" style={{ width: `${pctSueño}%` }}></div>
+                      <div className={`h-full transition-all ${obtenerColorBarra(pctSueno)}`} style={{ width: `${pctSueno}%` }}></div>
                     </div>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-2">
-                      <div>
-                        <label className="text-xs text-slate-400 font-semibold block mb-1">Acostarse</label>
-                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white font-mono" />
+                    {/* HORA ACOSTARSE Y LEVANTARSE CENTRADOS CON INPUTS ESTRECHOS */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center pt-2 max-w-sm mx-auto">
+                      <div className="flex flex-col items-center">
+                        <label className="text-xs text-slate-400 font-semibold block mb-1 text-center">Acostarse</label>
+                        <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="w-32 text-center bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white font-mono" />
                       </div>
-                      <div>
-                        <label className="text-xs text-slate-400 font-semibold block mb-1">Levantarse</label>
-                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white font-mono" />
+                      <div className="flex flex-col items-center">
+                        <label className="text-xs text-slate-400 font-semibold block mb-1 text-center">Levantarse</label>
+                        <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="w-32 text-center bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white font-mono" />
                       </div>
                     </div>
 
-                    <div className="text-left pt-1">
-                      <label className="text-xs text-slate-400 font-semibold block mb-1">Calidad del Sueño</label>
+                    {/* CALIDAD DEL SUEÑO CENTRADO */}
+                    <div className="text-center pt-2">
+                      <label className="text-xs text-slate-400 font-semibold block mb-1 text-center">Calidad del Sueño</label>
                       <div className="flex gap-2 justify-center py-2">
                         {[1, 2, 3, 4, 5].map((estrella) => (
                           <button key={estrella} type="button" onClick={() => setSuenoHoy({...suenoHoy, calidad: estrella})} className={`text-2xl cursor-pointer ${suenoHoy.calidad >= estrella ? 'text-amber-400 scale-110' : 'text-slate-600'}`}>★</button>
@@ -1267,11 +1204,12 @@ export default function Home() {
                 <h2 className="text-xl font-semibold text-indigo-400">🚀 Novedades y Soporte</h2>
                 <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-2">
                   <p className="font-bold text-white">Versión Actual: {ULTIMA_ACTUALIZACION_APP}</p>
-                  <p>• Restauración de barras de porcentaje en el resumen general.</p>
-                  <p>• Alineación y ajuste responsive del botón "Añadir" en hábitos diarios.</p>
-                  <p>• Guardado automático inmediato tras el cálculo de macros por IA.</p>
-                  <p>• Calibración precisa del estimador de IA para evitar sobreestimaciones.</p>
-                  <p>• Ajuste de inputs de sueño en módulos extra para evitar solapamiento.</p>
+                  <p>• Eliminación del parpadeo de sesión al abrir la aplicación.</p>
+                  <p>• Barras de porcentaje dinámicas por color (rojo/naranja/verde) según cercanía al ideal.</p>
+                  <p>• Referencia de colores integrada arriba del balance calórico en General.</p>
+                  <p>• Pestañas en Mi Perfil para separar datos personales de los objetivos.</p>
+                  <p>• Ajustes visuales en comidas: botón de cámara limpio y papelera encuadrada en rojo.</p>
+                  <p>• Controles de sueño recortados y centrados con sus etiquetas.</p>
                 </div>
               </section>
             )}
