@@ -3,23 +3,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
-// FECHA Y HORA REAL DINÁMICA DE ÚLTIMA ACTUALIZACIÓN
-const obtenerFechaUltimaActualizacion = () => {
-  if (typeof window === 'undefined') return '30/07/2026 18:00';
-  const ahora = new Date();
-  const fecha = ahora.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const hora = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-  return `${fecha} ${hora}`;
-};
+// FECHA Y HORA FIJA DE LA ÚLTIMA ACTUALIZACIÓN
+const ULTIMA_ACTUALIZACION_APP = '30/07/2026 18:00';
 
-const ULTIMA_ACTUALIZACION_APP = obtenerFechaUltimaActualizacion();
-
-// --- ESTILOS REUTILIZABLES CORREGIDOS PARA EVITAR DESBORDAMIENTOS ---
+// ESTILOS REUTILIZABLES
 const INPUT_CLS = "w-full min-w-0 max-w-full box-border bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-100 transition placeholder:text-slate-500 outline-none";
-const BTN_PRIMARY = "w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer shadow-lg shadow-indigo-950/50 active:scale-[0.99]";
+const BTN_PRIMARY = "w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer shadow-lg active:scale-[0.99]";
 const CARD_CLS = "bg-slate-900/70 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl transition-all hover:border-slate-700/80";
 
-// --- INTERFACES ---
+// INTERFACES
 interface PerfilUsuario {
   nombre: string;
   fecha_nacimiento: string;
@@ -36,7 +28,6 @@ interface Habito {
   id: number;
   texto: string;
   hora_objetivo: string;
-  racha_actual?: number;
 }
 
 interface RegistroHabito {
@@ -50,9 +41,6 @@ interface ItemComida {
   id: string;
   nombre: string;
   calorias: number;
-  proteinas?: number;
-  carbs?: number;
-  grasas?: number;
 }
 
 type TipoEjercicio = '' | 'fuerza' | 'running' | 'ciclismo' | 'boxeo' | 'futbol' | 'natacion' | 'caminata' | 'funcional' | 'otro';
@@ -61,22 +49,7 @@ interface EjercicioGimnasio {
   id: string;
   nombre: string;
   tipo: TipoEjercicio;
-  series?: number;
-  repeticiones?: number;
-  peso?: number;
-  duracion_minutos?: number;
-  distancia_km?: number;
   calorias: number;
-  esYoutube?: boolean;
-}
-
-interface ClimaData {
-  temp: number;
-  codigoClima: number;
-  recomendacion: string;
-  descripcion: string;
-  ubicacion: string;
-  icono: string;
 }
 
 interface RegistroSueno {
@@ -93,37 +66,21 @@ const FRASES_MOTIVACIONALES = [
   "«La disciplina es construir el puente entre tus metas y tus logros.» 🔥",
   "«No cuentes los días, haz que los días cuenten.» ⚡",
   "«Tu versión del futuro te agradecerá la constancia de hoy.» 💎",
-  "«Un pequeño avance diario genera resultados gigantes al final del año.» 🏆",
-  "«La constancia vence a la motivación cuando la motivación falta.» 🛡️",
-  "«Haz hoy lo que otros no quieren para vivir mañana como otros no pueden.» ✨"
+  "«Un pequeño avance diario genera resultados gigantes al final del año.» 🏆"
 ];
 
 const COMIDAS_POR_DEFECTO: ItemComida[] = [
-  { id: '1', nombre: '🍳 Desayuno', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
-  { id: '2', nombre: '🥗 Almuerzo', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
-  { id: '3', nombre: '🍎 Merienda', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
-  { id: '4', nombre: '🍗 Cena', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
-  { id: '5', nombre: '🥑 Snacks / Extra', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 },
+  { id: '1', nombre: '🍳 Desayuno', calorias: 0 },
+  { id: '2', nombre: '🥗 Almuerzo', calorias: 0 },
+  { id: '3', nombre: '🍎 Merienda', calorias: 0 },
+  { id: '4', nombre: '🍗 Cena', calorias: 0 },
+  { id: '5', nombre: '🥑 Snacks / Extra', calorias: 0 },
 ];
 
-// --- FUNCIONES AUXILIARES ---
 const obtenerFechaLogica = () => {
   const ahora = new Date();
   const fechaAjustada = new Date(ahora.getTime() - 4 * 60 * 60 * 1000);
   return fechaAjustada.toISOString().split('T')[0];
-};
-
-const obtenerHora24 = () => {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-};
-
-const formatearFechaLarga = (fechaStr: string) => {
-  if (!fechaStr) return '';
-  const [year, month, day] = fechaStr.split('-').map(Number);
-  const fecha = new Date(year, month - 1, day);
-  const str = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
 const obtenerEstiloBarra = (porcentaje: number) => {
@@ -131,37 +88,39 @@ const obtenerEstiloBarra = (porcentaje: number) => {
   let colorClass = 'bg-emerald-500 shadow-emerald-500/50';
   if (porcentaje < 40) colorClass = 'bg-rose-500 shadow-rose-500/50';
   else if (porcentaje < 80) colorClass = 'bg-amber-500 shadow-amber-500/50';
-  
   return { width: `${Math.min(100, porcentaje)}%`, colorClass };
 };
 
 export default function Home() {
-  // ESTADOS DE AUTENTICACIÓN
+  // AUTENTICACIÓN
   const [session, setSession] = useState<any>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
   const [esRegistro, setEsRegistro] = useState(false);
   const [emailAuth, setEmailAuth] = useState('');
   const [passwordAuth, setPasswordAuth] = useState('');
+  const [confirmPasswordAuth, setConfirmPasswordAuth] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [pasoOTP, setPasoOTP] = useState(false);
+  const [codigoOTP, setCodigoOTP] = useState('');
   const [cargandoAuth, setCargandoAuth] = useState(false);
   const [errorAuth, setErrorAuth] = useState('');
 
-  // ESTADOS DE LA APP
-  const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'habitos' | 'nutricion' | 'extra' | 'estadisticas' | 'actualizaciones'>('general');
+  // NAVEGACIÓN Y APPS
+  const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'habitos' | 'nutricion' | 'extra' | 'actualizaciones'>('general');
   const [subSeccionPerfil, setSubSeccionPerfil] = useState<'perfil' | 'objetivo'>('perfil');
   const [subSeccionNutricion, setSubSeccionNutricion] = useState<'nutricion' | 'entrenamiento'>('nutricion');
   const [subSeccionExtra, setSubSeccionExtra] = useState<'agua' | 'sueno'>('agua');
   const [subSeccionActualizaciones, setSubSeccionActualizaciones] = useState<'novedades' | 'soporte'>('novedades');
 
-  // Soporte (Sin opción por defecto)
+  // SOPORTE
   const [tipoSoporte, setTipoSoporte] = useState('');
   const [mensajeSoporte, setMensajeSoporte] = useState('');
 
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
   const [horaVivo, setHoraVivo] = useState<string>('');
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(obtenerFechaLogica());
-  const [clima, setClima] = useState<ClimaData | null>(null);
 
-  // Perfil
+  // PERFIL
   const [perfil, setPerfil] = useState<PerfilUsuario>({
     nombre: '',
     fecha_nacimiento: '2000-01-01',
@@ -175,31 +134,18 @@ export default function Home() {
   });
   const [guardandoPerfil, setGuardandoPerfil] = useState(false);
 
-  // Hábitos
+  // HÁBITOS
   const [habitos, setHabitos] = useState<Habito[]>([]);
   const [registrosHoy, setRegistrosHoy] = useState<Record<number, RegistroHabito>>({});
   const [rachasHabitos, setRachasHabitos] = useState<Record<number, number>>({});
   const [nuevoHabito, setNuevoHabito] = useState('');
   const [horaObjetivo, setHoraObjetivo] = useState('18:00');
 
-  const habitosOrdenados = useMemo(() => {
-    return [...habitos].sort((a, b) => (a.hora_objetivo || '00:00').localeCompare(b.hora_objetivo || '00:00'));
-  }, [habitos]);
-
-  // Nutrición / Gimnasio
+  // NUTRICIÓN Y ENTRENAMIENTO
   const [ejercicios, setEjercicios] = useState<EjercicioGimnasio[]>([]);
   const [comidas, setComidas] = useState<ItemComida[]>(COMIDAS_POR_DEFECTO);
-  const [youtubeLink, setYoutubeLink] = useState('');
-  const [procesandoYoutube, setProcesandoYoutube] = useState(false);
 
-  // Modal IA Comidas
-  const [comidaIaModal, setComidaIaModal] = useState<ItemComida | null>(null);
-  const [nombreIaModalInput, setNombreIaModalInput] = useState('');
-  const [textoIaInput, setTextoIaInput] = useState('');
-  const [imagenesIaInput, setImagenesIaInput] = useState<string[]>([]);
-  const [procesandoIa, setProcesandoIa] = useState(false);
-
-  // Hidratación y Sueño
+  // HIDRATACIÓN Y SUEÑO
   const [aguaMl, setAguaMl] = useState<number>(0);
   const metaAguaMl = 2500;
 
@@ -211,7 +157,7 @@ export default function Home() {
     calidad: 3,
   });
 
-  // CONTROL DE SESIÓN Y PERSISTENCIA DE APPS
+  // CONTROL DE SESIÓN
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -226,31 +172,28 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const cambiarSeccion = (id: typeof seccionActiva) => {
-    setSeccionActiva(id);
-    setSidebarAbierto(false);
+  const alternarModoAuth = (esReg: boolean) => {
+    setEsRegistro(esReg);
+    setEmailAuth('');
+    setPasswordAuth('');
+    setConfirmPasswordAuth('');
+    setErrorAuth('');
+    setPasoOTP(false);
   };
 
   useEffect(() => {
-    const actualizarReloj = () => {
+    const timer = setInterval(() => {
       const ahora = new Date();
       setHoraVivo(`${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:${String(ahora.getSeconds()).padStart(2, '0')}`);
-      const nuevaFechaLogica = obtenerFechaLogica();
-      setFechaSeleccionada((prev) => (prev !== nuevaFechaLogica ? nuevaFechaLogica : prev));
-    };
-    actualizarReloj();
-    const timer = setInterval(actualizarReloj, 1000);
+    }, 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    obtenerClimaYUbicacion();
   }, []);
 
   useEffect(() => {
     if (session?.user) cargarDatos();
   }, [fechaSeleccionada, session?.user?.id]);
 
+  // MANEJO DE REGISTRO E INICIO DE SESIÓN CON CÓDIGO OTP
   const manejarAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorAuth('');
@@ -258,14 +201,15 @@ export default function Home() {
 
     try {
       if (esRegistro) {
-        const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
+        if (passwordAuth !== confirmPasswordAuth) {
+          throw new Error('Las contraseñas no coinciden.');
+        }
         const { error } = await supabase.auth.signUp({
           email: emailAuth,
           password: passwordAuth,
-          options: { emailRedirectTo: redirectUrl },
         });
         if (error) throw error;
-        alert('✅ Registro exitoso. Se envió un correo de confirmación a tu casilla.');
+        setPasoOTP(true);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: emailAuth, password: passwordAuth });
         if (error) throw error;
@@ -277,15 +221,22 @@ export default function Home() {
     }
   };
 
-  const iniciarSesionGoogle = async () => {
+  const verificarCodigoOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
     setErrorAuth('');
     setCargandoAuth(true);
+
     try {
-      const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectUrl } });
+      const { error } = await supabase.auth.verifyOtp({
+        email: emailAuth,
+        token: codigoOTP.trim(),
+        type: 'signup',
+      });
       if (error) throw error;
+      alert('✅ Email verificado exitosamente.');
     } catch (err: any) {
-      setErrorAuth(err.message || 'Error al iniciar sesión con Google.');
+      setErrorAuth(err.message || 'Código de verificación inválido o expirado.');
+    } finally {
       setCargandoAuth(false);
     }
   };
@@ -294,104 +245,15 @@ export default function Home() {
     await supabase.auth.signOut();
   };
 
-  const probabilidadCalculada = useMemo(() => {
-    if (perfil.objetivo === 'mantener') return 95;
-    if (!perfil.kilos_objetivo || perfil.kilos_objetivo <= 0 || !perfil.tiempo_objetivo_meses || perfil.tiempo_objetivo_meses <= 0) return 50;
-
-    const kgPorMes = perfil.kilos_objetivo / perfil.tiempo_objetivo_meses;
-    if (kgPorMes <= 2.0) return 95;
-    if (kgPorMes <= 3.5) return 80;
-    if (kgPorMes <= 5.0) return 60;
-    if (kgPorMes <= 6.5) return 40;
-    return 20;
-  }, [perfil.objetivo, perfil.kilos_objetivo, perfil.tiempo_objetivo_meses]);
-
-  useEffect(() => {
-    setPerfil(prev => ({ ...prev, porcentaje_probabilidad: probabilidadCalculada }));
-  }, [probabilidadCalculada]);
-
-  const obtenerClimaYUbicacion = () => {
-    const cacheClima = localStorage.getItem('clima_cache');
-    const cacheTime = localStorage.getItem('clima_cache_time');
-    const ahora = Date.now();
-
-    if (cacheClima && cacheTime && (ahora - Number(cacheTime) < 3600000)) {
-      try { setClima(JSON.parse(cacheClima)); return; } catch (e) {}
-    }
-
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          try {
-            const resClima = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
-            const dataClima = await resClima.json();
-            if (dataClima.current_weather) {
-              const temp = Math.round(dataClima.current_weather.temperature);
-              const code = dataClima.current_weather.weathercode;
-              const isDay = dataClima.current_weather.is_day === 1;
-              const hora = new Date().getHours();
-              const esNoche = !isDay || hora >= 20 || hora < 7;
-              
-              let desc = esNoche ? 'Noche Despejada' : 'Despejado';
-              let icono = esNoche ? '🌙' : '☀️';
-              let rec = 'Día ideal para realizar tus actividades físicas.';
-              if (code >= 51 && code <= 67) { desc = 'Lluvia'; icono = '🌧️'; rec = '⚠️ Lluvia en tu zona. Entrená en interiores.'; }
-
-              const objClima = { temp, codigoClima: code, descripcion: desc, recomendacion: rec, ubicacion: 'Tu ubicación', icono };
-              setClima(objClima);
-              localStorage.setItem('clima_cache', JSON.stringify(objClima));
-              localStorage.setItem('clima_cache_time', String(Date.now()));
-            }
-          } catch (e) {}
-        },
-        () => {
-          setClima({ temp: 18, codigoClima: 0, descripcion: 'Templado', recomendacion: 'Temperatura agradable.', ubicacion: 'Local', icono: '🌤️' });
-        },
-        { maximumAge: 3600000, timeout: 8000 }
-      );
-    }
-  };
-
-  const calcularRachas = async (listaHabitos: Habito[]) => {
-    const user = session?.user;
-    if (!user) return;
-
-    const { data: historial } = await supabase.from('registro_habitos').select('habito_id, fecha, completado').eq('user_id', user.id).eq('completado', true).order('fecha', { ascending: false });
-    if (!historial) return;
-
-    const mapaRachas: Record<number, number> = {};
-    listaHabitos.forEach((h) => {
-      const registrosDeHabito = historial.filter((r) => r.habito_id === h.id);
-      let racha = 0;
-      let fechaActual = new Date();
-
-      for (let i = 0; i < 30; i++) {
-        const strFecha = fechaActual.toISOString().split('T')[0];
-        const exist = registrosDeHabito.some((r) => r.fecha === strFecha);
-        if (exist) { racha++; fechaActual.setDate(fechaActual.getDate() - 1); } 
-        else if (i === 0) { fechaActual.setDate(fechaActual.getDate() - 1); } 
-        else { break; }
-      }
-      mapaRachas[h.id] = racha;
-    });
-    setRachasHabitos(mapaRachas);
-  };
-
   const cargarDatos = async () => {
     const user = session?.user;
     if (!user) return;
 
     const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').eq('user_id', user.id).maybeSingle();
-    if (datosPerfil) {
-      setPerfil({ ...datosPerfil, fecha_nacimiento: datosPerfil.fecha_nacimiento || '2000-01-01', tiempo_objetivo_meses: datosPerfil.tiempo_objetivo_meses || 3 });
-    }
+    if (datosPerfil) setPerfil(datosPerfil);
 
     const { data: datosHabitos } = await supabase.from('habitos').select('*').eq('user_id', user.id);
-    if (datosHabitos) {
-      setHabitos(datosHabitos);
-      calcularRachas(datosHabitos);
-    }
+    if (datosHabitos) setHabitos(datosHabitos);
 
     const { data: datosRegistros } = await supabase.from('registro_habitos').select('*').eq('user_id', user.id).eq('fecha', fechaSeleccionada);
     const mapaRegistros: Record<number, RegistroHabito> = {};
@@ -401,8 +263,8 @@ export default function Home() {
     const { data: datosCalorias } = await supabase.from('registro_calorias').select('*').eq('user_id', user.id).eq('fecha', fechaSeleccionada).maybeSingle();
     if (datosCalorias) {
       setAguaMl(datosCalorias.agua_ml ?? 0);
-      setEjercicios(datosCalorias.ejercicios && Array.isArray(datosCalorias.ejercicios) ? datosCalorias.ejercicios : []);
-      setComidas(datosCalorias.comidas && Array.isArray(datosCalorias.comidas) && datosCalorias.comidas.length > 0 ? datosCalorias.comidas : COMIDAS_POR_DEFECTO);
+      setEjercicios(datosCalorias.ejercicios || []);
+      setComidas(datosCalorias.comidas?.length ? datosCalorias.comidas : COMIDAS_POR_DEFECTO);
     } else {
       setAguaMl(0); setEjercicios([]); setComidas(COMIDAS_POR_DEFECTO);
     }
@@ -416,13 +278,10 @@ export default function Home() {
     const hoy = new Date();
     const cumple = new Date(perfil.fecha_nacimiento);
     let edad = hoy.getFullYear() - cumple.getFullYear();
-    const m = hoy.getMonth() - cumple.getMonth();
-    if (m < 0 || (m === 0 && hoy.getDate() < cumple.getDate())) edad--;
     let bmr = (10 * perfil.peso) + (6.25 * perfil.altura) - (5 * (isNaN(edad) ? 25 : edad));
     return Math.round(perfil.sexo === 'masculino' ? bmr + 5 : bmr - 161);
   }, [perfil]);
 
-  // PERSISTENCIA AUTOMÁTICA
   const guardarCaloriasAuto = (nuevosEjercicios?: EjercicioGimnasio[], nuevasComidas?: ItemComida[]) => {
     if (!session?.user) return;
     supabase.from('registro_calorias').upsert({
@@ -437,472 +296,170 @@ export default function Home() {
 
   useEffect(() => {
     if (!session?.user) return;
-    const timer = setTimeout(() => {
-      guardarCaloriasAuto();
-    }, 600);
+    const timer = setTimeout(() => guardarCaloriasAuto(), 600);
     return () => clearTimeout(timer);
-  }, [comidas, ejercicios, aguaMl, bmrCalculado, fechaSeleccionada, session]);
+  }, [comidas, ejercicios, aguaMl, fechaSeleccionada, session]);
 
   const guardarPerfil = async () => {
-    const user = session?.user;
-    if (!user) return false;
+    if (!session?.user) return;
     setGuardandoPerfil(true);
     try {
-      const payloadPerfil = {
-        user_id: user.id,
-        nombre: perfil.nombre.trim(),
-        fecha_nacimiento: perfil.fecha_nacimiento || '2000-01-01',
-        peso: Number(perfil.peso) || 70,
-        altura: Number(perfil.altura) || 170,
-        sexo: perfil.sexo,
-        objetivo: perfil.objetivo,
-        kilos_objetivo: Number(perfil.kilos_objetivo) || 0,
-        tiempo_objetivo_meses: Number(perfil.tiempo_objetivo_meses) || 1,
-        porcentaje_probabilidad: Number(perfil.porcentaje_probabilidad) || 50
-      };
-      const { error } = await supabase.from('perfil_usuario').upsert(payloadPerfil, { onConflict: 'user_id' });
+      const { error } = await supabase.from('perfil_usuario').upsert({ user_id: session.user.id, ...perfil }, { onConflict: 'user_id' });
       if (error) throw error;
       alert('✅ Perfil guardado correctamente');
-      return true;
     } catch (err: any) {
       alert('❌ Error al guardar perfil: ' + err.message);
-      return false;
     } finally {
       setGuardandoPerfil(false);
     }
   };
 
+  // HÁBITOS
   const agregarHabito = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = session?.user;
-    if (!nuevoHabito.trim() || !user) return;
-
-    const { data, error } = await supabase.from('habitos').insert([{ user_id: user.id, texto: nuevoHabito, hora_objetivo: horaObjetivo }]).select();
-    if (error) alert('❌ Error: ' + error.message);
-    else if (data) { setHabitos([...habitos, data[0]]); setNuevoHabito(''); }
+    if (!nuevoHabito.trim() || !session?.user) return;
+    const { data, error } = await supabase.from('habitos').insert([{ user_id: session.user.id, texto: nuevoHabito, hora_objetivo: horaObjetivo }]).select();
+    if (!error && data) { setHabitos([...habitos, data[0]]); setNuevoHabito(''); }
   };
 
   const alternarHabito = async (habitoId: number) => {
-    const user = session?.user;
-    if (!user) return;
+    if (!session?.user) return;
     const estaCompletado = !!registrosHoy[habitoId]?.completado;
-    const horaActual = obtenerHora24();
-
     if (!estaCompletado) {
-      const { error } = await supabase.from('registro_habitos').upsert({ user_id: user.id, habito_id: habitoId, fecha: fechaSeleccionada, completado: true, hora_completado: horaActual }, { onConflict: 'user_id,habito_id,fecha' });
-      if (!error) { setRegistrosHoy((prev) => ({ ...prev, [habitoId]: { habito_id: habitoId, completado: true, hora_completado: horaActual } })); calcularRachas(habitos); }
+      await supabase.from('registro_habitos').upsert({ user_id: session.user.id, habito_id: habitoId, fecha: fechaSeleccionada, completado: true }, { onConflict: 'user_id,habito_id,fecha' });
+      setRegistrosHoy(prev => ({ ...prev, [habitoId]: { habito_id: habitoId, completado: true } }));
     } else {
-      const { error } = await supabase.from('registro_habitos').delete().eq('user_id', user.id).eq('habito_id', habitoId).eq('fecha', fechaSeleccionada);
-      if (!error) { setRegistrosHoy((prev) => { const copia = { ...prev }; delete copia[habitoId]; return copia; }); calcularRachas(habitos); }
+      await supabase.from('registro_habitos').delete().eq('user_id', session.user.id).eq('habito_id', habitoId).eq('fecha', fechaSeleccionada);
+      setRegistrosHoy(prev => { const copia = { ...prev }; delete copia[habitoId]; return copia; });
     }
   };
 
   const eliminarHabito = async (id: number) => {
-    const user = session?.user;
-    if (!user || !window.confirm('¿Eliminar hábito?')) return;
-    const { error } = await supabase.from('habitos').delete().eq('user_id', user.id).eq('id', id);
-    if (!error) setHabitos(habitos.filter((h) => h.id !== id));
+    if (!session?.user || !window.confirm('¿Eliminar hábito?')) return;
+    const { error } = await supabase.from('habitos').delete().eq('user_id', session.user.id).eq('id', id);
+    if (!error) setHabitos(habitos.filter(h => h.id !== id));
   };
 
-  // --- EJERCICIOS Y ENTRENAMIENTO ---
-  const agregarEjercicio = () => {
-    const nuevo: EjercicioGimnasio[] = [
-      ...ejercicios, 
-      { id: Date.now().toString(), nombre: '', tipo: '', series: 4, repeticiones: 10, peso: 0, duracion_minutos: 20, distancia_km: 0, calorias: 0 }
-    ];
-    setEjercicios(nuevo);
-    guardarCaloriasAuto(nuevo, comidas);
-  };
-  
-  const actualizarEjercicio = (id: string, campo: keyof EjercicioGimnasio, valor: any) => {
-    const actualizados = ejercicios.map((item) => (item.id === id ? { ...item, [campo]: valor } : item));
-    setEjercicios(actualizados);
-    guardarCaloriasAuto(actualizados, comidas);
-  };
-  
-  const eliminarEjercicio = (id: string) => {
-    if (!window.confirm('¿Eliminar ejercicio?')) return;
-    const filtrados = ejercicios.filter((item) => item.id !== id);
-    setEjercicios(filtrados);
-    guardarCaloriasAuto(filtrados, comidas);
-  };
-
-  // CÁLCULO MÁS EXACTO DE CALORÍAS EN EJERCICIOS MANUALES
-  const calcularCaloriasEjercicioManual = (item: EjercicioGimnasio) => {
-    if (!item.tipo) return alert('⚠️ Selecciona primero el tipo de ejercicio.');
-    const pesoUser = perfil.peso || 70;
-    let cal = 0;
-    const duracion = item.duracion_minutos || 20;
-
-    switch (item.tipo) {
-      case 'fuerza': {
-        const duracionEst = item.duracion_minutos || ((item.series || 4) * 3);
-        const metFuerza = (item.peso && item.peso > 60) ? 6.0 : 5.0;
-        cal = duracionEst * (metFuerza * 3.5 * pesoUser / 200);
-        break;
-      }
-      case 'running': {
-        const dist = item.distancia_km || 0;
-        cal = dist > 0 ? dist * pesoUser * 1.02 : duracion * (9.8 * 3.5 * pesoUser / 200);
-        break;
-      }
-      case 'ciclismo':
-        cal = duracion * (7.5 * 3.5 * pesoUser / 200);
-        break;
-      case 'boxeo':
-        cal = duracion * (8.5 * 3.5 * pesoUser / 200);
-        break;
-      case 'futbol':
-        cal = duracion * (8.0 * 3.5 * pesoUser / 200);
-        break;
-      case 'natacion':
-        cal = duracion * (8.0 * 3.5 * pesoUser / 200);
-        break;
-      case 'caminata': {
-        const dist = item.distancia_km || 0;
-        cal = dist > 0 ? dist * pesoUser * 0.53 : duracion * (3.8 * 3.5 * pesoUser / 200);
-        break;
-      }
-      case 'funcional':
-        cal = duracion * (7.5 * 3.5 * pesoUser / 200);
-        break;
-      default:
-        cal = duracion * (5.5 * 3.5 * pesoUser / 200);
-        break;
-    }
-
-    const resultadoFinal = Math.round(cal);
-    actualizarEjercicio(item.id, 'calorias', resultadoFinal);
-  };
-
-  // CÁLCULO VÍA LINK DE YOUTUBE (SIN DUPICADOS NI VALORES FIJOS DE 24 MIN)
-  const procesarVideoYoutubeIA = () => {
-    if (!youtubeLink.trim()) return alert('⚠️ Ingresa un link válido de YouTube.');
-    setProcesandoYoutube(true);
-
-    setTimeout(() => {
-      const pesoUser = perfil.peso || 70;
-      const urlLower = youtubeLink.toLowerCase();
-
-      // Generar semilla única según el link para evitar la falla de repetir 24 minutos
-      let hash = 0;
-      for (let i = 0; i < youtubeLink.length; i++) hash = (hash << 5) - hash + youtubeLink.charCodeAt(i);
-      const absHash = Math.abs(hash);
-
-      const matchMin = urlLower.match(/(\d+)\s*(min|m)/) || urlLower.match(/(\d+)\s*minutos/);
-      const duracionEst = matchMin ? parseInt(matchMin[1], 10) : (15 + (absHash % 30));
-
-      const titulosMusculos = [
-        "🔥 Abdominales & Core (YouTube)",
-        "🏋️ Piernas y Glúteos (YouTube)",
-        "⚡ Cardio Full Body (YouTube)",
-        "💪 Torso & Brazos (YouTube)",
-        "🥊 Cardio Box / HIIT (YouTube)",
-        "🧘 Stretching & Flexibilidad (YouTube)"
-      ];
-
-      let tituloFinal = titulosMusculos[absHash % titulosMusculos.length];
-      let tipoDetectado: TipoEjercicio = 'funcional';
-
-      if (urlLower.includes('ab') || urlLower.includes('abs') || urlLower.includes('abdomen') || urlLower.includes('abdominales')) {
-        tituloFinal = "🔥 Abdominales & Core (YouTube)";
-      } else if (urlLower.includes('pierna') || urlLower.includes('leg') || urlLower.includes('gluteo')) {
-        tituloFinal = "🏋️ Piernas y Glúteos (YouTube)";
-      } else if (urlLower.includes('brazo') || urlLower.includes('arm') || urlLower.includes('pecho')) {
-        tituloFinal = "💪 Torso y Brazos (YouTube)";
-      } else if (urlLower.includes('hiit') || urlLower.includes('cardio')) {
-        tituloFinal = "⚡ HIIT Intensivo (YouTube)";
-      } else if (urlLower.includes('yoga') || urlLower.includes('stretch')) {
-        tituloFinal = "🧘 Yoga & Movilidad (YouTube)";
-      }
-
-      const metEst = urlLower.includes('yoga') ? 3.5 : (urlLower.includes('hiit') ? 9.5 : 7.5);
-      const calEst = Math.round(duracionEst * (metEst * 3.5 * pesoUser / 200));
-
-      const nuevoEj: EjercicioGimnasio = {
-        id: Date.now().toString(),
-        nombre: tituloFinal,
-        tipo: tipoDetectado,
-        duracion_minutos: duracionEst,
-        calorias: calEst,
-        esYoutube: true
-      };
-
-      const nuevosEjercicios = [...ejercicios, nuevoEj];
-      setEjercicios(nuevosEjercicios);
-      setYoutubeLink('');
-      setProcesandoYoutube(false);
-      guardarCaloriasAuto(nuevosEjercicios, comidas);
-      alert(`⚡ ¡Video Procesado! (${duracionEst} min) -> ~${calEst} kcal estimadas.`);
-    }, 400);
-  };
-
-  // --- COMIDAS CON ALGORITMO MÁS PRECISO Y BASE DE DATOS AMPLIADA ---
-  const agregarComida = () => setComidas([...comidas, { id: Date.now().toString(), nombre: 'Nueva Comida', calorias: 0, proteinas: 0, carbs: 0, grasas: 0 }]);
+  // NUTRICIÓN & EJERCICIOS
+  const agregarComida = () => setComidas([...comidas, { id: Date.now().toString(), nombre: 'Nueva Comida', calorias: 0 }]);
   const actualizarComida = (id: string, campo: keyof ItemComida, valor: any) => setComidas(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
-  const eliminarComida = (id: string) => {
-    if (!window.confirm('¿Eliminar comida?')) return;
-    setComidas(comidas.filter((item) => item.id !== id));
-  };
+  const eliminarComida = (id: string) => setComidas(comidas.filter(item => item.id !== id));
 
-  const abrirModalIaComida = (comida: ItemComida) => {
-    setComidaIaModal(comida);
-    setNombreIaModalInput(comida.nombre);
-    setTextoIaInput('');
-    setImagenesIaInput([]);
-  };
+  const agregarEjercicio = () => setEjercicios([...ejercicios, { id: Date.now().toString(), nombre: '', tipo: '', calorias: 0 }]);
+  const actualizarEjercicio = (id: string, campo: keyof EjercicioGimnasio, valor: any) => setEjercicios(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
+  const eliminarEjercicio = (id: string) => setEjercicios(ejercicios.filter(item => item.id !== id));
 
-  const procesarFotoIA = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      Array.from(files).forEach((file) => {
-        const reader = new FileReader();
-        reader.onloadend = () => { if (reader.result) setImagenesIaInput((prev) => [...prev, reader.result as string]); };
-        reader.readAsDataURL(file);
-      });
-    }
-    e.target.value = '';
-  };
-
-  const estimarComidaConIA = async () => {
-    if (!comidaIaModal) return;
-    setProcesandoIa(true);
-
-    const textoAnalizar = `${nombreIaModalInput}\n${textoIaInput}`;
-    const lineas = textoAnalizar.split('\n');
-
-    let totalCal = 0, totalP = 0, totalC = 0, totalG = 0;
-    let itemsEncontrados = 0;
-
-    // DICCIONARIO NUTRICIONAL EXPANDIDO
-    const dbAlimentos = [
-      { keywords: ['proteina', 'whey', 'protein', 'scoop'], cal: 120, p: 24, c: 3, g: 2, esPorcion: true },
-      { keywords: ['yogur', 'yogurt'], cal: 0.6, p: 0.04, c: 0.06, g: 0.015 },
-      { keywords: ['leche descremada', 'leche desnatada'], cal: 0.35, p: 0.034, c: 0.05, g: 0.002 },
-      { keywords: ['leche entera', 'leche'], cal: 0.61, p: 0.032, c: 0.048, g: 0.032 },
-      { keywords: ['galleta de arroz', 'galletas de arroz'], cal: 3.8, p: 0.08, c: 0.81, g: 0.028 },
-      { keywords: ['pan integral'], cal: 2.5, p: 0.09, c: 0.45, g: 0.03 },
-      { keywords: ['pan blanco', 'pan'], cal: 2.65, p: 0.09, c: 0.49, g: 0.032 },
-      { keywords: ['huevo', 'huevos'], cal: 75, p: 6.5, c: 0.5, g: 5, esPorcion: true },
-      { keywords: ['manzana'], cal: 0.52, p: 0.003, c: 0.14, g: 0.002 },
-      { keywords: ['banana', 'platano'], cal: 0.89, p: 0.011, c: 0.228, g: 0.003 },
-      { keywords: ['almendra', 'almendras', 'nuez', 'nueces', 'frutos secos'], cal: 5.8, p: 0.20, c: 0.20, g: 0.50 },
-      { keywords: ['tomate'], cal: 0.18, p: 0.009, c: 0.039, g: 0.002 },
-      { keywords: ['lechuga'], cal: 0.15, p: 0.014, c: 0.029, g: 0.002 },
-      { keywords: ['arroz'], cal: 1.30, p: 0.027, c: 0.28, g: 0.003 },
-      { keywords: ['fideos', 'pasta'], cal: 1.31, p: 0.05, c: 0.25, g: 0.01 },
-      { keywords: ['zanahoria'], cal: 0.41, p: 0.009, c: 0.096, g: 0.002 },
-      { keywords: ['aceite de oliva', 'aceite'], cal: 8.84, p: 0, c: 0, g: 1.0 },
-      { keywords: ['carne', 'bife', 'asado', 'hamburguesa'], cal: 2.1, p: 0.22, c: 0, g: 0.13 },
-      { keywords: ['pollo', 'pechuga'], cal: 1.65, p: 0.31, c: 0, g: 0.036 },
-      { keywords: ['avena'], cal: 3.89, p: 0.169, c: 0.66, g: 0.069 },
-      { keywords: ['chocolate', 'alfajor', 'postre', 'helado'], cal: 4.5, p: 0.05, c: 0.55, g: 0.22 },
-      { keywords: ['dulce de leche'], cal: 3.1, p: 0.06, c: 0.55, g: 0.07 },
-      { keywords: ['queso'], cal: 3.5, p: 0.22, c: 0.02, g: 0.27 }
-    ];
-
-    for (const rawLinea of lineas) {
-      const linea = rawLinea.toLowerCase().trim();
-      if (!linea) continue;
-
-      const matchNum = linea.match(/(\d+)\s*(g|gr|ml|scoop|unidad|unidades)?/);
-      const cantidad = matchNum ? parseInt(matchNum[1], 10) : 0;
-
-      for (const item of dbAlimentos) {
-        if (item.keywords.some(k => linea.includes(k))) {
-          itemsEncontrados++;
-          let mult = 1;
-
-          if (item.esPorcion) {
-            mult = cantidad > 0 ? cantidad : 1;
-          } else {
-            mult = cantidad > 0 ? cantidad : 100;
-          }
-
-          totalCal += item.cal * mult;
-          totalP += item.p * mult;
-          totalC += item.c * mult;
-          totalG += item.g * mult;
-          break;
-        }
-      }
-    }
-
-    if (itemsEncontrados === 0) {
-      totalCal = 280; totalP = 15; totalC = 30; totalG = 8;
-    }
-
-    const resCal = Math.round(totalCal);
-    const resP = Math.round(totalP);
-    const resC = Math.round(totalC);
-    const resG = Math.round(totalG);
-
-    const nuevoNombre = nombreIaModalInput.trim() || comidaIaModal.nombre;
-    const nuevasComidas = comidas.map((item) =>
-      item.id === comidaIaModal.id ? { ...item, nombre: nuevoNombre, calorias: resCal, proteinas: resP, carbs: resC, grasas: resG } : item
-    );
-
-    setComidas(nuevasComidas);
-    setProcesandoIa(false);
-    setComidaIaModal(null);
-    guardarCaloriasAuto(ejercicios, nuevasComidas);
-  };
-
-  const modificarAgua = async (deltaMl: number) => {
-    const user = session?.user;
-    if (!user) return;
-    const nuevaCantidad = Math.max(0, aguaMl + deltaMl);
-    setAguaMl(nuevaCantidad);
-    await supabase.from('registro_calorias').upsert({ user_id: user.id, fecha: fechaSeleccionada, agua_ml: nuevaCantidad, base: bmrCalculado, ejercicios, comidas }, { onConflict: 'user_id,fecha' });
-  };
+  // HIDRATACIÓN Y SUEÑO
+  const modificarAgua = (deltaMl: number) => setAguaMl(prev => Math.max(0, prev + deltaMl));
 
   const guardarSueno = async () => {
-    const user = session?.user;
-    if (!user) return;
-
+    if (!session?.user) return;
     const [hA, mA] = suenoHoy.hora_acostarse.split(':').map(Number);
     const [hL, mL] = suenoHoy.hora_levantarse.split(':').map(Number);
-    let minAcostado = hA * 60 + mA;
-    let minLevantado = hL * 60 + mL;
-    if (minLevantado < minAcostado) minLevantado += 24 * 60;
-    const duracionHoras = parseFloat(((minLevantado - minAcostado) / 60).toFixed(1));
+    let minA = hA * 60 + mA, minL = hL * 60 + mL;
+    if (minL < minA) minL += 24 * 60;
+    const duracion = parseFloat(((minL - minA) / 60).toFixed(1));
 
-    const datosGuardar = { ...suenoHoy, user_id: user.id, fecha: fechaSeleccionada, horas_totales: duracionHoras };
-    const { error } = await supabase.from('registro_sueno').upsert(datosGuardar, { onConflict: 'user_id,fecha' });
-    if (error) alert('❌ Error: ' + error.message);
-    else { setSuenoHoy(datosGuardar); alert('✅ Sueño guardado correctamente'); }
+    const datos = { ...suenoHoy, user_id: session.user.id, fecha: fechaSeleccionada, horas_totales: duracion };
+    const { error } = await supabase.from('registro_sueno').upsert(datos, { onConflict: 'user_id,fecha' });
+    if (!error) { setSuenoHoy(datos); alert('✅ Sueño guardado'); }
   };
 
   const enviarSoporte = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tipoSoporte) return alert('⚠️ Selecciona un tipo de mensaje.');
-    if (!mensajeSoporte.trim()) return;
-    const destinatario = 'stefanopintos.contact@gmail.com';
-    const asunto = encodeURIComponent(`[Fitness App] ${tipoSoporte}`);
-    const cuerpo = encodeURIComponent(`Tipo: ${tipoSoporte}\nUsuario: ${perfil.nombre || session?.user?.email}\n\nMensaje:\n${mensajeSoporte}`);
-    window.location.href = `mailto:${destinatario}?subject=${asunto}&body=${cuerpo}`;
+    if (!tipoSoporte || !mensajeSoporte.trim()) return alert('⚠️ Completa el formulario');
+    window.location.href = `mailto:stefanopintos.contact@gmail.com?subject=${encodeURIComponent(`[Fitness App] ${tipoSoporte}`)}&body=${encodeURIComponent(mensajeSoporte)}`;
     setMensajeSoporte('');
   };
 
   // CÁLCULOS GENERALES
-  const totalCompletados = habitos.filter((h) => registrosHoy[h.id]?.completado).length;
+  const totalCompletados = habitos.filter(h => registrosHoy[h.id]?.completado).length;
   const porcentajeHabitos = habitos.length > 0 ? Math.round((totalCompletados / habitos.length) * 100) : 0;
-
   const totalGastoEjercicios = ejercicios.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
-  const totalGastadoCal = bmrCalculado + totalGastoEjercicios;
-  const totalIngeridoCal = comidas.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
-  const balanceCalorico = totalIngeridoCal - totalGastadoCal;
+  const balanceCalorico = comidas.reduce((acc, item) => acc + Number(item.calorias || 0), 0) - (bmrCalculado + totalGastoEjercicios);
 
-  const totalProteinas = comidas.reduce((acc, item) => acc + Number(item.proteinas || 0), 0);
-  const totalCarbs = comidas.reduce((acc, item) => acc + Number(item.carbs || 0), 0);
-  const totalGrasas = comidas.reduce((acc, item) => acc + Number(item.grasas || 0), 0);
+  if (cargandoSesion) return <div className="min-h-screen bg-slate-950 text-indigo-400 flex items-center justify-center">⚡ Cargando...</div>;
 
-  const evaluacionNutricion = useMemo(() => {
-    let nota = 0, mensaje = '';
-    const b = balanceCalorico;
-    
-    if (perfil.objetivo === 'bajar') {
-      if (b <= -200 && b >= -800) { nota = 10; mensaje = '¡Excelente déficit para quemar grasa de forma saludable!'; }
-      else if (b < -800) { nota = 5; mensaje = '⚠️ Déficit excesivo. Riesgo de perder masa muscular.'; }
-      else if (b < 0) { nota = 8; mensaje = 'Buen déficit ligero.'; }
-      else { nota = 5; mensaje = 'Superávit o mantenimiento. No estás en déficit.'; }
-    } else if (perfil.objetivo === 'subir') {
-      if (b >= 200 && b <= 600) { nota = 10; mensaje = '¡Superávit ideal para construcción muscular!'; }
-      else { nota = 7; mensaje = 'Ajusta tus calorías para maximizar hipertrofia.'; }
-    } else {
-      nota = Math.abs(b) <= 150 ? 10 : 7;
-      mensaje = 'Mantenimiento en curso.';
-    }
-    return { nota: Math.max(0, Math.min(10, Math.round(nota))), mensaje };
-  }, [balanceCalorico, perfil.objetivo]);
-
-  const pctCalorias = evaluacionNutricion.nota * 10;
-  const pctAgua = Math.min(100, Math.round((aguaMl / metaAguaMl) * 100));
-  const pctSueno = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
-
-  const diaNumero = parseInt(fechaSeleccionada.split('-')[2] || '1', 10);
-  const fraseDelDia = FRASES_MOTIVACIONALES[diaNumero % FRASES_MOTIVACIONALES.length];
-
-  if (cargandoSesion) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center font-sans">
-        <div className="text-indigo-400 font-semibold animate-pulse flex items-center gap-2">
-          <span>⚡ Cargar aplicación...</span>
-        </div>
-      </div>
-    );
-  }
-
+  // SESIÓN NO INICIADA
   if (!session) {
     return (
-      <div className="min-h-screen bg-slate-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950 via-slate-950 to-black text-white flex items-center justify-center p-4 font-sans">
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl">
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
+        <div className="bg-slate-900/90 border border-slate-800 p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl">
           <div className="text-center space-y-2">
-            <span className="text-4xl inline-block mb-1 animate-bounce">💪</span>
-            <h1 className="text-2xl font-black bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Personal Fitness App</h1>
-            <p className="text-xs text-slate-400">{esRegistro ? 'Crea tu cuenta de entrenamiento' : 'Bienvenido de nuevo'}</p>
+            <span className="text-4xl">💪</span>
+            <h1 className="text-2xl font-black text-indigo-400">Personal Fitness App</h1>
+            <p className="text-xs text-slate-400">{pasoOTP ? 'Ingresa el código que enviamos a tu email' : esRegistro ? 'Crea tu cuenta' : 'Bienvenido de nuevo'}</p>
           </div>
 
-          {errorAuth && <div className="bg-rose-950/80 text-rose-200 text-xs p-3.5 rounded-2xl border border-rose-800/80 text-center">⚠️ {errorAuth}</div>}
+          {errorAuth && <div className="bg-rose-950/80 text-rose-200 text-xs p-3.5 rounded-2xl border border-rose-800 text-center">⚠️ {errorAuth}</div>}
 
-          <button onClick={iniciarSesionGoogle} className="w-full bg-slate-800/80 hover:bg-slate-700 text-white font-semibold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-700 cursor-pointer transition shadow-md">
-            <span>🌐 Continuar con Google</span>
-          </button>
+          {pasoOTP ? (
+            <form onSubmit={verificarCodigoOTP} className="space-y-4">
+              <input type="text" required value={codigoOTP} onChange={(e) => setCodigoOTP(e.target.value)} placeholder="Código de 6 dígitos" className={`${INPUT_CLS} text-center font-mono text-base tracking-widest`} />
+              <button type="submit" disabled={cargandoAuth} className={BTN_PRIMARY}>{cargandoAuth ? 'Verificando...' : 'Confirmar Código'}</button>
+              <button type="button" onClick={() => setPasoOTP(false)} className="w-full text-xs text-slate-400 hover:text-indigo-400">← Volver al formulario</button>
+            </form>
+          ) : (
+            <form onSubmit={manejarAuth} className="space-y-3.5">
+              <input type="email" required value={emailAuth} onChange={(e) => setEmailAuth(e.target.value)} placeholder="tu@email.com" className={INPUT_CLS} />
+              
+              <div className="relative">
+                <input type={mostrarPassword ? "text" : "password"} required value={passwordAuth} onChange={(e) => setPasswordAuth(e.target.value)} placeholder="Contraseña" className={INPUT_CLS} />
+                <button type="button" onClick={() => setMostrarPassword(!mostrarPassword)} className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-200">
+                  {mostrarPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
 
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800"></div></div>
-            <div className="relative flex justify-center text-xs uppercase"><span className="bg-slate-900 px-2 text-slate-500">O Email</span></div>
-          </div>
+              {esRegistro && (
+                <input type={mostrarPassword ? "text" : "password"} required value={confirmPasswordAuth} onChange={(e) => setConfirmPasswordAuth(e.target.value)} placeholder="Confirmar contraseña" className={INPUT_CLS} />
+              )}
 
-          <form onSubmit={manejarAuth} className="space-y-3.5">
-            <input type="email" required value={emailAuth} onChange={(e) => setEmailAuth(e.target.value)} placeholder="tu@email.com" className={INPUT_CLS} />
-            <input type="password" required value={passwordAuth} onChange={(e) => setPasswordAuth(e.target.value)} placeholder="••••••••" className={INPUT_CLS} />
-            <button type="submit" className={BTN_PRIMARY}>{esRegistro ? 'Registrarse' : 'Iniciar Sesión'}</button>
-          </form>
+              <button type="submit" disabled={cargandoAuth} className={BTN_PRIMARY}>
+                {cargandoAuth ? 'Procesando...' : esRegistro ? 'Registrarse' : 'Iniciar Sesión'}
+              </button>
+            </form>
+          )}
 
-          <button onClick={() => setEsRegistro(!esRegistro)} className="w-full text-center text-xs text-slate-400 hover:text-indigo-400 transition cursor-pointer">
-            {esRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate gratis'}
-          </button>
+          {!pasoOTP && (
+            <button onClick={() => alternarModoAuth(!esRegistro)} className="w-full text-center text-xs text-slate-400 hover:text-indigo-400">
+              {esRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate gratis'}
+            </button>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black text-slate-100 flex flex-col md:flex-row font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row font-sans">
       
-      {/* BARRA LATERAL / MENÚ */}
-      <aside className={`bg-slate-900/90 backdrop-blur-xl border-b md:border-b-0 md:border-r border-slate-800/80 transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:inset-auto md:w-64 md:h-auto overflow-y-auto' : 'w-full md:w-20'}`}>
+      {/* MENÚ LATERAL */}
+      <aside className={`bg-slate-900/90 border-b md:border-b-0 md:border-r border-slate-800 transition-all flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:w-64' : 'w-full md:w-20'}`}>
         <div>
-          <div className="p-4 flex items-center justify-between border-b border-slate-800/80">
-            <button onClick={() => setSidebarAbierto(!sidebarAbierto)} className="p-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 cursor-pointer flex items-center gap-2 border border-slate-700/50 transition">
-              <span className="text-sm font-bold uppercase">{sidebarAbierto ? '✕' : '☰'}</span>
+          <div className="p-4 flex items-center justify-between border-b border-slate-800">
+            <button onClick={() => setSidebarAbierto(!sidebarAbierto)} className="p-2 rounded-xl bg-slate-800 text-slate-200">
+              <span className="text-sm font-bold">{sidebarAbierto ? '✕' : '☰'}</span>
             </button>
-            {session?.user && (
-              <button onClick={() => cambiarSeccion('perfil')} className="flex items-center gap-2 bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-800/50 px-3 py-1.5 rounded-xl cursor-pointer transition">
-                <span className="text-xs font-bold text-indigo-300">{perfil.nombre || 'Perfil'} 👋</span>
-              </button>
-            )}
+            <button onClick={() => setSeccionActiva('perfil')} className="bg-indigo-950/60 border border-indigo-800 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-300">
+              {perfil.nombre || 'Perfil'} 👋
+            </button>
           </div>
 
-          <nav className={`p-3 ${sidebarAbierto ? 'flex flex-col space-y-2' : 'flex flex-row md:flex-col overflow-x-auto gap-2 justify-around md:justify-start'}`}>
+          <nav className={`p-3 ${sidebarAbierto ? 'flex flex-col space-y-2' : 'flex flex-row md:flex-col overflow-x-auto gap-2'}`}>
             {[
               { id: 'general', label: 'General', icon: '📊' },
               { id: 'perfil', label: 'Mi Perfil', icon: '👤' },
               { id: 'habitos', label: 'Hábitos', icon: '⚡' },
               { id: 'nutricion', label: 'Nutrición / Entreno', icon: '🔥' },
               { id: 'extra', label: 'Agua & Sueño', icon: '✨' },
-              { id: 'estadisticas', label: 'Estadísticas', icon: '📈' },
               { id: 'actualizaciones', label: 'Actualizaciones', icon: '🚀' },
             ].map((item) => (
               <button
                 key={item.id}
-                onClick={() => cambiarSeccion(item.id as any)}
-                className={`flex items-center gap-3.5 px-3.5 py-3 rounded-2xl text-xs font-semibold transition cursor-pointer shrink-0 ${
-                  seccionActiva === item.id 
-                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-950/50' 
-                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                } ${sidebarAbierto ? 'w-full justify-start text-sm py-3.5' : 'justify-center'}`}
+                onClick={() => { setSeccionActiva(item.id as any); setSidebarAbierto(false); }}
+                className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-semibold transition shrink-0 ${
+                  seccionActiva === item.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'
+                } ${sidebarAbierto ? 'w-full justify-start' : 'justify-center'}`}
               >
                 <span className="text-xl">{item.icon}</span>
                 {sidebarAbierto && <span>{item.label}</span>}
@@ -913,595 +470,268 @@ export default function Home() {
 
         {sidebarAbierto && (
           <div className="p-4 border-t border-slate-800 bg-slate-950/50 space-y-3 mt-auto">
-            <button onClick={cerrarSesion} className="w-full bg-rose-950/50 hover:bg-rose-900/80 border border-rose-800/60 text-rose-300 font-bold py-2.5 rounded-xl text-xs cursor-pointer transition">🚪 Cerrar Sesión</button>
+            <button onClick={cerrarSesion} className="w-full bg-rose-950/50 border border-rose-800 text-rose-300 font-bold py-2 rounded-xl text-xs">🚪 Cerrar Sesión</button>
             <div className="text-[10px] text-slate-500 text-center font-mono">🚀 v{ULTIMA_ACTUALIZACION_APP}</div>
-            <div>
-              <label className="text-[11px] text-slate-400 font-medium block mb-1">Fecha Activa</label>
-              <input type="date" value={fechaSeleccionada} onChange={(e) => setFechaSeleccionada(e.target.value)} className={INPUT_CLS}/>
-            </div>
           </div>
         )}
       </aside>
 
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">
-        <header className="flex flex-col gap-4 mb-6 bg-slate-900/60 backdrop-blur-md p-5 rounded-3xl border border-slate-800/80 shadow-xl">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black bg-gradient-to-r from-slate-100 to-slate-400 bg-clip-text text-transparent">
-                {seccionActiva === 'general' && '📊 Resumen General'}
-                {seccionActiva === 'perfil' && '👤 Mi Perfil y Objetivos'}
-                {seccionActiva === 'habitos' && '⚡ Hábitos Diarios'}
-                {seccionActiva === 'nutricion' && '🔥 Nutrición y Entrenamiento'}
-                {seccionActiva === 'extra' && '✨ Control de Hidratación y Descanso'}
-                {seccionActiva === 'estadisticas' && '📈 Visualización y Estadísticas'}
-                {seccionActiva === 'actualizaciones' && '🚀 Novedades y Soporte'}
-              </h2>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs font-medium text-indigo-400">📅 {formatearFechaLarga(fechaSeleccionada)}</span>
-                <span className="text-xs font-mono bg-indigo-950/80 text-indigo-300 px-2.5 py-0.5 rounded-full border border-indigo-800/60">🕒 {horaVivo || '00:00'}</span>
-              </div>
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 bg-slate-900/60 p-5 rounded-3xl border border-slate-800">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-100">
+              {seccionActiva === 'general' && '📊 Resumen General'}
+              {seccionActiva === 'perfil' && '👤 Mi Perfil y Objetivos'}
+              {seccionActiva === 'habitos' && '⚡ Hábitos Diarios'}
+              {seccionActiva === 'nutricion' && '🔥 Nutrición y Entrenamiento'}
+              {seccionActiva === 'extra' && '✨ Control de Hidratación y Descanso'}
+              {seccionActiva === 'actualizaciones' && '🚀 Novedades y Soporte'}
+            </h2>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-indigo-400">📅 {fechaSeleccionada}</span>
+              <span className="text-xs font-mono bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-800">🕒 {horaVivo || '00:00'}</span>
             </div>
           </div>
-
-          {clima && (
-            <div className="bg-slate-950/60 border border-slate-800 p-3.5 rounded-2xl flex items-center gap-3 shadow-inner">
-              <span className="text-3xl">{clima.icono}</span>
-              <div className="text-left">
-                <span className="font-bold text-xs sm:text-sm text-slate-200">{clima.temp}°C - {clima.descripcion}</span>
-                <p className="text-xs text-indigo-300/90">{clima.recomendacion}</p>
-              </div>
-            </div>
-          )}
         </header>
 
-        <div className="mb-6 bg-gradient-to-r from-indigo-950/50 via-purple-950/30 to-indigo-950/50 border border-indigo-800/40 p-3.5 rounded-2xl text-center text-indigo-200 text-xs sm:text-sm italic font-medium shadow-lg">
-          {fraseDelDia}
-        </div>
-
-        <div>
-          {/* GENERAL */}
-          {seccionActiva === 'general' && (
-            <div className="space-y-6">
-              
-              <div className="bg-slate-900/80 border border-slate-800/80 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                <div className="font-bold text-slate-200 flex items-center gap-1.5">💡 Guía de Progreso:</div>
-                <div className="flex items-center gap-4 text-slate-400 flex-wrap justify-center">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shadow-sm shadow-rose-500"></span> Rojo (&lt;40%)</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shadow-sm shadow-amber-500"></span> Naranja (40-79%)</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow-sm shadow-emerald-500"></span> Verde (&gt;80%)</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3.5">
-                {/* CALORÍAS */}
-                {(() => {
-                  const estilo = obtenerEstiloBarra(pctCalorias);
-                  return (
-                    <div onClick={() => cambiarSeccion('nutricion')} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
-                      <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
-                        <span>Balance Calórico</span>
-                        <span>🔥</span>
-                      </div>
-                      <p className={`text-2xl font-black mt-2 ${balanceCalorico < 0 ? 'text-amber-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs font-normal text-slate-500">kcal</span></p>
-                      <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
-                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* AGUA */}
-                {(() => {
-                  const estilo = obtenerEstiloBarra(pctAgua);
-                  return (
-                    <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('agua'); }} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
-                      <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
-                        <span>Agua Diaria</span>
-                        <span>💧</span>
-                      </div>
-                      <p className="text-2xl font-black text-cyan-400 mt-2">{(aguaMl / 1000).toFixed(2)}L <span className="text-xs font-normal text-slate-500">/ 2.5L</span></p>
-                      <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
-                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* HÁBITOS */}
-                {(() => {
-                  const estilo = obtenerEstiloBarra(porcentajeHabitos);
-                  return (
-                    <div onClick={() => cambiarSeccion('habitos')} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
-                      <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
-                        <span>Hábitos</span>
-                        <span>⚡</span>
-                      </div>
-                      <p className="text-2xl font-black text-indigo-400 mt-2">{porcentajeHabitos}%</p>
-                      <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
-                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* PESO / ÉXITO */}
-                {(() => {
-                  const estilo = obtenerEstiloBarra(perfil.porcentaje_probabilidad);
-                  return (
-                    <div onClick={() => cambiarSeccion('perfil')} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
-                      <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
-                        <span>Peso / Éxito</span>
-                        <span>🎯</span>
-                      </div>
-                      <p className="text-2xl font-black text-slate-200 mt-2">{perfil.peso} <span className="text-xs font-normal text-slate-500">kg</span></p>
-                      <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
-                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* SUEÑO */}
-                {(() => {
-                  const estilo = obtenerEstiloBarra(pctSueno);
-                  return (
-                    <div onClick={() => { cambiarSeccion('extra'); setSubSeccionExtra('sueno'); }} className={`${CARD_CLS} cursor-pointer hover:scale-[1.02]`}>
-                      <div className="flex justify-between items-center text-xs text-slate-400 font-medium">
-                        <span>Sueño</span>
-                        <span>😴</span>
-                      </div>
-                      <p className="text-2xl font-black text-violet-400 mt-2">{suenoHoy.horas_totales} <span className="text-xs font-normal text-slate-500">hrs</span></p>
-                      <div className="w-full bg-slate-950 rounded-full h-2 mt-3 overflow-hidden border border-slate-800">
-                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
+        {/* GENERAL */}
+        {seccionActiva === 'general' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+            <div onClick={() => setSeccionActiva('nutricion')} className={`${CARD_CLS} cursor-pointer`}>
+              <span className="text-xs text-slate-400 font-medium">Balance Calórico 🔥</span>
+              <p className={`text-2xl font-black mt-2 ${balanceCalorico < 0 ? 'text-amber-400' : 'text-rose-400'}`}>{balanceCalorico} <span className="text-xs text-slate-500">kcal</span></p>
             </div>
-          )}
+            <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer`}>
+              <span className="text-xs text-slate-400 font-medium">Agua Diaria 💧</span>
+              <p className="text-2xl font-black text-cyan-400 mt-2">{(aguaMl / 1000).toFixed(2)}L <span className="text-xs text-slate-500">/ 2.5L</span></p>
+            </div>
+            <div onClick={() => setSeccionActiva('habitos')} className={`${CARD_CLS} cursor-pointer`}>
+              <span className="text-xs text-slate-400 font-medium">Hábitos ⚡</span>
+              <p className="text-2xl font-black text-indigo-400 mt-2">{porcentajeHabitos}%</p>
+            </div>
+            <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer`}>
+              <span className="text-xs text-slate-400 font-medium">Sueño 😴</span>
+              <p className="text-2xl font-black text-violet-400 mt-2">{suenoHoy.horas_totales} <span className="text-xs text-slate-500">hrs</span></p>
+            </div>
+          </div>
+        )}
 
-          {/* MI PERFIL Y OBJETIVOS */}
-          {seccionActiva === 'perfil' && (
-            <section className={`${CARD_CLS} max-w-2xl mx-auto space-y-6 text-center`}>
-              <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
-                <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionPerfil === 'perfil' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>👤 Datos Personales</button>
-                <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionPerfil === 'objetivo' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🎯 Mi Objetivo</button>
-              </div>
+        {/* MI PERFIL Y OBJETIVOS */}
+        {seccionActiva === 'perfil' && (
+          <section className={`${CARD_CLS} max-w-xl mx-auto space-y-6`}>
+            <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
+              <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-xs font-bold pb-2 ${subSeccionPerfil === 'perfil' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400'}`}>👤 Datos Personales</button>
+              <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-xs font-bold pb-2 ${subSeccionPerfil === 'objetivo' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400'}`}>🎯 Mi Objetivo</button>
+            </div>
 
-              {subSeccionPerfil === 'perfil' ? (
-                <div className="space-y-4 bg-slate-950/40 p-5 rounded-2xl border border-slate-800/80 text-center max-w-md mx-auto">
+            {subSeccionPerfil === 'perfil' ? (
+              <div className="space-y-4 max-w-sm mx-auto">
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Nombre</label>
+                  <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={INPUT_CLS} />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Fecha de Nacimiento</label>
+                  <input type="date" value={perfil.fecha_nacimiento} onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} className={INPUT_CLS} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Nombre</label>
-                    <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={`${INPUT_CLS} text-center`} />
+                    <label className="text-xs text-slate-400 block mb-1">Peso (kg)</label>
+                    <input type="number" step="0.1" value={perfil.peso} onChange={(e) => setPerfil({...perfil, peso: Number(e.target.value)})} className={INPUT_CLS} />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Fecha de Nacimiento</label>
-                    <input type="date" value={perfil.fecha_nacimiento} onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} className={`${INPUT_CLS} text-center`} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Peso (kg)</label>
-                      <input type="number" step="0.1" value={perfil.peso} onChange={(e) => setPerfil({...perfil, peso: Number(e.target.value)})} className={`${INPUT_CLS} text-center`} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Altura (cm)</label>
-                      <input type="number" value={perfil.altura} onChange={(e) => setPerfil({...perfil, altura: Number(e.target.value)})} className={`${INPUT_CLS} text-center`} />
-                    </div>
+                    <label className="text-xs text-slate-400 block mb-1">Altura (cm)</label>
+                    <input type="number" value={perfil.altura} onChange={(e) => setPerfil({...perfil, altura: Number(e.target.value)})} className={INPUT_CLS} />
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-4 bg-slate-950/40 p-5 rounded-2xl border border-slate-800/80 text-center max-w-md mx-auto">
+              </div>
+            ) : (
+              <div className="space-y-4 max-w-sm mx-auto">
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Objetivo Principal</label>
+                  <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={INPUT_CLS}>
+                    <option value="bajar">🔥 Bajar de peso</option>
+                    <option value="mantener">⚖️ Mantener peso</option>
+                    <option value="subir">💪 Subir de peso</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Objetivo Principal</label>
-                    <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={`${INPUT_CLS} text-center`}>
-                      <option value="bajar">🔥 Bajar de peso (Déficit Calórico)</option>
-                      <option value="mantener">⚖️ Mantener peso corporal</option>
-                      <option value="subir">💪 Subir de peso (Masa muscular)</option>
-                    </select>
+                    <label className="text-xs text-slate-400 block mb-1">Kilos Objetivo</label>
+                    <input type="number" value={perfil.kilos_objetivo} onChange={(e) => setPerfil({...perfil, kilos_objetivo: Number(e.target.value)})} className={INPUT_CLS} />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Kilos Objetivo</label>
-                      <input type="number" step="0.1" value={perfil.kilos_objetivo} onChange={(e) => setPerfil({...perfil, kilos_objetivo: Number(e.target.value)})} className={`${INPUT_CLS} text-center`} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1.5 text-center">Plazo (Meses)</label>
-                      <input type="number" value={perfil.tiempo_objetivo_meses} onChange={(e) => setPerfil({...perfil, tiempo_objetivo_meses: Number(e.target.value)})} className={`${INPUT_CLS} text-center`} />
-                    </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Plazo (Meses)</label>
+                    <input type="number" value={perfil.tiempo_objetivo_meses} onChange={(e) => setPerfil({...perfil, tiempo_objetivo_meses: Number(e.target.value)})} className={INPUT_CLS} />
                   </div>
                 </div>
-              )}
-
-              <button onClick={guardarPerfil} disabled={guardandoPerfil} className={`${BTN_PRIMARY} max-w-xs mx-auto block`}>
-                {guardandoPerfil ? 'Guardando...' : '💾 Guardar Perfil'}
-              </button>
-            </section>
-          )}
-
-          {/* HÁBITOS */}
-          {seccionActiva === 'habitos' && (
-            <section className={`${CARD_CLS} space-y-6 max-w-3xl mx-auto`}>
-              <div className="flex justify-between items-center">
-                <h3 className="text-base font-bold text-indigo-400 flex items-center gap-2">⚡ Hábitos Diarios</h3>
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300">
-                  {totalCompletados}/{habitos.length} ({porcentajeHabitos}%)
-                </span>
               </div>
+            )}
 
-              <form onSubmit={agregarHabito} className="flex flex-col sm:flex-row gap-2.5 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80 items-stretch sm:items-center">
-                <input type="text" placeholder="Escribe un nuevo hábito..." value={nuevoHabito} onChange={(e) => setNuevoHabito(e.target.value)} className={INPUT_CLS} />
-                <div className="shrink-0 w-full sm:w-32">
-                  <input type="time" value={horaObjetivo} onChange={(e) => setHoraObjetivo(e.target.value)} className={`${INPUT_CLS} text-center font-mono`} />
-                </div>
-                <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-xl text-xs cursor-pointer shrink-0 transition">Añadir</button>
-              </form>
+            <button onClick={guardarPerfil} disabled={guardandoPerfil} className={`${BTN_PRIMARY} max-w-xs mx-auto block`}>
+              {guardandoPerfil ? 'Guardando...' : '💾 Guardar Perfil'}
+            </button>
+          </section>
+        )}
 
-              <div className="space-y-2.5">
-                {habitosOrdenados.map((h) => {
-                  const completado = !!registrosHoy[h.id]?.completado;
-                  const racha = rachasHabitos[h.id] || 0;
-                  return (
-                    <div key={h.id} className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${completado ? 'bg-indigo-950/30 border-indigo-800/60' : 'bg-slate-950/40 border-slate-800/80'}`}>
-                      <div className="flex items-center gap-3.5">
-                        <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center cursor-pointer transition ${completado ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' : 'border-slate-700 hover:border-indigo-500'}`}>
-                          {completado && '✓'}
-                        </button>
-                        <div>
-                          <p className={`text-xs sm:text-sm font-semibold ${completado ? 'line-through text-slate-400' : 'text-slate-100'}`}>{h.texto}</p>
-                          <p className="text-[10px] text-slate-400">Hora: <span className="text-indigo-300 font-mono">{h.hora_objetivo}</span></p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs px-2.5 py-1 rounded-full bg-amber-950/80 border border-amber-800/60 text-amber-400 font-bold">🔥 {racha}d</span>
-                        <button onClick={() => eliminarHabito(h.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+        {/* HÁBITOS */}
+        {seccionActiva === 'habitos' && (
+          <section className={`${CARD_CLS} space-y-6 max-w-2xl mx-auto`}>
+            <h3 className="text-base font-bold text-indigo-400">⚡ Hábitos Diarios</h3>
 
-          {/* NUTRICIÓN Y ENTRENAMIENTO */}
-          {seccionActiva === 'nutricion' && (
-            <section className={`${CARD_CLS} max-w-4xl mx-auto space-y-6`}>
-              <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
-                <button onClick={() => setSubSeccionNutricion('nutricion')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionNutricion === 'nutricion' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400 hover:text-slate-200'}`}>🥗 Nutrición y Macros</button>
-                <button onClick={() => setSubSeccionNutricion('entrenamiento')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionNutricion === 'entrenamiento' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🏋️ Actividad Física</button>
-              </div>
+            <form onSubmit={agregarHabito} className="flex gap-2 bg-slate-950 p-2.5 rounded-2xl border border-slate-800 items-center">
+              <input type="text" placeholder="Escribe un nuevo hábito..." value={nuevoHabito} onChange={(e) => setNuevoHabito(e.target.value)} className={INPUT_CLS} />
+              <input type="time" value={horaObjetivo} onChange={(e) => setHoraObjetivo(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-slate-100 font-mono w-24 shrink-0 outline-none" />
+              <button type="submit" className="bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-xs shrink-0">Añadir</button>
+            </form>
 
-              {subSeccionNutricion === 'nutricion' ? (
-                <div className="space-y-6">
-                  <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 flex flex-col sm:flex-row items-center gap-4">
-                    <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 text-center min-w-[100px]">
-                      <span className="text-3xl font-black text-amber-400">{evaluacionNutricion.nota}/10</span>
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wide">Objetivo: <span className="text-amber-400">{perfil.objetivo}</span></h3>
-                      <p className="text-xs text-slate-400 mt-1">{evaluacionNutricion.mensaje}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80"><span className="text-[11px] text-rose-400 font-bold block">Proteínas</span><span className="text-base sm:text-lg font-black text-rose-300">{totalProteinas}g</span></div>
-                    <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80"><span className="text-[11px] text-amber-400 font-bold block">Carbs</span><span className="text-base sm:text-lg font-black text-amber-300">{totalCarbs}g</span></div>
-                    <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80"><span className="text-[11px] text-cyan-400 font-bold block">Grasas</span><span className="text-base sm:text-lg font-black text-cyan-300">{totalGrasas}g</span></div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">🥗 Comidas del Día</h3>
-                      <button onClick={agregarComida} className="text-xs text-amber-400 font-bold hover:underline cursor-pointer">+ Agregar Comida</button>
-                    </div>
-                    
-                    {comidas.map((item) => (
-                      <div key={item.id} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-3">
-                        <div className="flex gap-2 items-center">
-                          <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
-                          <button onClick={() => abrirModalIaComida(item)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 px-3 py-2 rounded-xl text-xs cursor-pointer hover:bg-cyan-900 transition">📷</button>
-                          <button onClick={() => eliminarComida(item.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
-                        </div>
-                        <div className="grid grid-cols-4 gap-2 text-xs">
-                          <div><label className="text-[10px] text-slate-400 block mb-1">Kcal</label><input type="number" value={item.calorias} onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
-                          <div><label className="text-[10px] text-rose-400 block mb-1">Prot (g)</label><input type="number" value={item.proteinas || 0} onChange={(e) => actualizarComida(item.id, 'proteinas', Number(e.target.value))} className={INPUT_CLS} /></div>
-                          <div><label className="text-[10px] text-amber-400 block mb-1">Carbs (g)</label><input type="number" value={item.carbs || 0} onChange={(e) => actualizarComida(item.id, 'carbs', Number(e.target.value))} className={INPUT_CLS} /></div>
-                          <div><label className="text-[10px] text-cyan-400 block mb-1">Grasas (g)</label><input type="number" value={item.grasas || 0} onChange={(e) => actualizarComida(item.id, 'grasas', Number(e.target.value))} className={INPUT_CLS} /></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                /* PESTAÑA ENTRENAMIENTO */
-                <div className="space-y-6">
-                  
-                  {/* RECUADRO YOUTUBE */}
-                  <div className="bg-slate-950/80 border border-red-900/40 p-5 rounded-2xl space-y-4 text-center shadow-lg">
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="text-2xl animate-pulse">▶️</span>
-                      <h3 className="text-xs sm:text-sm font-extrabold text-red-400 uppercase tracking-wide">Calcular Entrenamiento vía YouTube</h3>
-                    </div>
-                    <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                      Ingresa el enlace del video de YouTube que vas a realizar y el sistema estimará tu consumo calórico y rutina automáticamente.
-                    </p>
-                    
-                    <div className="flex flex-col items-center gap-3 max-w-md mx-auto w-full">
-                      <input 
-                        type="url" 
-                        placeholder="https://www.youtube.com/watch?v=..." 
-                        value={youtubeLink} 
-                        onChange={(e) => setYoutubeLink(e.target.value)} 
-                        className={`${INPUT_CLS} text-center border-slate-700/80 focus:border-red-500`} 
-                      />
-                      <button 
-                        onClick={procesarVideoYoutubeIA} 
-                        disabled={procesandoYoutube} 
-                        className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-2.5 px-5 rounded-xl text-xs cursor-pointer disabled:opacity-50 transition shadow-lg shadow-red-950/40 active:scale-[0.98]"
-                      >
-                        {procesandoYoutube ? '⏳ Procesando video...' : '⚡ Procesar Video'}
+            <div className="space-y-2">
+              {habitos.map((h) => {
+                const completado = !!registrosHoy[h.id]?.completado;
+                return (
+                  <div key={h.id} className="p-3 rounded-2xl border border-slate-800 bg-slate-950 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => alternarHabito(h.id)} className={`w-6 h-6 rounded-lg border flex items-center justify-center ${completado ? 'bg-indigo-600 text-white border-indigo-500' : 'border-slate-700'}`}>
+                        {completado && '✓'}
                       </button>
+                      <span className={`text-xs font-semibold ${completado ? 'line-through text-slate-500' : 'text-slate-100'}`}>{h.texto}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-indigo-400 font-mono text-xs">{h.hora_objetivo}</span>
+                      <button onClick={() => eliminarHabito(h.id)} className="text-rose-400 text-xs">🗑️</button>
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
-                  <div className="space-y-3 pt-2">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">🏋️ Actividades Registradas</h3>
-                      <button onClick={agregarEjercicio} className="text-xs text-indigo-400 font-bold hover:underline cursor-pointer">+ Agregar Ejercicio</button>
-                    </div>
+        {/* NUTRICIÓN Y ENTRENAMIENTO */}
+        {seccionActiva === 'nutricion' && (
+          <section className={`${CARD_CLS} max-w-3xl mx-auto space-y-6`}>
+            <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
+              <button onClick={() => setSubSeccionNutricion('nutricion')} className={`text-xs font-bold pb-2 ${subSeccionNutricion === 'nutricion' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400'}`}>🥗 Nutrición</button>
+              <button onClick={() => setSubSeccionNutricion('entrenamiento')} className={`text-xs font-bold pb-2 ${subSeccionNutricion === 'entrenamiento' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400'}`}>🏋️ Actividad Física</button>
+            </div>
 
-                    {ejercicios.map((item) => (
-                      <div key={item.id} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-3">
-                        <div className="flex flex-col sm:flex-row gap-2.5 items-start sm:items-center">
-                          <input type="text" placeholder="Nombre de la actividad" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
-                          
-                          <select 
-                            value={item.tipo} 
-                            onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} 
-                            className={`${INPUT_CLS} sm:w-56 text-indigo-300 font-bold`}
-                          >
-                            <option value="" disabled>-- Seleccione tipo de ejercicio --</option>
-                            <option value="fuerza">🏋️ Fuerza / Gym</option>
-                            <option value="running">🏃 Running</option>
-                            <option value="ciclismo">🚴 Ciclismo</option>
-                            <option value="boxeo">🥊 Boxeo</option>
-                            <option value="futbol">⚽ Fútbol</option>
-                            <option value="natacion">🏊 Natación</option>
-                            <option value="caminata">🚶 Caminata</option>
-                            <option value="funcional">🧘 Funcional / HIIT</option>
-                            <option value="otro">⚡ Otro</option>
-                          </select>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            {!item.esYoutube && (
-                              <button onClick={() => calcularCaloriasEjercicioManual(item)} className="bg-indigo-950 border border-indigo-800 text-indigo-300 px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer hover:bg-indigo-900 transition">⚡ Calcular</button>
-                            )}
-                            <button onClick={() => eliminarEjercicio(item.id)} className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2 rounded-xl text-xs cursor-pointer hover:bg-rose-900 transition">🗑️</button>
-                          </div>
-                        </div>
-
-                        {/* DESPLIEGUE SEGÚN TIPO Y SI ES O NO DE YOUTUBE */}
-                        {item.esYoutube ? (
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                              <label className="text-[10px] text-slate-400 block mb-1">Duración (min)</label>
-                              <input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className={INPUT_CLS} />
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label>
-                              <input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} />
-                            </div>
-                          </div>
-                        ) : item.tipo === 'fuerza' ? (
-                          <div className="grid grid-cols-4 gap-2 text-xs">
-                            <div><label className="text-[10px] text-slate-400 block mb-1">Series</label><input type="number" value={item.series || 0} onChange={(e) => actualizarEjercicio(item.id, 'series', Number(e.target.value))} className={INPUT_CLS} /></div>
-                            <div><label className="text-[10px] text-slate-400 block mb-1">Reps</label><input type="number" value={item.repeticiones || 0} onChange={(e) => actualizarEjercicio(item.id, 'repeticiones', Number(e.target.value))} className={INPUT_CLS} /></div>
-                            <div><label className="text-[10px] text-slate-400 block mb-1">Peso (kg)</label><input type="number" value={item.peso || 0} onChange={(e) => actualizarEjercicio(item.id, 'peso', Number(e.target.value))} className={INPUT_CLS} /></div>
-                            <div><label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
-                          </div>
-                        ) : (item.tipo === 'running' || item.tipo === 'ciclismo' || item.tipo === 'caminata') ? (
-                          <div className="grid grid-cols-3 gap-2 text-xs">
-                            <div><label className="text-[10px] text-slate-400 block mb-1">Distancia (km)</label><input type="number" step="0.1" value={item.distancia_km || 0} onChange={(e) => actualizarEjercicio(item.id, 'distancia_km', Number(e.target.value))} className={INPUT_CLS} /></div>
-                            <div><label className="text-[10px] text-slate-400 block mb-1">Duración (min)</label><input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className={INPUT_CLS} /></div>
-                            <div><label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div><label className="text-[10px] text-slate-400 block mb-1">Duración (min)</label><input type="number" value={item.duracion_minutos || 0} onChange={(e) => actualizarEjercicio(item.id, 'duracion_minutos', Number(e.target.value))} className={INPUT_CLS} /></div>
-                            <div><label className="text-[10px] text-amber-400 block mb-1">Kcal Quemadas</label><input type="number" value={item.calorias || 0} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={INPUT_CLS} /></div>
-                          </div>
-                        )}
-
-                        {item.calorias > 0 && (
-                          <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 text-center text-xs text-amber-400 font-semibold">
-                            🔥 Consumo estimado: <strong className="text-amber-300">{item.calorias} kcal</strong>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+            {subSeccionNutricion === 'nutricion' ? (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xs font-bold uppercase text-slate-400">🥗 Comidas del Día</h3>
+                  <button onClick={agregarComida} className="text-xs text-amber-400 font-bold hover:underline">+ Agregar Comida</button>
                 </div>
-              )}
-            </section>
-          )}
-
-          {/* HIDRATACIÓN Y SUEÑO */}
-          {seccionActiva === 'extra' && (
-            <section className={`${CARD_CLS} max-w-lg mx-auto space-y-6`}>
-              <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
-                <button onClick={() => setSubSeccionExtra('agua')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionExtra === 'agua' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}>💧 Hidratación</button>
-                <button onClick={() => setSubSeccionExtra('sueno')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionExtra === 'sueno' ? 'text-violet-400 border-b-2 border-violet-400' : 'text-slate-400 hover:text-slate-200'}`}>😴 Descanso y Sueño</button>
+                
+                {comidas.map((item) => (
+                  <div key={item.id} className="bg-slate-950 p-3 rounded-2xl border border-slate-800 flex items-center gap-3">
+                    <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
+                    <div className="w-24 shrink-0 text-center">
+                      <label className="text-[10px] text-slate-400 block">kcal</label>
+                      <input type="number" value={item.calorias} onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))} className={`${INPUT_CLS} text-center`} />
+                    </div>
+                    <button onClick={() => eliminarComida(item.id)} className="text-rose-400 text-xs p-1 shrink-0">🗑️</button>
+                  </div>
+                ))}
               </div>
-
-              {subSeccionExtra === 'agua' ? (
-                <div className="space-y-5 text-center bg-slate-950/60 p-6 rounded-2xl border border-slate-800/80">
-                  <span className="text-5xl inline-block animate-bounce">💧</span>
-                  <h3 className="text-lg font-black text-cyan-300">Control de Hidratación</h3>
-                  <p className="text-3xl font-black text-cyan-400">{(aguaMl / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-500">/ 2.50 L</span></p>
-                  {(() => {
-                    const estilo = obtenerEstiloBarra(pctAgua);
-                    return (
-                      <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
-                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                      </div>
-                    );
-                  })()}
-                  <div className="flex justify-center gap-2.5 pt-2">
-                    <button onClick={() => modificarAgua(250)} className="bg-cyan-950/80 border border-cyan-800 text-cyan-300 font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-cyan-900 transition">+250 ml 🥛</button>
-                    <button onClick={() => modificarAgua(500)} className="bg-cyan-950/80 border border-cyan-800 text-cyan-300 font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-cyan-900 transition">+500 ml 🍾</button>
-                    <button onClick={() => modificarAgua(-250)} className="bg-slate-900 border border-slate-800 text-slate-400 px-3 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-slate-800 transition">-250 ml</button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-5 text-center bg-slate-950/60 p-6 rounded-2xl border border-slate-800/80">
-                  <span className="text-5xl inline-block animate-pulse">😴</span>
-                  <h3 className="text-lg font-black text-violet-300">Control de Sueño</h3>
-                  <p className="text-3xl font-black text-violet-400">{suenoHoy.horas_totales} <span className="text-sm font-normal text-slate-500">/ 8.0 hrs</span></p>
-                  {(() => {
-                    const estilo = obtenerEstiloBarra(pctSueno);
-                    return (
-                      <div className="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
-                        <div className={`h-full transition-all duration-500 ${estilo.colorClass}`} style={{ width: estilo.width }}></div>
-                      </div>
-                    );
-                  })()}
-                  
-                  {/* HORAS DE SUEÑO CORREGIDAS PARA NO DESBORDAR */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-center pt-2 max-w-md mx-auto w-full">
-                    <div className="w-full min-w-0">
-                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Acostarse</label>
-                      <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className={`${INPUT_CLS} text-center font-mono`} />
-                    </div>
-                    <div className="w-full min-w-0">
-                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Levantarse</label>
-                      <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className={`${INPUT_CLS} text-center font-mono`} />
-                    </div>
-                  </div>
-
-                  <div className="text-center pt-2">
-                    <label className="text-xs text-slate-400 font-medium block mb-1">Calidad del Sueño</label>
-                    <div className="flex gap-2 justify-center py-1">
-                      {[1, 2, 3, 4, 5].map((estrella) => (
-                        <button key={estrella} type="button" onClick={() => setSuenoHoy({...suenoHoy, calidad: estrella})} className={`text-2xl cursor-pointer transition ${suenoHoy.calidad >= estrella ? 'text-amber-400 scale-110' : 'text-slate-700'}`}>★</button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button onClick={guardarSueno} className={BTN_PRIMARY}>
-                    💾 Guardar Sueño
-                  </button>
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* ESTADÍSTICAS */}
-          {seccionActiva === 'estadisticas' && (
-            <section className={`${CARD_CLS} max-w-3xl mx-auto space-y-6`}>
-              <h3 className="text-base font-bold text-indigo-400 flex items-center gap-2">📈 Visualización y Estadísticas</h3>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-1">
-                  <span className="text-[11px] font-bold uppercase text-slate-400">🍽️ Ingerido</span>
-                  <p className="text-2xl font-black text-amber-400">{totalIngeridoCal} <span className="text-xs font-normal text-slate-500">kcal</span></p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xs font-bold uppercase text-slate-400">🏋️ Actividades Registradas</h3>
+                  <button onClick={agregarEjercicio} className="text-xs text-indigo-400 font-bold hover:underline">+ Agregar Ejercicio</button>
                 </div>
 
-                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-1">
-                  <span className="text-[11px] font-bold uppercase text-slate-400">🔥 Gastado</span>
-                  <p className="text-2xl font-black text-rose-400">{totalGastadoCal} <span className="text-xs font-normal text-slate-500">kcal</span></p>
-                </div>
-
-                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-1">
-                  <span className="text-[11px] font-bold uppercase text-slate-400">⚖️ Balance</span>
-                  <p className={`text-2xl font-black ${balanceCalorico < 0 ? 'text-cyan-400' : 'text-rose-400'}`}>{balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs font-normal text-slate-500">kcal</span></p>
-                </div>
-              </div>
-
-              <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 space-y-2">
-                <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wide">📊 Resumen de Rendimiento</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">Tus hábitos y registro nutricional muestran una constancia del <strong className="text-indigo-400">{porcentajeHabitos}%</strong>. Continúa enfocado en tu meta de <strong className="text-amber-400">{perfil.objetivo}</strong>.</p>
-              </div>
-            </section>
-          )}
-
-          {/* NOVEDADES Y SOPORTE */}
-          {seccionActiva === 'actualizaciones' && (
-            <section className={`${CARD_CLS} max-w-xl mx-auto space-y-6`}>
-              <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
-                <button onClick={() => setSubSeccionActualizaciones('novedades')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionActualizaciones === 'novedades' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🚀 Novedades</button>
-                <button onClick={() => setSubSeccionActualizaciones('soporte')} className={`text-xs sm:text-sm font-bold pb-2 cursor-pointer transition ${subSeccionActualizaciones === 'soporte' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>💬 Soporte</button>
-              </div>
-
-              {subSeccionActualizaciones === 'novedades' ? (
-                <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 text-xs text-slate-300 space-y-2.5">
-                  <p className="font-bold text-slate-100">Versión: {ULTIMA_ACTUALIZACION_APP}</p>
-                  <p>• Pestañas separadas para Nutrición y Entrenamiento con diseño Glassmorphic.</p>
-                  <p>• Módulo de YouTube mejorado para detectar músculo objetivo y ocultar campos irrelevantes.</p>
-                  <p>• Motor de estimación nutricional corregido con base ampliada (proteínas, postres, desayunos).</p>
-                  <p>• Solución de desbordamiento en campos de hora y fecha.</p>
-                </div>
-              ) : (
-                <form onSubmit={enviarSoporte} className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 space-y-4">
-                  <h4 className="text-xs font-bold text-indigo-300 uppercase tracking-wide text-center">¿Tienes sugerencias, dudas o encontraste algún error?</h4>
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Tipo de mensaje</label>
-                    <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value)} className={INPUT_CLS}>
-                      <option value="" disabled>-- Seleccione su tipo de mensaje --</option>
-                      <option value="Sugerencia de mejora">💡 Sugerencia de mejora</option>
-                      <option value="Duda o consulta">❓ Duda o consulta</option>
-                      <option value="Reporte de error">⚠️ Reporte de error</option>
+                {ejercicios.map((item) => (
+                  <div key={item.id} className="bg-slate-950 p-3 rounded-2xl border border-slate-800 flex items-center gap-2">
+                    <input type="text" placeholder="Actividad" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
+                    <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${INPUT_CLS} w-32`}>
+                      <option value="">Tipo...</option>
+                      <option value="fuerza">Fuerza</option>
+                      <option value="running">Running</option>
+                      <option value="ciclismo">Ciclismo</option>
+                      <option value="funcional">Funcional</option>
                     </select>
+                    <div className="w-28 shrink-0 text-center">
+                      <label className="text-[10px] text-amber-400 block">Kcal quemadas</label>
+                      <input type="number" value={item.calorias} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={`${INPUT_CLS} text-center`} />
+                    </div>
+                    <button onClick={() => eliminarEjercicio(item.id)} className="text-rose-400 text-xs p-1 shrink-0">🗑️</button>
                   </div>
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Detalle de tu mensaje</label>
-                    <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Escribe aquí tu sugerencia, duda o el problema que tuviste..." className={INPUT_CLS} required />
-                  </div>
-                  <button type="submit" className={BTN_PRIMARY}>
-                    ✉️ Enviar Comentario
-                  </button>
-                </form>
-              )}
-            </section>
-          )}
-
-        </div>
-      </main>
-
-      {/* MODAL IA COMIDA */}
-      {comidaIaModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-md w-full space-y-4 shadow-2xl">
-            <h3 className="text-base font-extrabold text-cyan-300 flex items-center gap-2">🤖 Estimador Nutricional IA</h3>
-            <div>
-              <label className="text-xs text-slate-400 font-medium block mb-1">Nombre del plato</label>
-              <input type="text" value={nombreIaModalInput} onChange={(e) => setNombreIaModalInput(e.target.value)} className={INPUT_CLS} />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 font-medium block mb-1">Describe los ingredientes con gramos o porciones (ej: Whey 1 scoop, Bananas 2)</label>
-              <textarea rows={4} value={textoIaInput} onChange={(e) => setTextoIaInput(e.target.value)} placeholder="Leche descremada 200ml&#10;Avena 50g&#10;Proteína whey 1 scoop..." className={INPUT_CLS} />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 font-medium block mb-1">O sube foto de tu plato:</label>
-              <input type="file" accept="image/*" multiple onChange={procesarFotoIA} className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-cyan-950 file:text-cyan-300 hover:file:bg-cyan-900 cursor-pointer" />
-            </div>
-            {imagenesIaInput.length > 0 && (
-              <div className="flex gap-2 flex-wrap">
-                {imagenesIaInput.map((img, idx) => (
-                  <img key={idx} src={img} alt="Comida" className="w-14 h-14 object-cover rounded-xl border border-slate-700" />
                 ))}
               </div>
             )}
-            <div className="flex gap-3 pt-2">
-              <button onClick={() => setComidaIaModal(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition">Cancelar</button>
-              <button onClick={estimarComidaConIA} disabled={procesandoIa} className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-2.5 rounded-xl text-xs font-bold cursor-pointer transition disabled:opacity-50">
-                {procesandoIa ? 'Analizando...' : '✨ Calcular Macros'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </section>
+        )}
 
+        {/* HIDRATACIÓN Y SUEÑO */}
+        {seccionActiva === 'extra' && (
+          <section className={`${CARD_CLS} max-w-md mx-auto space-y-6`}>
+            <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
+              <button onClick={() => setSubSeccionExtra('agua')} className={`text-xs font-bold pb-2 ${subSeccionExtra === 'agua' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400'}`}>💧 Hidratación</button>
+              <button onClick={() => setSubSeccionExtra('sueno')} className={`text-xs font-bold pb-2 ${subSeccionExtra === 'sueno' ? 'text-violet-400 border-b-2 border-violet-400' : 'text-slate-400'}`}>😴 Descanso</button>
+            </div>
+
+            {subSeccionExtra === 'agua' ? (
+              <div className="space-y-4 text-center">
+                <p className="text-3xl font-black text-cyan-400">{(aguaMl / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-500">/ 2.50 L</span></p>
+                <div className="flex justify-center gap-2">
+                  <button onClick={() => modificarAgua(250)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 font-bold px-3 py-2 rounded-xl text-xs">+250 ml</button>
+                  <button onClick={() => modificarAgua(500)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 font-bold px-3 py-2 rounded-xl text-xs">+500 ml</button>
+                  <button onClick={() => modificarAgua(-250)} className="bg-slate-900 border border-slate-800 text-slate-400 px-3 py-2 rounded-xl text-xs">-250 ml</button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 text-center">
+                <p className="text-3xl font-black text-violet-400">{suenoHoy.horas_totales} <span className="text-sm font-normal text-slate-500">/ 8.0 hrs</span></p>
+                
+                <div className="flex justify-center gap-3 items-center">
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-1">Acostarse</label>
+                    <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-1.5 text-xs font-mono text-slate-100 outline-none w-24 text-center" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-1">Levantarse</label>
+                    <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-1.5 text-xs font-mono text-slate-100 outline-none w-24 text-center" />
+                  </div>
+                </div>
+
+                <button onClick={guardarSueno} className={BTN_PRIMARY}>💾 Guardar Sueño</button>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* NOVEDADES Y SOPORTE */}
+        {seccionActiva === 'actualizaciones' && (
+          <section className={`${CARD_CLS} max-w-lg mx-auto space-y-6`}>
+            <div className="flex border-b border-slate-800 pb-3 gap-6 justify-center">
+              <button onClick={() => setSubSeccionActualizaciones('novedades')} className={`text-xs font-bold pb-2 ${subSeccionActualizaciones === 'novedades' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400'}`}>🚀 Novedades</button>
+              <button onClick={() => setSubSeccionActualizaciones('soporte')} className={`text-xs font-bold pb-2 ${subSeccionActualizaciones === 'soporte' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400'}`}>💬 Soporte</button>
+            </div>
+
+            {subSeccionActualizaciones === 'novedades' ? (
+              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs text-slate-300 space-y-2">
+                <p className="font-bold text-slate-100">Versión de la app: {ULTIMA_ACTUALIZACION_APP}</p>
+                <p>• Formulario de Auth con visibilidad de contraseña y verificación de código OTP.</p>
+                <p>• Simplificación de módulos de Nutrición y Entrenamiento en una sola línea compacta.</p>
+                <p>• Corrección de desbordamientos de texto en fechas y horarios.</p>
+              </div>
+            ) : (
+              <form onSubmit={enviarSoporte} className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value)} className={INPUT_CLS}>
+                  <option value="" disabled>-- Tipo de mensaje --</option>
+                  <option value="Sugerencia">💡 Sugerencia</option>
+                  <option value="Duda">❓ Duda</option>
+                  <option value="Error">⚠️ Reporte de error</option>
+                </select>
+                <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Escribe tu mensaje..." className={INPUT_CLS} required />
+                <button type="submit" className={BTN_PRIMARY}>✉️ Enviar Comentario</button>
+              </form>
+            )}
+          </section>
+        )}
+
+      </main>
     </div>
   );
 }
