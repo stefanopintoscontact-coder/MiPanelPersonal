@@ -424,9 +424,15 @@ export default function Home() {
             <button onClick={() => setSidebarAbierto(!sidebarAbierto)} className="p-2 rounded-xl bg-slate-800 text-slate-200">
               <span className="text-sm font-bold">{sidebarAbierto ? '✕' : '☰'}</span>
             </button>
-            <button onClick={() => setSeccionActiva('perfil')} className="bg-indigo-950 border border-indigo-800 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-300">
-              {perfil.nombre || 'Perfil'} 👋
-            </button>
+            {/* INDICADOR MORADO ESTÁTICO DERECHA DE BARRA ARRIBA */}
+            <div className="bg-indigo-950 border border-indigo-800 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-300 flex items-center gap-1.5 select-none">
+              {seccionActiva === 'general' && '📊 Resumen'}
+              {seccionActiva === 'perfil' && '👤 Mi Perfil'}
+              {seccionActiva === 'habitos' && '⚡ Hábitos'}
+              {seccionActiva === 'nutricion' && '🔥 Nutrición'}
+              {seccionActiva === 'extra' && '✨ Extra'}
+              {seccionActiva === 'actualizaciones' && '🚀 Novedades'}
+            </div>
           </div>
 
           <nav className={`p-3 text-center ${sidebarAbierto ? 'flex flex-col space-y-2' : 'flex flex-row md:flex-col overflow-x-auto gap-2 justify-center'}`}>
@@ -542,15 +548,20 @@ export default function Home() {
 
             {subSeccionPerfil === 'perfil' ? (
               <div className="space-y-4 max-w-md mx-auto text-center">
-                {/* NOMBRE Y FECHA DE NACIMIENTO EN LA MISMA LÍNEA */}
+                {/* NOMBRE Y FECHA DE NACIMIENTO EN LA MISMA LÍNEA Y AJUSTADOS */}
                 <div className="grid grid-cols-2 gap-3 items-center">
                   <div>
                     <label className="text-xs text-slate-400 block mb-1 text-center">Nombre</label>
                     <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={`${INPUT_CLS} text-center`} />
                   </div>
-                  <div>
+                  <div className="flex flex-col items-center">
                     <label className="text-xs text-slate-400 block mb-1 text-center">Fecha de Nacimiento</label>
-                    <input type="date" value={perfil.fecha_nacimiento} onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} className={`${INPUT_CLS} text-center`} />
+                    <input 
+                      type="date" 
+                      value={perfil.fecha_nacimiento} 
+                      onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} 
+                      className="w-full max-w-[140px] bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-2 py-1.5 text-[11px] text-slate-100 text-center outline-none" 
+                    />
                   </div>
                 </div>
 
@@ -667,11 +678,11 @@ export default function Home() {
 
                 {ejercicios.map((item) => (
                   <div key={item.id} className="bg-slate-950 p-3 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
-                    {/* TIPO DE ACTIVIDAD ALARGADO Y ALINEADO CON KCAL */}
-                    <div className="flex-1">
+                    {/* TIPO DE ACTIVIDAD CON TODO EL ESPACIO DISPONIBLE */}
+                    <div className="flex-1 min-w-0">
                       <label className="text-[10px] text-slate-400 block text-center mb-1">Tipo de Actividad</label>
-                      <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${INPUT_CLS} w-full text-center`}>
-                        <option value="">Seleccionar Tipo...</option>
+                      <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${INPUT_CLS} w-full text-center truncate`}>
+                        <option value="">Seleccionar tipo...</option>
                         <option value="fuerza">🏋️ Fuerza / Gimnasio</option>
                         <option value="running">🏃 Running / Carrera</option>
                         <option value="ciclismo">🚴 Ciclismo</option>
@@ -684,9 +695,10 @@ export default function Home() {
                       </select>
                     </div>
 
-                    <div className="w-32 shrink-0 text-center">
-                      <label className="text-[10px] text-amber-400 block text-center mb-1">Kcal Quemadas</label>
-                      <input type="number" value={item.calorias} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={`${INPUT_CLS} text-center`} />
+                    {/* KCAL COMPACTO PARA 4 DÍGITOS MAXIMO */}
+                    <div className="w-20 shrink-0 text-center">
+                      <label className="text-[10px] text-amber-400 block text-center mb-1">Kcal</label>
+                      <input type="number" value={item.calorias} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={`${INPUT_CLS} text-center px-1`} />
                     </div>
 
                     <button onClick={() => eliminarEjercicio(item.id)} className="text-rose-400 text-xs p-1 shrink-0 mt-4">🗑️</button>
@@ -770,8 +782,9 @@ export default function Home() {
               <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs text-slate-300 space-y-2">
                 <p className="font-bold text-slate-100">Versión de la app: {ULTIMA_ACTUALIZACION_APP}</p>
                 <p>• Rediseño visual con menús lisos centrados y alineación de componentes.</p>
-                <p>• Incorporación de barras de progreso en porcentaje para todas las métricas.</p>
-                <p>• Simplificación del módulo de ejercicios enfocado en tipo de actividad y Kcal.</p>
+                <p>• Indicador superior estático de sección sincronizado con el contenido.</p>
+                <p>• Ajuste de simetría en el cuadro de fecha de nacimiento.</p>
+                <p>• Ampliación de anchura en selector de tipo de actividad física.</p>
               </div>
             ) : (
               <form onSubmit={enviarSoporte} className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
