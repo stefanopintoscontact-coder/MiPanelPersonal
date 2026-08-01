@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 const ULTIMA_ACTUALIZACION_APP = '1/8/2026';
 
 // ESTILOS REUTILIZABLES PREMIUM
-const INPUT_CLS = "w-full min-w-0 box-border bg-slate-950/80 border border-slate-800/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 transition-all duration-200 placeholder:text-slate-600 outline-none hover:border-slate-700 font-medium";
+const INPUT_CLS = "w-full min-w-0 box-border bg-slate-950/80 border border-slate-800/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 transition-all duration-200 placeholder:text-slate-600 outline-none hover:border-slate-700 font-medium [color-scheme:dark]";
 const BTN_PRIMARY = "w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-500 hover:via-violet-500 hover:to-purple-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all duration-200 shadow-lg shadow-indigo-600/20 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2";
 const CARD_CLS = "bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-2xl transition-all duration-300 hover:border-slate-700/80 hover:shadow-indigo-500/5";
 
@@ -301,23 +301,50 @@ export default function Home() {
     return Math.round(perfil.sexo === 'masculino' ? bmr + 5 : bmr - 161);
   }, [perfil]);
 
-  const guardarCaloriasAuto = (nuevosEjercicios?: EjercicioGimnasio[], nuevasComidas?: ItemComida[]) => {
+  // FUNCIÓN CENTRAL DE GUARDADO AUTOMÁTICO EN SUPABASE
+  const guardarCaloriasDB = async (nuevosEjercicios = ejercicios, nuevasComidas = comidas, nuevaAgua = aguaMl) => {
     if (!session?.user) return;
-    supabase.from('registro_calorias').upsert({
+    await supabase.from('registro_calorias').upsert({
       user_id: session.user.id,
       fecha: fechaSeleccionada,
       base: bmrCalculado,
-      agua_ml: aguaMl,
-      ejercicios: nuevosEjercicios || ejercicios,
-      comidas: nuevasComidas || comidas
+      agua_ml: nuevaAgua,
+      ejercicios: nuevosEjercicios,
+      comidas: nuevasComidas
     }, { onConflict: 'user_id,fecha' });
   };
 
+  // AUTO-SAVE DE RESPALDO PARA NUTRICIÓN, ACTIVIDADES Y AGUA
   useEffect(() => {
     if (!session?.user) return;
-    const timer = setTimeout(() => guardarCaloriasAuto(), 600);
+    const timer = setTimeout(() => guardarCaloriasDB(), 600);
     return () => clearTimeout(timer);
   }, [comidas, ejercicios, aguaMl, fechaSeleccionada, session]);
+
+  // AUTO-SAVE DEBOUNCED PARA PERFIL
+  useEffect(() => {
+    if (!session?.user) return;
+    const timer = setTimeout(() => {
+      supabase.from('perfil_usuario').upsert({ user_id: session.user.id, ...perfil }, { onConflict: 'user_id' });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [perfil, session]);
+
+  // AUTO-SAVE DEBOUNCED PARA SUEÑO
+  useEffect(() => {
+    if (!session?.user) return;
+    const timer = setTimeout(() => {
+      const [hA, mA] = suenoHoy.hora_acostarse.split(':').map(Number);
+      const [hL, mL] = suenoHoy.hora_levantarse.split(':').map(Number);
+      let minA = hA * 60 + mA, minL = hL * 60 + mL;
+      if (minL < minA) minL += 24 * 60;
+      const duracion = parseFloat(((minL - minA) / 60).toFixed(1));
+
+      const datos = { ...suenoHoy, user_id: session.user.id, fecha: fechaSeleccionada, horas_totales: duracion };
+      supabase.from('registro_sueno').upsert(datos, { onConflict: 'user_id,fecha' });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [suenoHoy, fechaSeleccionada, session]);
 
   const guardarPerfil = async () => {
     if (!session?.user) return;
@@ -363,10 +390,24 @@ export default function Home() {
     if (!error) setHabitos(habitos.filter(h => h.id !== id));
   };
 
-  // NUTRICIÓN (SUBIR / BAJAR Y AUTO GUARDAR)
-  const agregarComida = () => setComidas([...comidas, { id: Date.now().toString(), nombre: 'Nueva Comida', calorias: 0 }]);
-  const actualizarComida = (id: string, campo: keyof ItemComida, valor: any) => setComidas(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
-  const eliminarComida = (id: string) => setComidas(comidas.filter(item => item.id !== id));
+  // NUTRICIÓN (CON GUARDADO AUTOMÁTICO INMEDIATO)
+  const agregarComida = () => {
+    const nuevas = [...comidas, { id: Date.now().toString(), nombre: 'Nueva Comida', calorias: 0 }];
+    setComidas(nuevas);
+    guardarCaloriasDB(ejercicios, nuevas, aguaMl);
+  };
+
+  const actualizarComida = (id: string, campo: keyof ItemComida, valor: any) => {
+    const nuevas = comidas.map(item => item.id === id ? { ...item, [campo]: valor } : item);
+    setComidas(nuevas);
+    guardarCaloriasDB(ejercicios, nuevas, aguaMl);
+  };
+
+  const eliminarComida = (id: string) => {
+    const nuevas = comidas.filter(item => item.id !== id);
+    setComidas(nuevas);
+    guardarCaloriasDB(ejercicios, nuevas, aguaMl);
+  };
 
   const moverComida = (index: number, direccion: 'arriba' | 'abajo') => {
     const destino = direccion === 'arriba' ? index - 1 : index + 1;
@@ -375,12 +416,27 @@ export default function Home() {
     const [removido] = copia.splice(index, 1);
     copia.splice(destino, 0, removido);
     setComidas(copia);
+    guardarCaloriasDB(ejercicios, copia, aguaMl);
   };
 
-  // EJERCICIOS (SUBIR / BAJAR Y AUTO GUARDAR)
-  const agregarEjercicio = () => setEjercicios([...ejercicios, { id: Date.now().toString(), tipo: '', calorias: 0 }]);
-  const actualizarEjercicio = (id: string, campo: keyof EjercicioGimnasio, valor: any) => setEjercicios(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
-  const eliminarEjercicio = (id: string) => setEjercicios(ejercicios.filter(item => item.id !== id));
+  // EJERCICIOS (CON GUARDADO AUTOMÁTICO INMEDIATO)
+  const agregarEjercicio = () => {
+    const nuevos = [...ejercicios, { id: Date.now().toString(), tipo: '' as TipoEjercicio, calorias: 0 }];
+    setEjercicios(nuevos);
+    guardarCaloriasDB(nuevos, comidas, aguaMl);
+  };
+
+  const actualizarEjercicio = (id: string, campo: keyof EjercicioGimnasio, valor: any) => {
+    const nuevos = ejercicios.map(item => item.id === id ? { ...item, [campo]: valor } : item);
+    setEjercicios(nuevos);
+    guardarCaloriasDB(nuevos, comidas, aguaMl);
+  };
+
+  const eliminarEjercicio = (id: string) => {
+    const nuevos = ejercicios.filter(item => item.id !== id);
+    setEjercicios(nuevos);
+    guardarCaloriasDB(nuevos, comidas, aguaMl);
+  };
 
   const moverEjercicio = (index: number, direccion: 'arriba' | 'abajo') => {
     const destino = direccion === 'arriba' ? index - 1 : index + 1;
@@ -389,10 +445,17 @@ export default function Home() {
     const [removido] = copia.splice(index, 1);
     copia.splice(destino, 0, removido);
     setEjercicios(copia);
+    guardarCaloriasDB(copia, comidas, aguaMl);
   };
 
-  // HIDRATACIÓN Y SUEÑO
-  const modificarAgua = (deltaMl: number) => setAguaMl(prev => Math.max(0, prev + deltaMl));
+  // HIDRATACIÓN Y SUEÑO (CON GUARDADO AUTOMÁTICO INMEDIATO)
+  const modificarAgua = (deltaMl: number) => {
+    setAguaMl(prev => {
+      const nuevo = Math.max(0, prev + deltaMl);
+      guardarCaloriasDB(ejercicios, comidas, nuevo);
+      return nuevo;
+    });
+  };
 
   const guardarSueno = async () => {
     if (!session?.user) return;
@@ -414,14 +477,14 @@ export default function Home() {
     setMensajeSoporte('');
   };
 
-  // CÁLCULOS GENERALES & LOGICA DINÁMICA DE COLORES DE BARRA
+  // CÁLCULOS GENERALES
   const totalCompletados = habitos.filter(h => registrosHoy[h.id]?.completado).length;
   const porcentajeHabitos = habitos.length > 0 ? Math.round((totalCompletados / habitos.length) * 100) : 0;
   const totalGastoEjercicios = ejercicios.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
   const totalIngresoCalorias = comidas.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
   const balanceCalorico = totalIngresoCalorias - (bmrCalculado + totalGastoEjercicios);
 
-  // EVALUACIÓN DE BARRA DE BALANCE CALÓRICO Y BARRAS GENERALES
+  // EVALUACIÓN DE BARRA DE BALANCE CALÓRICO
   const evaluarEstadoCalorias = () => {
     let pct = 0;
     let colorBarra = "bg-rose-500 shadow-rose-500/50";
@@ -429,9 +492,7 @@ export default function Home() {
     let mensaje = "Atención requerida";
 
     if (perfil.objetivo === 'subir') {
-      // Para subir de peso necesitas superávit positivo
       if (balanceCalorico < 0) {
-        // En déficit (-1337 etc): Mal / Rojo / Barra mínima
         pct = Math.max(5, Math.min(100, Math.round((totalIngresoCalorias / (bmrCalculado + totalGastoEjercicios)) * 100)));
         colorBarra = "bg-rose-500 shadow-rose-500/50";
         colorTexto = "text-rose-400";
@@ -448,9 +509,7 @@ export default function Home() {
         mensaje = "¡Superávit óptimo!";
       }
     } else if (perfil.objetivo === 'bajar') {
-      // Para bajar de peso necesitas déficit negativo
       if (balanceCalorico > 0) {
-        // En superávit: Mal / Rojo
         pct = 100;
         colorBarra = "bg-rose-500 shadow-rose-500/50";
         colorTexto = "text-rose-400";
@@ -467,7 +526,6 @@ export default function Home() {
         mensaje = "¡Déficit logrado!";
       }
     } else {
-      // Mantener
       const diff = Math.abs(balanceCalorico);
       if (diff < 150) {
         pct = 100;
@@ -491,7 +549,7 @@ export default function Home() {
 
   const estadoCalorico = evaluarEstadoCalorias();
 
-  // OBTENER COLORES DINÁMICOS GENERALES (ROJO, NARANJA, VERDE)
+  // COLORES DINÁMICOS
   const getDynamicColor = (porcentaje: number) => {
     if (porcentaje >= 80) return { bar: "bg-emerald-500 shadow-emerald-500/50", text: "text-emerald-400" };
     if (porcentaje >= 40) return { bar: "bg-amber-500 shadow-amber-500/50", text: "text-amber-400" };
@@ -612,15 +670,51 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
         
-        {/* ENCABEZADO CENTRADO DE LA SECCIÓN */}
+        {/* ENCABEZADO CENTRADO DE LA SECCIÓN (EMOJIS SEPARADOS DE GRADIENTES) */}
         <header className="flex justify-center items-center mb-8 bg-slate-900/60 backdrop-blur-xl p-5 rounded-3xl border border-slate-800/80 text-center shadow-xl">
-          <h2 className="text-xl sm:text-2xl font-black bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent text-center w-full">
-            {seccionActiva === 'general' && '📊 Resumen General 📊'}
-            {seccionActiva === 'perfil' && '👤 Mi Perfil y Objetivos 👤'}
-            {seccionActiva === 'habitos' && '⚡ Hábitos Diarios ⚡'}
-            {seccionActiva === 'nutricion' && '🔥 Nutrición y Entrenamiento 🔥'}
-            {seccionActiva === 'extra' && '✨ Extra ✨'}
-            {seccionActiva === 'actualizaciones' && '🚀 Novedades y Soporte 🚀'}
+          <h2 className="text-xl sm:text-2xl font-black text-center w-full flex items-center justify-center gap-2.5">
+            {seccionActiva === 'general' && (
+              <>
+                <span>📊</span>
+                <span className="bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent">Resumen General</span>
+                <span>📊</span>
+              </>
+            )}
+            {seccionActiva === 'perfil' && (
+              <>
+                <span>👤</span>
+                <span className="bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent">Mi Perfil y Objetivos</span>
+                <span>👤</span>
+              </>
+            )}
+            {seccionActiva === 'habitos' && (
+              <>
+                <span>⚡</span>
+                <span className="bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent">Hábitos Diarios</span>
+                <span>⚡</span>
+              </>
+            )}
+            {seccionActiva === 'nutricion' && (
+              <>
+                <span>🔥</span>
+                <span className="bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent">Nutrición y Entrenamiento</span>
+                <span>🔥</span>
+              </>
+            )}
+            {seccionActiva === 'extra' && (
+              <>
+                <span>✨</span>
+                <span className="bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent">Extra</span>
+                <span>✨</span>
+              </>
+            )}
+            {seccionActiva === 'actualizaciones' && (
+              <>
+                <span>🚀</span>
+                <span className="bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent">Novedades y Soporte</span>
+                <span>🚀</span>
+              </>
+            )}
           </h2>
         </header>
 
@@ -628,7 +722,7 @@ export default function Home() {
         {seccionActiva === 'general' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-center">
             
-            {/* BALANCE CALÓRICO CON COLORIMETRÍA DINÁMICA DE ESTADO */}
+            {/* BALANCE CALÓRICO */}
             <div onClick={() => setSeccionActiva('nutricion')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
               <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Balance Calórico 🔥</span>
               <p className={`text-3xl font-black my-2 text-center transition-colors ${estadoCalorico.colorTexto}`}>
@@ -720,7 +814,7 @@ export default function Home() {
                     <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Nombre</label>
                     <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={`${INPUT_CLS} text-center`} />
                   </div>
-                  <div className="flex flex-col items-center">
+                  <div>
                     <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Fecha Nacimiento</label>
                     <input 
                       type="date" 
@@ -772,13 +866,26 @@ export default function Home() {
           </section>
         )}
 
-        {/* HÁBITOS CON REORDENAMIENTO AUTOMÁTICO POR HORA */}
+        {/* HÁBITOS CON REORDENAMIENTO Y ALINEACIÓN DE HORAS/RACHAS */}
         {seccionActiva === 'habitos' && (
           <section className={`${CARD_CLS} space-y-6 max-w-2xl mx-auto`}>
             <form onSubmit={agregarHabito} className="flex gap-2 bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800/80 items-center shadow-inner">
-              <input type="text" placeholder="Nuevo hábito..." value={nuevoHabito} onChange={(e) => setNuevoHabito(e.target.value)} className={INPUT_CLS} />
-              <input type="time" value={horaObjetivo} onChange={(e) => setHoraObjetivo(e.target.value)} className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-indigo-300 font-mono w-28 shrink-0 outline-none focus:border-indigo-500 font-bold" />
-              <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shrink-0 transition active:scale-95 shadow-lg shadow-indigo-600/30">Añadir</button>
+              <input 
+                type="text" 
+                placeholder="Ej: Meditar 10 min, Leer 20 págs..." 
+                value={nuevoHabito} 
+                onChange={(e) => setNuevoHabito(e.target.value)} 
+                className={`${INPUT_CLS} flex-1`} 
+              />
+              <input 
+                type="time" 
+                value={horaObjetivo} 
+                onChange={(e) => setHoraObjetivo(e.target.value)} 
+                className="bg-slate-900 border border-slate-800 rounded-xl px-2 py-2.5 text-xs text-indigo-300 font-mono w-20 text-center shrink-0 outline-none focus:border-indigo-500 font-bold [color-scheme:dark]" 
+              />
+              <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shrink-0 transition active:scale-95 shadow-lg shadow-indigo-600/30">
+                Añadir
+              </button>
             </form>
 
             <div className="space-y-2.5">
@@ -786,17 +893,23 @@ export default function Home() {
                 const completado = !!registrosHoy[h.id]?.completado;
                 const racha = rachasHabitos[h.id] || 0;
                 return (
-                  <div key={h.id} className="p-3.5 rounded-2xl border border-slate-800/80 bg-slate-950/60 flex items-center justify-between transition hover:border-slate-700">
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center transition-all ${completado ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-md shadow-indigo-600/40' : 'border-slate-700 hover:border-indigo-500'}`}>
+                  <div key={h.id} className="p-3.5 rounded-2xl border border-slate-800/80 bg-slate-950/60 flex items-center justify-between transition hover:border-slate-700 gap-2">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-all ${completado ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-md shadow-indigo-600/40' : 'border-slate-700 hover:border-indigo-500'}`}>
                         {completado && '✓'}
                       </button>
-                      <span className={`text-xs font-bold ${completado ? 'line-through text-slate-500' : 'text-slate-100'}`}>{h.texto}</span>
+                      <span className={`text-xs font-bold truncate ${completado ? 'line-through text-slate-500' : 'text-slate-100'}`}>{h.texto}</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[11px] bg-amber-950/60 text-amber-400 border border-amber-800/80 px-2.5 py-1 rounded-full font-bold shadow-sm">🔥 {racha}d</span>
-                      <span className="text-indigo-400 font-mono text-xs font-bold bg-indigo-950/50 border border-indigo-800/50 px-2 py-0.5 rounded-lg">⏰ {h.hora_objetivo}</span>
-                      <button onClick={() => eliminarHabito(h.id)} className="text-rose-400 hover:text-rose-300 text-xs p-1 transition hover:scale-110">🗑️</button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[11px] bg-amber-950/60 text-amber-400 border border-amber-800/80 px-2.5 py-1 rounded-full font-bold shadow-sm whitespace-nowrap flex items-center gap-1">
+                        <span>🔥</span>
+                        <span>{racha}d</span>
+                      </span>
+                      <span className="text-indigo-400 font-mono text-xs font-bold bg-indigo-950/50 border border-indigo-800/50 px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1">
+                        <span>⏰</span>
+                        <span>{h.hora_objetivo}</span>
+                      </span>
+                      <button onClick={() => eliminarHabito(h.id)} className="text-rose-400 hover:text-rose-300 text-xs p-1 transition hover:scale-110 shrink-0">🗑️</button>
                     </div>
                   </div>
                 );
@@ -805,7 +918,7 @@ export default function Home() {
           </section>
         )}
 
-        {/* NUTRICIÓN Y ENTRENAMIENTO CON BOTONES DE ORDEN SUBIR Y BAJAR */}
+        {/* NUTRICIÓN Y ENTRENAMIENTO */}
         {seccionActiva === 'nutricion' && (
           <section className={`${CARD_CLS} max-w-3xl mx-auto space-y-6`}>
             <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
@@ -822,7 +935,6 @@ export default function Home() {
                 
                 {comidas.map((item, index) => (
                   <div key={item.id} className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 flex items-center gap-2 sm:gap-3 transition hover:border-slate-700">
-                    {/* BOTONES REORDENAR */}
                     <div className="flex flex-col gap-0.5 shrink-0">
                       <button onClick={() => moverComida(index, 'arriba')} disabled={index === 0} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▲</button>
                       <button onClick={() => moverComida(index, 'abajo')} disabled={index === comidas.length - 1} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▼</button>
@@ -848,7 +960,6 @@ export default function Home() {
 
                 {ejercicios.map((item, index) => (
                   <div key={item.id} className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 flex items-center justify-between gap-2 sm:gap-3 transition hover:border-slate-700">
-                    {/* BOTONES REORDENAR */}
                     <div className="flex flex-col gap-0.5 shrink-0 mt-3">
                       <button onClick={() => moverEjercicio(index, 'arriba')} disabled={index === 0} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▲</button>
                       <button onClick={() => moverEjercicio(index, 'abajo')} disabled={index === ejercicios.length - 1} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▼</button>
@@ -928,11 +1039,11 @@ export default function Home() {
                 <div className="flex justify-center gap-4 items-center pt-2">
                   <div>
                     <label className="text-[10px] text-slate-400 font-medium block mb-1">Acostarse</label>
-                    <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-indigo-300 outline-none w-28 text-center font-bold" />
+                    <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-indigo-300 outline-none w-28 text-center font-bold [color-scheme:dark]" />
                   </div>
                   <div>
                     <label className="text-[10px] text-slate-400 font-medium block mb-1">Levantarse</label>
-                    <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-indigo-300 outline-none w-28 text-center font-bold" />
+                    <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-indigo-300 outline-none w-28 text-center font-bold [color-scheme:dark]" />
                   </div>
                 </div>
 
@@ -953,11 +1064,10 @@ export default function Home() {
             {subSeccionActualizaciones === 'novedades' ? (
               <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 text-xs text-slate-300 space-y-2.5">
                 <p className="font-bold text-slate-100 text-sm">Versión de la app: {ULTIMA_ACTUALIZACION_APP}</p>
-                <p>• Reordenamiento automático dinámico de hábitos por hora objetivo.</p>
-                <p>• Entradas numéricas mejoradas: sin ceros molestos al escribir o borrar.</p>
-                <p>• Botones para subir y bajar alimentos y ejercicios con auto-guardado.</p>
-                <p>• Sistema semáforo dinámico de colores y balance calórico inteligente.</p>
-                <p>• Rediseño estético épico profesional *Obsidian Glow* con efectos táctiles.</p>
+                <p>• Corrección total de renderizado de emojis en títulos y encabezados.</p>
+                <p>• Guardado automático instantáneo activado en Nutrición, Ejercicios e Hidratación.</p>
+                <p>• Cuadro de fecha de nacimiento redimensionado a tamaño idéntico al resto de inputs.</p>
+                <p>• Campo de entrada de hábitos ampliado con hora compacta y badges alineados.</p>
               </div>
             ) : (
               <form onSubmit={enviarSoporte} className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 space-y-4">
