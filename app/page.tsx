@@ -11,6 +11,16 @@ const INPUT_CLS = "w-full min-w-0 max-w-full box-border bg-slate-950 border bord
 const BTN_PRIMARY = "w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer shadow-lg active:scale-[0.99]";
 const CARD_CLS = "bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl transition-all hover:border-slate-700";
 
+// LISTA DE SECCIONES
+const SECCIONES = [
+  { id: 'general', label: 'General', icon: '📊' },
+  { id: 'perfil', label: 'Mi Perfil', icon: '👤' },
+  { id: 'habitos', label: 'Hábitos', icon: '⚡' },
+  { id: 'nutricion', label: 'Nutrición / Entreno', icon: '🔥' },
+  { id: 'extra', label: 'Extra', icon: '✨' },
+  { id: 'actualizaciones', label: 'Actualizaciones', icon: '🚀' },
+];
+
 // INTERFACES
 interface PerfilUsuario {
   nombre: string;
@@ -417,44 +427,48 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row font-sans">
       
-      {/* MENÚ LATERAL LISO Y CENTRADO */}
+      {/* MENÚ LATERAL Y NAVEGACIÓN */}
       <aside className={`bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 transition-all flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:w-64' : 'w-full md:w-20'}`}>
         <div>
           <div className="p-4 flex items-center justify-between border-b border-slate-800">
             <button onClick={() => setSidebarAbierto(!sidebarAbierto)} className="p-2 rounded-xl bg-slate-800 text-slate-200">
               <span className="text-sm font-bold">{sidebarAbierto ? '✕' : '☰'}</span>
             </button>
-            {/* INDICADOR MORADO ESTÁTICO DERECHA DE BARRA ARRIBA */}
-            <div className="bg-indigo-950 border border-indigo-800 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-300 flex items-center gap-1.5 select-none">
-              {seccionActiva === 'general' && '📊 Resumen'}
-              {seccionActiva === 'perfil' && '👤 Mi Perfil'}
-              {seccionActiva === 'habitos' && '⚡ Hábitos'}
-              {seccionActiva === 'nutricion' && '🔥 Nutrición'}
-              {seccionActiva === 'extra' && '✨ Extra'}
-              {seccionActiva === 'actualizaciones' && '🚀 Novedades'}
+            
+            {/* NOMBRE DE USUARIO VOLVIÓ A LA ESQUINA SUPERIOR DERECHA */}
+            <div className="text-xs font-bold text-slate-200 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 truncate max-w-[170px]">
+              👤 {perfil.nombre.trim() || session?.user?.email?.split('@')[0] || 'Usuario'}
             </div>
           </div>
 
-          <nav className={`p-3 text-center ${sidebarAbierto ? 'flex flex-col space-y-2' : 'flex flex-row md:flex-col overflow-x-auto gap-2 justify-center'}`}>
-            {[
-              { id: 'general', label: 'General', icon: '📊' },
-              { id: 'perfil', label: 'Mi Perfil', icon: '👤' },
-              { id: 'habitos', label: 'Hábitos', icon: '⚡' },
-              { id: 'nutricion', label: 'Nutrición / Entreno', icon: '🔥' },
-              { id: 'extra', label: 'Extra', icon: '✨' },
-              { id: 'actualizaciones', label: 'Actualizaciones', icon: '🚀' },
-            ].map((item) => (
+          <nav className="p-3 text-center flex flex-col items-center justify-center">
+            {sidebarAbierto ? (
+              <div className="w-full flex flex-col space-y-2">
+                {SECCIONES.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => { setSeccionActiva(item.id as any); setSidebarAbierto(false); }}
+                    className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-semibold transition w-full justify-start ${
+                      seccionActiva === item.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'
+                    }`}
+                  >
+                    <span className="text-xl">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              /* MUESTRA ÚNICAMENTE EL EMOJI DE LA PESTAÑA ACTIVA (SIN BARRA DESPLAZABLE) */
               <button
-                key={item.id}
-                onClick={() => { setSeccionActiva(item.id as any); setSidebarAbierto(false); }}
-                className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-semibold transition shrink-0 justify-center w-full text-center ${
-                  seccionActiva === item.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'
-                }`}
+                onClick={() => setSidebarAbierto(true)}
+                className="flex items-center justify-center p-2.5 rounded-2xl bg-indigo-600 text-white transition hover:bg-indigo-500 cursor-pointer my-1"
+                title="Abrir menú de navegación"
               >
-                <span className="text-xl">{item.icon}</span>
-                {sidebarAbierto && <span>{item.label}</span>}
+                <span className="text-2xl">
+                  {SECCIONES.find(s => s.id === seccionActiva)?.icon || '📊'}
+                </span>
               </button>
-            ))}
+            )}
           </nav>
         </div>
 
@@ -469,7 +483,7 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">
         
-        {/* ENCABEZADO CENTRADO CON EMOJIS */}
+        {/* ENCABEZADO CENTRADO DE LA SECCIÓN */}
         <header className="flex justify-center items-center mb-6 bg-slate-900 p-5 rounded-3xl border border-slate-800 text-center">
           <h2 className="text-xl sm:text-2xl font-black text-slate-100 text-center w-full">
             {seccionActiva === 'general' && '📊 Resumen General 📊'}
@@ -548,7 +562,6 @@ export default function Home() {
 
             {subSeccionPerfil === 'perfil' ? (
               <div className="space-y-4 max-w-md mx-auto text-center">
-                {/* NOMBRE Y FECHA DE NACIMIENTO EN LA MISMA LÍNEA Y AJUSTADOS */}
                 <div className="grid grid-cols-2 gap-3 items-center">
                   <div>
                     <label className="text-xs text-slate-400 block mb-1 text-center">Nombre</label>
@@ -565,7 +578,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* PESO Y ALTURA CON TEXTO CENTRADO ARRIBA */}
                 <div className="grid grid-cols-2 gap-3 items-center">
                   <div>
                     <label className="text-xs text-slate-400 block mb-1 text-center">Peso (kg)</label>
@@ -579,7 +591,6 @@ export default function Home() {
               </div>
             ) : (
               <div className="space-y-4 max-w-md mx-auto text-center">
-                {/* OBJETIVO RECORTADO Y CENTRADO */}
                 <div className="max-w-[220px] mx-auto text-center">
                   <label className="text-xs text-slate-400 block mb-1 text-center">Objetivo Principal</label>
                   <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={`${INPUT_CLS} text-center`}>
@@ -589,7 +600,6 @@ export default function Home() {
                   </select>
                 </div>
 
-                {/* KILOS Y PLAZO CON TEXTO CENTRADO ARRIBA */}
                 <div className="grid grid-cols-2 gap-3 items-center">
                   <div>
                     <label className="text-xs text-slate-400 block mb-1 text-center">Kilos Objetivo</label>
@@ -631,7 +641,6 @@ export default function Home() {
                       <span className={`text-xs font-semibold ${completado ? 'line-through text-slate-500' : 'text-slate-100'}`}>{h.texto}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      {/* CONTADOR DE RACHAS */}
                       <span className="text-xs bg-amber-950 text-amber-400 border border-amber-800 px-2.5 py-0.5 rounded-full font-bold">🔥 {racha} días</span>
                       <span className="text-indigo-400 font-mono text-xs">{h.hora_objetivo}</span>
                       <button onClick={() => eliminarHabito(h.id)} className="text-rose-400 text-xs">🗑️</button>
@@ -678,7 +687,6 @@ export default function Home() {
 
                 {ejercicios.map((item) => (
                   <div key={item.id} className="bg-slate-950 p-3 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
-                    {/* TIPO DE ACTIVIDAD CON TODO EL ESPACIO DISPONIBLE */}
                     <div className="flex-1 min-w-0">
                       <label className="text-[10px] text-slate-400 block text-center mb-1">Tipo de Actividad</label>
                       <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${INPUT_CLS} w-full text-center truncate`}>
@@ -695,7 +703,6 @@ export default function Home() {
                       </select>
                     </div>
 
-                    {/* KCAL COMPACTO PARA 4 DÍGITOS MAXIMO */}
                     <div className="w-20 shrink-0 text-center">
                       <label className="text-[10px] text-amber-400 block text-center mb-1">Kcal</label>
                       <input type="number" value={item.calorias} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={`${INPUT_CLS} text-center px-1`} />
@@ -721,7 +728,6 @@ export default function Home() {
               <div className="space-y-4 text-center">
                 <p className="text-3xl font-black text-cyan-400">{(aguaMl / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-500">/ 2.50 L</span></p>
 
-                {/* BARRA DE PORCENTAJE HIDRATACIÓN */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs text-slate-400">
                     <span>Progreso</span>
@@ -742,7 +748,6 @@ export default function Home() {
               <div className="space-y-4 text-center">
                 <p className="text-3xl font-black text-violet-400">{suenoHoy.horas_totales} <span className="text-sm font-normal text-slate-500">/ 8.0 hrs</span></p>
 
-                {/* BARRA DE PORCENTAJE DESCANSO */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs text-slate-400">
                     <span>Progreso</span>
