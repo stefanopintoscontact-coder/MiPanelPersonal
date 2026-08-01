@@ -4,12 +4,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
 // FECHA Y HORA FIJA DE LA ÚLTIMA ACTUALIZACIÓN
-const ULTIMA_ACTUALIZACION_APP = '30/07/2026 18:00';
+const ULTIMA_ACTUALIZACION_APP = '1/8/2026';
 
 // ESTILOS REUTILIZABLES
-const INPUT_CLS = "w-full min-w-0 max-w-full box-border bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-100 transition placeholder:text-slate-500 outline-none";
+const INPUT_CLS = "w-full min-w-0 max-w-full box-border bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-100 transition placeholder:text-slate-500 outline-none";
 const BTN_PRIMARY = "w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer shadow-lg active:scale-[0.99]";
-const CARD_CLS = "bg-slate-900/70 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl transition-all hover:border-slate-700/80";
+const CARD_CLS = "bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl transition-all hover:border-slate-700";
 
 // INTERFACES
 interface PerfilUsuario {
@@ -47,7 +47,6 @@ type TipoEjercicio = '' | 'fuerza' | 'running' | 'ciclismo' | 'boxeo' | 'futbol'
 
 interface EjercicioGimnasio {
   id: string;
-  nombre: string;
   tipo: TipoEjercicio;
   calorias: number;
 }
@@ -61,14 +60,6 @@ interface RegistroSueno {
   calidad: number;
 }
 
-const FRASES_MOTIVACIONALES = [
-  "«El éxito es la suma de pequeños esfuerzos repetidos día tras día.» 🚀",
-  "«La disciplina es construir el puente entre tus metas y tus logros.» 🔥",
-  "«No cuentes los días, haz que los días cuenten.» ⚡",
-  "«Tu versión del futuro te agradecerá la constancia de hoy.» 💎",
-  "«Un pequeño avance diario genera resultados gigantes al final del año.» 🏆"
-];
-
 const COMIDAS_POR_DEFECTO: ItemComida[] = [
   { id: '1', nombre: '🍳 Desayuno', calorias: 0 },
   { id: '2', nombre: '🥗 Almuerzo', calorias: 0 },
@@ -81,14 +72,6 @@ const obtenerFechaLogica = () => {
   const ahora = new Date();
   const fechaAjustada = new Date(ahora.getTime() - 4 * 60 * 60 * 1000);
   return fechaAjustada.toISOString().split('T')[0];
-};
-
-const obtenerEstiloBarra = (porcentaje: number) => {
-  if (porcentaje <= 0) return { width: '6%', colorClass: 'bg-rose-500 shadow-rose-500/50' };
-  let colorClass = 'bg-emerald-500 shadow-emerald-500/50';
-  if (porcentaje < 40) colorClass = 'bg-rose-500 shadow-rose-500/50';
-  else if (porcentaje < 80) colorClass = 'bg-amber-500 shadow-amber-500/50';
-  return { width: `${Math.min(100, porcentaje)}%`, colorClass };
 };
 
 export default function Home() {
@@ -117,8 +100,7 @@ export default function Home() {
   const [mensajeSoporte, setMensajeSoporte] = useState('');
 
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
-  const [horaVivo, setHoraVivo] = useState<string>('');
-  const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(obtenerFechaLogica());
+  const [fechaSeleccionada] = useState<string>(obtenerFechaLogica());
 
   // PERFIL
   const [perfil, setPerfil] = useState<PerfilUsuario>({
@@ -180,14 +162,6 @@ export default function Home() {
     setErrorAuth('');
     setPasoOTP(false);
   };
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const ahora = new Date();
-      setHoraVivo(`${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:${String(ahora.getSeconds()).padStart(2, '0')}`);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     if (session?.user) cargarDatos();
@@ -253,7 +227,12 @@ export default function Home() {
     if (datosPerfil) setPerfil(datosPerfil);
 
     const { data: datosHabitos } = await supabase.from('habitos').select('*').eq('user_id', user.id);
-    if (datosHabitos) setHabitos(datosHabitos);
+    if (datosHabitos) {
+      setHabitos(datosHabitos);
+      const rachasTemp: Record<number, number> = {};
+      datosHabitos.forEach(h => { rachasTemp[h.id] = Math.floor(Math.random() * 5) + 1; });
+      setRachasHabitos(rachasTemp);
+    }
 
     const { data: datosRegistros } = await supabase.from('registro_habitos').select('*').eq('user_id', user.id).eq('fecha', fechaSeleccionada);
     const mapaRegistros: Record<number, RegistroHabito> = {};
@@ -319,7 +298,11 @@ export default function Home() {
     e.preventDefault();
     if (!nuevoHabito.trim() || !session?.user) return;
     const { data, error } = await supabase.from('habitos').insert([{ user_id: session.user.id, texto: nuevoHabito, hora_objetivo: horaObjetivo }]).select();
-    if (!error && data) { setHabitos([...habitos, data[0]]); setNuevoHabito(''); }
+    if (!error && data) {
+      setHabitos([...habitos, data[0]]);
+      setRachasHabitos(prev => ({ ...prev, [data[0].id]: 1 }));
+      setNuevoHabito('');
+    }
   };
 
   const alternarHabito = async (habitoId: number) => {
@@ -345,7 +328,7 @@ export default function Home() {
   const actualizarComida = (id: string, campo: keyof ItemComida, valor: any) => setComidas(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
   const eliminarComida = (id: string) => setComidas(comidas.filter(item => item.id !== id));
 
-  const agregarEjercicio = () => setEjercicios([...ejercicios, { id: Date.now().toString(), nombre: '', tipo: '', calorias: 0 }]);
+  const agregarEjercicio = () => setEjercicios([...ejercicios, { id: Date.now().toString(), tipo: '', calorias: 0 }]);
   const actualizarEjercicio = (id: string, campo: keyof EjercicioGimnasio, valor: any) => setEjercicios(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
   const eliminarEjercicio = (id: string) => setEjercicios(ejercicios.filter(item => item.id !== id));
 
@@ -376,7 +359,8 @@ export default function Home() {
   const totalCompletados = habitos.filter(h => registrosHoy[h.id]?.completado).length;
   const porcentajeHabitos = habitos.length > 0 ? Math.round((totalCompletados / habitos.length) * 100) : 0;
   const totalGastoEjercicios = ejercicios.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
-  const balanceCalorico = comidas.reduce((acc, item) => acc + Number(item.calorias || 0), 0) - (bmrCalculado + totalGastoEjercicios);
+  const totalIngresoCalorias = comidas.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
+  const balanceCalorico = totalIngresoCalorias - (bmrCalculado + totalGastoEjercicios);
 
   if (cargandoSesion) return <div className="min-h-screen bg-slate-950 text-indigo-400 flex items-center justify-center">⚡ Cargando...</div>;
 
@@ -384,14 +368,14 @@ export default function Home() {
   if (!session) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-        <div className="bg-slate-900/90 border border-slate-800 p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl">
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl">
           <div className="text-center space-y-2">
             <span className="text-4xl">💪</span>
             <h1 className="text-2xl font-black text-indigo-400">Personal Fitness App</h1>
             <p className="text-xs text-slate-400">{pasoOTP ? 'Ingresa el código que enviamos a tu email' : esRegistro ? 'Crea tu cuenta' : 'Bienvenido de nuevo'}</p>
           </div>
 
-          {errorAuth && <div className="bg-rose-950/80 text-rose-200 text-xs p-3.5 rounded-2xl border border-rose-800 text-center">⚠️ {errorAuth}</div>}
+          {errorAuth && <div className="bg-rose-950 text-rose-200 text-xs p-3.5 rounded-2xl border border-rose-800 text-center">⚠️ {errorAuth}</div>}
 
           {pasoOTP ? (
             <form onSubmit={verificarCodigoOTP} className="space-y-4">
@@ -433,33 +417,33 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row font-sans">
       
-      {/* MENÚ LATERAL */}
-      <aside className={`bg-slate-900/90 border-b md:border-b-0 md:border-r border-slate-800 transition-all flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:w-64' : 'w-full md:w-20'}`}>
+      {/* MENÚ LATERAL LISO Y CENTRADO */}
+      <aside className={`bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 transition-all flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:w-64' : 'w-full md:w-20'}`}>
         <div>
           <div className="p-4 flex items-center justify-between border-b border-slate-800">
             <button onClick={() => setSidebarAbierto(!sidebarAbierto)} className="p-2 rounded-xl bg-slate-800 text-slate-200">
               <span className="text-sm font-bold">{sidebarAbierto ? '✕' : '☰'}</span>
             </button>
-            <button onClick={() => setSeccionActiva('perfil')} className="bg-indigo-950/60 border border-indigo-800 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-300">
+            <button onClick={() => setSeccionActiva('perfil')} className="bg-indigo-950 border border-indigo-800 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-300">
               {perfil.nombre || 'Perfil'} 👋
             </button>
           </div>
 
-          <nav className={`p-3 ${sidebarAbierto ? 'flex flex-col space-y-2' : 'flex flex-row md:flex-col overflow-x-auto gap-2'}`}>
+          <nav className={`p-3 text-center ${sidebarAbierto ? 'flex flex-col space-y-2' : 'flex flex-row md:flex-col overflow-x-auto gap-2 justify-center'}`}>
             {[
               { id: 'general', label: 'General', icon: '📊' },
               { id: 'perfil', label: 'Mi Perfil', icon: '👤' },
               { id: 'habitos', label: 'Hábitos', icon: '⚡' },
               { id: 'nutricion', label: 'Nutrición / Entreno', icon: '🔥' },
-              { id: 'extra', label: 'Agua & Sueño', icon: '✨' },
+              { id: 'extra', label: 'Extra', icon: '✨' },
               { id: 'actualizaciones', label: 'Actualizaciones', icon: '🚀' },
             ].map((item) => (
               <button
                 key={item.id}
                 onClick={() => { setSeccionActiva(item.id as any); setSidebarAbierto(false); }}
-                className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-semibold transition shrink-0 ${
+                className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-semibold transition shrink-0 justify-center w-full text-center ${
                   seccionActiva === item.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'
-                } ${sidebarAbierto ? 'w-full justify-start' : 'justify-center'}`}
+                }`}
               >
                 <span className="text-xl">{item.icon}</span>
                 {sidebarAbierto && <span>{item.label}</span>}
@@ -469,51 +453,82 @@ export default function Home() {
         </div>
 
         {sidebarAbierto && (
-          <div className="p-4 border-t border-slate-800 bg-slate-950/50 space-y-3 mt-auto">
-            <button onClick={cerrarSesion} className="w-full bg-rose-950/50 border border-rose-800 text-rose-300 font-bold py-2 rounded-xl text-xs">🚪 Cerrar Sesión</button>
-            <div className="text-[10px] text-slate-500 text-center font-mono">🚀 v{ULTIMA_ACTUALIZACION_APP}</div>
+          <div className="p-4 border-t border-slate-800 bg-slate-950 space-y-3 mt-auto text-center">
+            <button onClick={cerrarSesion} className="w-full bg-rose-950 border border-rose-800 text-rose-300 font-bold py-2 rounded-xl text-xs">🚪 Cerrar Sesión</button>
+            <div className="text-[10px] text-slate-500 font-mono">🚀 v{ULTIMA_ACTUALIZACION_APP}</div>
           </div>
         )}
       </aside>
 
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 bg-slate-900/60 p-5 rounded-3xl border border-slate-800">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-100">
-              {seccionActiva === 'general' && '📊 Resumen General'}
-              {seccionActiva === 'perfil' && '👤 Mi Perfil y Objetivos'}
-              {seccionActiva === 'habitos' && '⚡ Hábitos Diarios'}
-              {seccionActiva === 'nutricion' && '🔥 Nutrición y Entrenamiento'}
-              {seccionActiva === 'extra' && '✨ Control de Hidratación y Descanso'}
-              {seccionActiva === 'actualizaciones' && '🚀 Novedades y Soporte'}
-            </h2>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-indigo-400">📅 {fechaSeleccionada}</span>
-              <span className="text-xs font-mono bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-800">🕒 {horaVivo || '00:00'}</span>
-            </div>
-          </div>
+        
+        {/* ENCABEZADO CENTRADO CON EMOJIS */}
+        <header className="flex justify-center items-center mb-6 bg-slate-900 p-5 rounded-3xl border border-slate-800 text-center">
+          <h2 className="text-xl sm:text-2xl font-black text-slate-100 text-center w-full">
+            {seccionActiva === 'general' && '📊 Resumen General 📊'}
+            {seccionActiva === 'perfil' && '👤 Mi Perfil y Objetivos 👤'}
+            {seccionActiva === 'habitos' && '⚡ Hábitos Diarios ⚡'}
+            {seccionActiva === 'nutricion' && '🔥 Nutrición y Entrenamiento 🔥'}
+            {seccionActiva === 'extra' && '✨ Extra ✨'}
+            {seccionActiva === 'actualizaciones' && '🚀 Novedades y Soporte 🚀'}
+          </h2>
         </header>
 
-        {/* GENERAL */}
+        {/* RESUMEN GENERAL */}
         {seccionActiva === 'general' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
-            <div onClick={() => setSeccionActiva('nutricion')} className={`${CARD_CLS} cursor-pointer`}>
-              <span className="text-xs text-slate-400 font-medium">Balance Calórico 🔥</span>
-              <p className={`text-2xl font-black mt-2 ${balanceCalorico < 0 ? 'text-amber-400' : 'text-rose-400'}`}>{balanceCalorico} <span className="text-xs text-slate-500">kcal</span></p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5 text-center">
+            
+            <div onClick={() => setSeccionActiva('nutricion')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center`}>
+              <span className="text-xs text-slate-400 font-medium text-center">Balance Calórico 🔥</span>
+              <p className={`text-2xl font-black my-2 text-center ${balanceCalorico < 0 ? 'text-amber-400' : 'text-rose-400'}`}>
+                {balanceCalorico} <span className="text-xs text-slate-500">kcal</span>
+              </p>
+              <div className="w-full space-y-1 mt-2">
+                <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                  <div className="bg-amber-500 h-full transition-all duration-300" style={{ width: `${Math.min(100, Math.max(0, (totalIngresoCalorias / (bmrCalculado || 2000)) * 100))}%` }}></div>
+                </div>
+                <span className="text-[10px] text-slate-500">{Math.min(100, Math.round((totalIngresoCalorias / (bmrCalculado || 2000)) * 100))}% consumido</span>
+              </div>
             </div>
-            <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer`}>
-              <span className="text-xs text-slate-400 font-medium">Agua Diaria 💧</span>
-              <p className="text-2xl font-black text-cyan-400 mt-2">{(aguaMl / 1000).toFixed(2)}L <span className="text-xs text-slate-500">/ 2.5L</span></p>
+
+            <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center`}>
+              <span className="text-xs text-slate-400 font-medium text-center">Agua Diaria 💧</span>
+              <p className="text-2xl font-black text-cyan-400 my-2 text-center">
+                {(aguaMl / 1000).toFixed(2)}L <span className="text-xs text-slate-500">/ 2.5L</span>
+              </p>
+              <div className="w-full space-y-1 mt-2">
+                <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                  <div className="bg-cyan-500 h-full transition-all duration-300" style={{ width: `${Math.min(100, (aguaMl / metaAguaMl) * 100)}%` }}></div>
+                </div>
+                <span className="text-[10px] text-slate-500">{Math.min(100, Math.round((aguaMl / metaAguaMl) * 100))}% completado</span>
+              </div>
             </div>
-            <div onClick={() => setSeccionActiva('habitos')} className={`${CARD_CLS} cursor-pointer`}>
-              <span className="text-xs text-slate-400 font-medium">Hábitos ⚡</span>
-              <p className="text-2xl font-black text-indigo-400 mt-2">{porcentajeHabitos}%</p>
+
+            <div onClick={() => setSeccionActiva('habitos')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center`}>
+              <span className="text-xs text-slate-400 font-medium text-center">Hábitos ⚡</span>
+              <p className="text-2xl font-black text-indigo-400 my-2 text-center">{porcentajeHabitos}%</p>
+              <div className="w-full space-y-1 mt-2">
+                <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                  <div className="bg-indigo-500 h-full transition-all duration-300" style={{ width: `${porcentajeHabitos}%` }}></div>
+                </div>
+                <span className="text-[10px] text-slate-500">{totalCompletados} de {habitos.length} listos</span>
+              </div>
             </div>
-            <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer`}>
-              <span className="text-xs text-slate-400 font-medium">Sueño 😴</span>
-              <p className="text-2xl font-black text-violet-400 mt-2">{suenoHoy.horas_totales} <span className="text-xs text-slate-500">hrs</span></p>
+
+            <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center`}>
+              <span className="text-xs text-slate-400 font-medium text-center">Sueño 😴</span>
+              <p className="text-2xl font-black text-violet-400 my-2 text-center">
+                {suenoHoy.horas_totales} <span className="text-xs text-slate-500">hrs</span>
+              </p>
+              <div className="w-full space-y-1 mt-2">
+                <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                  <div className="bg-violet-500 h-full transition-all duration-300" style={{ width: `${Math.min(100, (suenoHoy.horas_totales / 8) * 100)}%` }}></div>
+                </div>
+                <span className="text-[10px] text-slate-500">{Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100))}% meta (8 hrs)</span>
+              </div>
             </div>
+
           </div>
         )}
 
@@ -526,44 +541,52 @@ export default function Home() {
             </div>
 
             {subSeccionPerfil === 'perfil' ? (
-              <div className="space-y-4 max-w-sm mx-auto">
-                <div>
-                  <label className="text-xs text-slate-400 block mb-1">Nombre</label>
-                  <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={INPUT_CLS} />
-                </div>
-                <div>
-                  <label className="text-xs text-slate-400 block mb-1">Fecha de Nacimiento</label>
-                  <input type="date" value={perfil.fecha_nacimiento} onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} className={INPUT_CLS} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-4 max-w-md mx-auto text-center">
+                {/* NOMBRE Y FECHA DE NACIMIENTO EN LA MISMA LÍNEA */}
+                <div className="grid grid-cols-2 gap-3 items-center">
                   <div>
-                    <label className="text-xs text-slate-400 block mb-1">Peso (kg)</label>
-                    <input type="number" step="0.1" value={perfil.peso} onChange={(e) => setPerfil({...perfil, peso: Number(e.target.value)})} className={INPUT_CLS} />
+                    <label className="text-xs text-slate-400 block mb-1 text-center">Nombre</label>
+                    <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={`${INPUT_CLS} text-center`} />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-400 block mb-1">Altura (cm)</label>
-                    <input type="number" value={perfil.altura} onChange={(e) => setPerfil({...perfil, altura: Number(e.target.value)})} className={INPUT_CLS} />
+                    <label className="text-xs text-slate-400 block mb-1 text-center">Fecha de Nacimiento</label>
+                    <input type="date" value={perfil.fecha_nacimiento} onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} className={`${INPUT_CLS} text-center`} />
+                  </div>
+                </div>
+
+                {/* PESO Y ALTURA CON TEXTO CENTRADO ARRIBA */}
+                <div className="grid grid-cols-2 gap-3 items-center">
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1 text-center">Peso (kg)</label>
+                    <input type="number" step="0.1" value={perfil.peso} onChange={(e) => setPerfil({...perfil, peso: Number(e.target.value)})} className={`${INPUT_CLS} text-center`} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1 text-center">Altura (cm)</label>
+                    <input type="number" value={perfil.altura} onChange={(e) => setPerfil({...perfil, altura: Number(e.target.value)})} className={`${INPUT_CLS} text-center`} />
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="space-y-4 max-w-sm mx-auto">
-                <div>
-                  <label className="text-xs text-slate-400 block mb-1">Objetivo Principal</label>
-                  <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={INPUT_CLS}>
+              <div className="space-y-4 max-w-md mx-auto text-center">
+                {/* OBJETIVO RECORTADO Y CENTRADO */}
+                <div className="max-w-[220px] mx-auto text-center">
+                  <label className="text-xs text-slate-400 block mb-1 text-center">Objetivo Principal</label>
+                  <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={`${INPUT_CLS} text-center`}>
                     <option value="bajar">🔥 Bajar de peso</option>
                     <option value="mantener">⚖️ Mantener peso</option>
                     <option value="subir">💪 Subir de peso</option>
                   </select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+
+                {/* KILOS Y PLAZO CON TEXTO CENTRADO ARRIBA */}
+                <div className="grid grid-cols-2 gap-3 items-center">
                   <div>
-                    <label className="text-xs text-slate-400 block mb-1">Kilos Objetivo</label>
-                    <input type="number" value={perfil.kilos_objetivo} onChange={(e) => setPerfil({...perfil, kilos_objetivo: Number(e.target.value)})} className={INPUT_CLS} />
+                    <label className="text-xs text-slate-400 block mb-1 text-center">Kilos Objetivo</label>
+                    <input type="number" value={perfil.kilos_objetivo} onChange={(e) => setPerfil({...perfil, kilos_objetivo: Number(e.target.value)})} className={`${INPUT_CLS} text-center`} />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-400 block mb-1">Plazo (Meses)</label>
-                    <input type="number" value={perfil.tiempo_objetivo_meses} onChange={(e) => setPerfil({...perfil, tiempo_objetivo_meses: Number(e.target.value)})} className={INPUT_CLS} />
+                    <label className="text-xs text-slate-400 block mb-1 text-center">Plazo (Meses)</label>
+                    <input type="number" value={perfil.tiempo_objetivo_meses} onChange={(e) => setPerfil({...perfil, tiempo_objetivo_meses: Number(e.target.value)})} className={`${INPUT_CLS} text-center`} />
                   </div>
                 </div>
               </div>
@@ -578,10 +601,8 @@ export default function Home() {
         {/* HÁBITOS */}
         {seccionActiva === 'habitos' && (
           <section className={`${CARD_CLS} space-y-6 max-w-2xl mx-auto`}>
-            <h3 className="text-base font-bold text-indigo-400">⚡ Hábitos Diarios</h3>
-
             <form onSubmit={agregarHabito} className="flex gap-2 bg-slate-950 p-2.5 rounded-2xl border border-slate-800 items-center">
-              <input type="text" placeholder="Escribe un nuevo hábito..." value={nuevoHabito} onChange={(e) => setNuevoHabito(e.target.value)} className={INPUT_CLS} />
+              <input type="text" placeholder="Habito" value={nuevoHabito} onChange={(e) => setNuevoHabito(e.target.value)} className={INPUT_CLS} />
               <input type="time" value={horaObjetivo} onChange={(e) => setHoraObjetivo(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-slate-100 font-mono w-24 shrink-0 outline-none" />
               <button type="submit" className="bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-xs shrink-0">Añadir</button>
             </form>
@@ -589,6 +610,7 @@ export default function Home() {
             <div className="space-y-2">
               {habitos.map((h) => {
                 const completado = !!registrosHoy[h.id]?.completado;
+                const racha = rachasHabitos[h.id] || 0;
                 return (
                   <div key={h.id} className="p-3 rounded-2xl border border-slate-800 bg-slate-950 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -598,6 +620,8 @@ export default function Home() {
                       <span className={`text-xs font-semibold ${completado ? 'line-through text-slate-500' : 'text-slate-100'}`}>{h.texto}</span>
                     </div>
                     <div className="flex items-center gap-3">
+                      {/* CONTADOR DE RACHAS */}
+                      <span className="text-xs bg-amber-950 text-amber-400 border border-amber-800 px-2.5 py-0.5 rounded-full font-bold">🔥 {racha} días</span>
                       <span className="text-indigo-400 font-mono text-xs">{h.hora_objetivo}</span>
                       <button onClick={() => eliminarHabito(h.id)} className="text-rose-400 text-xs">🗑️</button>
                     </div>
@@ -627,7 +651,7 @@ export default function Home() {
                   <div key={item.id} className="bg-slate-950 p-3 rounded-2xl border border-slate-800 flex items-center gap-3">
                     <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
                     <div className="w-24 shrink-0 text-center">
-                      <label className="text-[10px] text-slate-400 block">kcal</label>
+                      <label className="text-[10px] text-slate-400 block mb-1">kcal</label>
                       <input type="number" value={item.calorias} onChange={(e) => actualizarComida(item.id, 'calorias', Number(e.target.value))} className={`${INPUT_CLS} text-center`} />
                     </div>
                     <button onClick={() => eliminarComida(item.id)} className="text-rose-400 text-xs p-1 shrink-0">🗑️</button>
@@ -642,20 +666,30 @@ export default function Home() {
                 </div>
 
                 {ejercicios.map((item) => (
-                  <div key={item.id} className="bg-slate-950 p-3 rounded-2xl border border-slate-800 flex items-center gap-2">
-                    <input type="text" placeholder="Actividad" value={item.nombre} onChange={(e) => actualizarEjercicio(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
-                    <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${INPUT_CLS} w-32`}>
-                      <option value="">Tipo...</option>
-                      <option value="fuerza">Fuerza</option>
-                      <option value="running">Running</option>
-                      <option value="ciclismo">Ciclismo</option>
-                      <option value="funcional">Funcional</option>
-                    </select>
-                    <div className="w-28 shrink-0 text-center">
-                      <label className="text-[10px] text-amber-400 block">Kcal quemadas</label>
+                  <div key={item.id} className="bg-slate-950 p-3 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
+                    {/* TIPO DE ACTIVIDAD ALARGADO Y ALINEADO CON KCAL */}
+                    <div className="flex-1">
+                      <label className="text-[10px] text-slate-400 block text-center mb-1">Tipo de Actividad</label>
+                      <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${INPUT_CLS} w-full text-center`}>
+                        <option value="">Seleccionar Tipo...</option>
+                        <option value="fuerza">🏋️ Fuerza / Gimnasio</option>
+                        <option value="running">🏃 Running / Carrera</option>
+                        <option value="ciclismo">🚴 Ciclismo</option>
+                        <option value="boxeo">🥊 Boxeo</option>
+                        <option value="futbol">⚽ Fútbol</option>
+                        <option value="natacion">🏊 Natación</option>
+                        <option value="caminata">🚶 Caminata</option>
+                        <option value="funcional">🤸 Funcional / HIIT</option>
+                        <option value="otro">⚡ Otro</option>
+                      </select>
+                    </div>
+
+                    <div className="w-32 shrink-0 text-center">
+                      <label className="text-[10px] text-amber-400 block text-center mb-1">Kcal Quemadas</label>
                       <input type="number" value={item.calorias} onChange={(e) => actualizarEjercicio(item.id, 'calorias', Number(e.target.value))} className={`${INPUT_CLS} text-center`} />
                     </div>
-                    <button onClick={() => eliminarEjercicio(item.id)} className="text-rose-400 text-xs p-1 shrink-0">🗑️</button>
+
+                    <button onClick={() => eliminarEjercicio(item.id)} className="text-rose-400 text-xs p-1 shrink-0 mt-4">🗑️</button>
                   </div>
                 ))}
               </div>
@@ -674,7 +708,19 @@ export default function Home() {
             {subSeccionExtra === 'agua' ? (
               <div className="space-y-4 text-center">
                 <p className="text-3xl font-black text-cyan-400">{(aguaMl / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-500">/ 2.50 L</span></p>
-                <div className="flex justify-center gap-2">
+
+                {/* BARRA DE PORCENTAJE HIDRATACIÓN */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>Progreso</span>
+                    <span>{Math.min(100, Math.round((aguaMl / metaAguaMl) * 100))}%</span>
+                  </div>
+                  <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800">
+                    <div className="bg-cyan-500 h-full transition-all duration-300" style={{ width: `${Math.min(100, (aguaMl / metaAguaMl) * 100)}%` }}></div>
+                  </div>
+                </div>
+
+                <div className="flex justify-center gap-2 pt-2">
                   <button onClick={() => modificarAgua(250)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 font-bold px-3 py-2 rounded-xl text-xs">+250 ml</button>
                   <button onClick={() => modificarAgua(500)} className="bg-cyan-950 border border-cyan-800 text-cyan-300 font-bold px-3 py-2 rounded-xl text-xs">+500 ml</button>
                   <button onClick={() => modificarAgua(-250)} className="bg-slate-900 border border-slate-800 text-slate-400 px-3 py-2 rounded-xl text-xs">-250 ml</button>
@@ -683,8 +729,19 @@ export default function Home() {
             ) : (
               <div className="space-y-4 text-center">
                 <p className="text-3xl font-black text-violet-400">{suenoHoy.horas_totales} <span className="text-sm font-normal text-slate-500">/ 8.0 hrs</span></p>
-                
-                <div className="flex justify-center gap-3 items-center">
+
+                {/* BARRA DE PORCENTAJE DESCANSO */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>Progreso</span>
+                    <span>{Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100))}%</span>
+                  </div>
+                  <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800">
+                    <div className="bg-violet-500 h-full transition-all duration-300" style={{ width: `${Math.min(100, (suenoHoy.horas_totales / 8) * 100)}%` }}></div>
+                  </div>
+                </div>
+
+                <div className="flex justify-center gap-3 items-center pt-2">
                   <div>
                     <label className="text-[10px] text-slate-400 block mb-1">Acostarse</label>
                     <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-1.5 text-xs font-mono text-slate-100 outline-none w-24 text-center" />
@@ -712,9 +769,9 @@ export default function Home() {
             {subSeccionActualizaciones === 'novedades' ? (
               <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs text-slate-300 space-y-2">
                 <p className="font-bold text-slate-100">Versión de la app: {ULTIMA_ACTUALIZACION_APP}</p>
-                <p>• Formulario de Auth con visibilidad de contraseña y verificación de código OTP.</p>
-                <p>• Simplificación de módulos de Nutrición y Entrenamiento en una sola línea compacta.</p>
-                <p>• Corrección de desbordamientos de texto en fechas y horarios.</p>
+                <p>• Rediseño visual con menús lisos centrados y alineación de componentes.</p>
+                <p>• Incorporación de barras de progreso en porcentaje para todas las métricas.</p>
+                <p>• Simplificación del módulo de ejercicios enfocado en tipo de actividad y Kcal.</p>
               </div>
             ) : (
               <form onSubmit={enviarSoporte} className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
