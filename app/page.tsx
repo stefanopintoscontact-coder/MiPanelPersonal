@@ -123,7 +123,8 @@ export default function Home() {
   const [cargandoAuth, setCargandoAuth] = useState(false);
   const [errorAuth, setErrorAuth] = useState('');
 
-  // NAVEGACIÓN Y MODAL
+  // NAVEGACIÓN Y CONTROL DE CARGA DE DATOS
+  const [datosCargados, setDatosCargados] = useState(false);
   const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'habitos' | 'nutricion' | 'extra' | 'actualizaciones'>('general');
   const [subSeccionPerfil, setSubSeccionPerfil] = useState<'perfil' | 'objetivo'>('perfil');
   const [subSeccionNutricion, setSubSeccionNutricion] = useState<'nutricion' | 'entrenamiento'>('nutricion');
@@ -260,6 +261,7 @@ export default function Home() {
   const cargarDatos = async () => {
     const user = session?.user;
     if (!user) return;
+    setDatosCargados(false);
 
     const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').eq('user_id', user.id).maybeSingle();
     if (datosPerfil) setPerfil(datosPerfil);
@@ -288,6 +290,8 @@ export default function Home() {
 
     const { data: datosSueno } = await supabase.from('registro_sueno').select('*').eq('user_id', user.id).eq('fecha', fechaSeleccionada).maybeSingle();
     setSuenoHoy(datosSueno || { fecha: fechaSeleccionada, hora_acostarse: '23:00', hora_levantarse: '07:00', horas_totales: 0, calidad: 3 });
+
+    setDatosCargados(true);
   };
 
   const bmrCalculado = useMemo(() => {
@@ -300,7 +304,7 @@ export default function Home() {
   }, [perfil]);
 
   const guardarCaloriasDB = async (nuevosEjercicios = ejercicios, nuevasComidas = comidas, nuevaAgua = aguaMl) => {
-    if (!session?.user) return;
+    if (!session?.user || !datosCargados) return;
     await supabase.from('registro_calorias').upsert({
       user_id: session.user.id,
       fecha: fechaSeleccionada,
@@ -312,21 +316,21 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (!session?.user) return;
+    if (!session?.user || !datosCargados) return;
     const timer = setTimeout(() => guardarCaloriasDB(), 600);
     return () => clearTimeout(timer);
-  }, [comidas, ejercicios, aguaMl, fechaSeleccionada, session]);
+  }, [comidas, ejercicios, aguaMl, fechaSeleccionada, session, datosCargados]);
 
   useEffect(() => {
-    if (!session?.user) return;
+    if (!session?.user || !datosCargados) return;
     const timer = setTimeout(() => {
       supabase.from('perfil_usuario').upsert({ user_id: session.user.id, ...perfil }, { onConflict: 'user_id' });
     }, 1000);
     return () => clearTimeout(timer);
-  }, [perfil, session]);
+  }, [perfil, session, datosCargados]);
 
   useEffect(() => {
-    if (!session?.user) return;
+    if (!session?.user || !datosCargados) return;
     const timer = setTimeout(() => {
       const [hA, mA] = suenoHoy.hora_acostarse.split(':').map(Number);
       const [hL, mL] = suenoHoy.hora_levantarse.split(':').map(Number);
@@ -338,7 +342,7 @@ export default function Home() {
       supabase.from('registro_sueno').upsert(datos, { onConflict: 'user_id,fecha' });
     }, 1000);
     return () => clearTimeout(timer);
-  }, [suenoHoy, fechaSeleccionada, session]);
+  }, [suenoHoy, fechaSeleccionada, session, datosCargados]);
 
   const guardarPerfil = async () => {
     if (!session?.user) return;
@@ -432,7 +436,7 @@ export default function Home() {
   const moverEjercicio = (index: number, direccion: 'arriba' | 'abajo') => {
     const destino = direccion === 'arriba' ? index - 1 : index + 1;
     if (destino < 0 || destino >= ejercicios.length) return;
-    const copia = [...ejercicios]; // 👈 Corregido a [...ejercicios]
+    const copia = [...ejercicios];
     const [removido] = copia.splice(index, 1);
     copia.splice(destino, 0, removido);
     setEjercicios(copia);
@@ -483,7 +487,6 @@ export default function Home() {
 
     if (perfil.objetivo === 'subir') {
       if (balanceCalorico <= 0) {
-        // En déficit teniendo meta de subir: Barra en 0% (vaciada en rojo)
         pct = 0;
         colorBarra = "bg-rose-500 shadow-rose-500/50";
         colorTexto = "text-rose-400";
@@ -570,6 +573,21 @@ export default function Home() {
     return { bar: "bg-rose-500 shadow-rose-500/50", text: "text-rose-400" };
   };
 
+  // CONTROL NAVEGACIÓN FLECHAS
+  const indiceSeccionActual = SECCIONES.findIndex(s => s.id === seccionActiva);
+
+  const irSeccionAnterior = () => {
+    if (indiceSeccionActual > 0) {
+      setSeccionActiva(SECCIONES[indiceSeccionActual - 1].id as any);
+    }
+  };
+
+  const irSeccionSiguiente = () => {
+    if (indiceSeccionActual < SECCIONES.length - 1) {
+      setSeccionActiva(SECCIONES[indiceSeccionActual + 1].id as any);
+    }
+  };
+
   if (cargandoSesion) return <div className="min-h-screen bg-slate-950 text-indigo-400 flex items-center justify-center font-sans animate-pulse text-sm">⚡ Cargando tu centro de entrenamiento...</div>;
 
   if (!session) {
@@ -627,12 +645,23 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#0b0f17] text-slate-100 flex flex-col md:flex-row font-sans selection:bg-indigo-500 selection:text-white">
       
-      {/* MENÚ LATERAL Y NAVEGACIÓN (BOTÓN AGRANDADO) */}
+      {/* ESTILOS DE ANIMACIÓN DE PESTAÑAS */}
+      <style jsx global>{`
+        @keyframes fadeInTab {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animar-pestana {
+          animation: fadeInTab 0.25s ease-out forwards;
+        }
+      `}</style>
+
+      {/* MENÚ LATERAL Y NAVEGACIÓN */}
       <aside className={`bg-slate-900/90 backdrop-blur-xl border-b md:border-b-0 md:border-r border-slate-800/80 transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:w-64' : 'w-full md:w-20'}`}>
         <div>
           <div className="p-4 flex items-center justify-between border-b border-slate-800/80 gap-2">
             
-            {/* BOTÓN AGRANDADO CON BARRA Y TEXTO "MENÚ" */}
+            {/* BOTÓN CON BARRA Y TEXTO "MENÚ" */}
             <button 
               onClick={() => setSidebarAbierto(!sidebarAbierto)} 
               className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white transition active:scale-95 flex items-center gap-2.5 shadow-lg shadow-indigo-600/30 cursor-pointer"
@@ -689,9 +718,21 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
         
-        {/* ENCABEZADO CENTRADO */}
-        <header className="flex justify-center items-center mb-8 bg-slate-900/60 backdrop-blur-xl p-5 rounded-3xl border border-slate-800/80 text-center shadow-xl">
-          <h2 className="text-xl sm:text-2xl font-black text-center w-full flex items-center justify-center gap-2.5">
+        {/* ENCABEZADO CON FLECHAS DE NAVEGACIÓN A LOS LADOS */}
+        <header className="flex justify-between items-center mb-8 bg-slate-900/60 backdrop-blur-xl p-4 sm:p-5 rounded-3xl border border-slate-800/80 text-center shadow-xl">
+          {indiceSeccionActual > 0 ? (
+            <button 
+              onClick={irSeccionAnterior} 
+              className="p-2 sm:p-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 transition active:scale-90 font-bold text-sm sm:text-base border border-slate-700/60 cursor-pointer shrink-0"
+              title="Sección anterior"
+            >
+              ◀
+            </button>
+          ) : (
+            <div className="w-9 sm:w-10 shrink-0" />
+          )}
+
+          <h2 className="text-lg sm:text-2xl font-black text-center flex-1 flex items-center justify-center gap-2.5 px-2">
             {seccionActiva === 'general' && (
               <>
                 <span>📊</span>
@@ -735,515 +776,532 @@ export default function Home() {
               </>
             )}
           </h2>
+
+          {indiceSeccionActual < SECCIONES.length - 1 ? (
+            <button 
+              onClick={irSeccionSiguiente} 
+              className="p-2 sm:p-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 transition active:scale-90 font-bold text-sm sm:text-base border border-slate-700/60 cursor-pointer shrink-0"
+              title="Siguiente sección"
+            >
+              ▶
+            </button>
+          ) : (
+            <div className="w-9 sm:w-10 shrink-0" />
+          )}
         </header>
 
-        {/* RESUMEN GENERAL CON PESTAÑA / MODAL DE REFERENCIAS */}
-        {seccionActiva === 'general' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-center">
+        {/* CONTENEDOR ANIMADO DE CADA SECCIÓN */}
+        <div key={seccionActiva} className="animar-pestana">
+          
+          {/* RESUMEN GENERAL */}
+          {seccionActiva === 'general' && (
+            <div className="space-y-6">
               
-              {/* BALANCE CALÓRICO */}
-              <div onClick={() => setSeccionActiva('nutricion')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Balance Calórico 🔥</span>
-                <p className={`text-3xl font-black my-2 text-center transition-colors ${estadoCalorico.colorTexto}`}>
-                  {balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs text-slate-500 font-medium">kcal</span>
-                </p>
-                <div className="w-full space-y-1.5 mt-2">
-                  <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
-                    <div className={`h-full rounded-full transition-all duration-500 ${estadoCalorico.colorBarra}`} style={{ width: `${estadoCalorico.pct}%` }}></div>
-                  </div>
-                  <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold px-1">
-                    <span>{estadoCalorico.mensaje}</span>
-                    <span>{estadoCalorico.pct}%</span>
-                  </div>
-                </div>
+              {/* BOTÓN PARA ABRIR REFERENCIAS (UBICADO ARRIBA DEL TODO) */}
+              <div className="text-center pb-2">
+                <button 
+                  onClick={() => setMostrarReferencias(true)} 
+                  className="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium cursor-pointer transition flex items-center justify-center gap-1.5 mx-auto bg-slate-900/60 hover:bg-slate-900/90 px-4 py-2.5 rounded-xl border border-slate-800/80 shadow-md"
+                >
+                  <span>🔍</span>
+                  <span>Toca aquí para ver las referencias de los colores e indicadores</span>
+                </button>
               </div>
 
-              {/* AGUA */}
-              {(() => {
-                const pctAgua = Math.min(100, Math.round((aguaMl / metaAguaMl) * 100));
-                const colors = getDynamicColor(pctAgua);
-                return (
-                  <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Agua Diaria 💧</span>
-                    <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
-                      {(aguaMl / 1000).toFixed(2)}L <span className="text-xs text-slate-500 font-medium">/ 2.5L</span>
-                    </p>
-                    <div className="w-full space-y-1.5 mt-2">
-                      <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
-                        <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${pctAgua}%` }}></div>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-semibold">{pctAgua}% completado</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                
+                {/* BALANCE CALÓRICO */}
+                <div onClick={() => setSeccionActiva('nutricion')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                  <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center w-full">Balance Calórico 🔥</span>
+                  <p className={`text-3xl font-black my-2 text-center w-full transition-colors ${estadoCalorico.colorTexto}`}>
+                    {balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs text-slate-500 font-medium">kcal</span>
+                  </p>
+                  <div className="w-full space-y-1.5 mt-2 text-center">
+                    <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                      <div className={`h-full rounded-full transition-all duration-500 ${estadoCalorico.colorBarra}`} style={{ width: `${estadoCalorico.pct}%` }}></div>
                     </div>
-                  </div>
-                );
-              })()}
-
-              {/* HÁBITOS */}
-              {(() => {
-                const colors = getDynamicColor(porcentajeHabitos);
-                return (
-                  <div onClick={() => setSeccionActiva('habitos')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Hábitos ⚡</span>
-                    <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>{porcentajeHabitos}%</p>
-                    <div className="w-full space-y-1.5 mt-2">
-                      <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
-                        <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${porcentajeHabitos}%` }}></div>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-semibold">{totalCompletados} de {habitos.length} listos</span>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* SUEÑO */}
-              {(() => {
-                const pctSueno = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
-                const colors = getDynamicColor(pctSueno);
-                return (
-                  <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Sueño 😴</span>
-                    <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
-                      {suenoHoy.horas_totales} <span className="text-xs text-slate-500 font-medium">hrs</span>
-                    </p>
-                    <div className="w-full space-y-1.5 mt-2">
-                      <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
-                        <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${pctSueno}%` }}></div>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-semibold">{pctSueno}% meta (8 hrs)</span>
-                    </div>
-                  </div>
-                );
-              })()}
-
-            </div>
-
-            {/* BOTÓN PARA ABRIR REFERENCIAS */}
-            <div className="text-center pt-2">
-              <button 
-                onClick={() => setMostrarReferencias(true)} 
-                className="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium cursor-pointer transition flex items-center justify-center gap-1.5 mx-auto bg-slate-900/40 hover:bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-800/80"
-              >
-                <span>🔍</span>
-                <span>Toca aquí para ver las referencias de los colores e indicadores</span>
-              </button>
-            </div>
-
-            {/* PESTAÑA / MODAL DE REFERENCIAS */}
-            {mostrarReferencias && (
-              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full relative shadow-2xl space-y-4">
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                    <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                      <span>📖</span>
-                      <span>Referencias de Indicadores</span>
-                    </h3>
-                    <button 
-                      onClick={() => setMostrarReferencias(false)}
-                      className="text-slate-400 hover:text-white font-bold text-lg px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 transition"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  <div className="space-y-3.5 text-xs text-slate-300">
-                    <div className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
-                      <div className="w-3.5 h-3.5 rounded-full bg-rose-500 shrink-0 mt-0.5 shadow-md shadow-rose-500/50"></div>
-                      <div>
-                        <span className="font-bold text-rose-400 block mb-0.5">Rojo y Vacío (0%):</span>
-                        Estás lejos de tu objetivo o en dirección opuesta (ej. estar en déficit calórico cuando buscas subir de peso, o no haber registrado agua/hábitos).
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
-                      <div className="w-3.5 h-3.5 rounded-full bg-amber-500 shrink-0 mt-0.5 shadow-md shadow-amber-500/50"></div>
-                      <div>
-                        <span className="font-bold text-amber-400 block mb-0.5">Amarillo a la Mitad (50%):</span>
-                        Progreso intermedio o superávit/déficit leve. Vas por buen camino pero aún te falta para la meta óptima del día.
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
-                      <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shrink-0 mt-0.5 shadow-md shadow-emerald-500/50"></div>
-                      <div>
-                        <span className="font-bold text-emerald-400 block mb-0.5">Verde Lleno (100%):</span>
-                        ¡Meta diaria alcanzada con éxito! Has conseguido el rango ideal para tu balance calórico, hidratación o rutina.
-                      </div>
+                    <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold px-1 text-center w-full">
+                      <span className="w-full text-center">{estadoCalorico.mensaje} ({estadoCalorico.pct}%)</span>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
 
-          </div>
-        )}
-
-        {/* MI PERFIL Y OBJETIVOS (CON BARRA DE PROBABILIDAD Y FECHA DE NACIMIENTO ALINEADA) */}
-        {seccionActiva === 'perfil' && (
-          <section className={`${CARD_CLS} max-w-xl mx-auto space-y-6`}>
-            <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
-              <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-xs font-bold pb-2 transition ${subSeccionPerfil === 'perfil' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>👤 Datos Personales</button>
-              <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-xs font-bold pb-2 transition ${subSeccionPerfil === 'objetivo' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🎯 Mi Objetivo</button>
-            </div>
-
-            {subSeccionPerfil === 'perfil' ? (
-              <div className="space-y-4 max-w-md mx-auto text-center">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                  <div>
-                    <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Nombre</label>
-                    <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={`${INPUT_CLS} text-center`} />
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Fecha Nacimiento</label>
-                    <input 
-                      type="date" 
-                      value={perfil.fecha_nacimiento} 
-                      onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} 
-                      className={`${INPUT_CLS} text-center font-mono w-full`} 
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 items-center">
-                  <div>
-                    <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Peso (kg)</label>
-                    <CleanNumberInput step="0.1" value={perfil.peso} onChange={(v: number) => setPerfil({...perfil, peso: v})} className={`${INPUT_CLS} text-center font-bold`} />
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Altura (cm)</label>
-                    <CleanNumberInput value={perfil.altura} onChange={(v: number) => setPerfil({...perfil, altura: v})} className={`${INPUT_CLS} text-center font-bold`} />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4 max-w-md mx-auto text-center">
-                <div className="max-w-[220px] mx-auto text-center">
-                  <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Objetivo Principal</label>
-                  <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={`${INPUT_CLS} text-center font-bold`}>
-                    <option value="bajar">🔥 Bajar de peso</option>
-                    <option value="mantener">⚖️ Mantener peso</option>
-                    <option value="subir">💪 Subir de peso</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 items-center">
-                  <div>
-                    <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Kilos Objetivo</label>
-                    <CleanNumberInput value={perfil.kilos_objetivo} onChange={(v: number) => setPerfil({...perfil, kilos_objetivo: v})} className={`${INPUT_CLS} text-center font-bold`} />
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Plazo (Meses)</label>
-                    <CleanNumberInput value={perfil.tiempo_objetivo_meses} onChange={(v: number) => setPerfil({...perfil, tiempo_objetivo_meses: v})} className={`${INPUT_CLS} text-center font-bold`} />
-                  </div>
-                </div>
-
-                {/* BARRA DE PROBABILIDAD DE CUMPLIR EL OBJETIVO */}
+                {/* AGUA */}
                 {(() => {
-                  const prob = calcularProbabilidadObjetivo(perfil.kilos_objetivo, perfil.tiempo_objetivo_meses, perfil.objetivo);
-                  let colorBar = "bg-emerald-500 shadow-emerald-500/50";
-                  let colorTxt = "text-emerald-400";
-                  let msg = "Muy probable y saludable";
-
-                  if (prob < 30) {
-                    colorBar = "bg-rose-500 shadow-rose-500/50";
-                    colorTxt = "text-rose-400";
-                    msg = "Poco probable / Poco saludable";
-                  } else if (prob < 75) {
-                    colorBar = "bg-amber-500 shadow-amber-500/50";
-                    colorTxt = "text-amber-400";
-                    msg = "Exigente, requiere alta disciplina";
-                  }
-
+                  const pctAgua = Math.min(100, Math.round((aguaMl / metaAguaMl) * 100));
+                  const colors = getDynamicColor(pctAgua);
                   return (
-                    <div className="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800/80 space-y-2 mt-4 text-center">
-                      <div className="flex justify-between items-center text-xs font-semibold px-1">
-                        <span className="text-slate-400">Probabilidad de cumplirse:</span>
-                        <span className={`font-bold ${colorTxt}`}>{prob}% ({msg})</span>
+                    <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Agua Diaria 💧</span>
+                      <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
+                        {(aguaMl / 1000).toFixed(2)}L <span className="text-xs text-slate-500 font-medium">/ 2.5L</span>
+                      </p>
+                      <div className="w-full space-y-1.5 mt-2">
+                        <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                          <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${pctAgua}%` }}></div>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-semibold">{pctAgua}% completado</span>
                       </div>
-                      <div className="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
-                        <div className={`h-full rounded-full transition-all duration-500 ${colorBar}`} style={{ width: `${prob}%` }}></div>
+                    </div>
+                  );
+                })()}
+
+                {/* HÁBITOS */}
+                {(() => {
+                  const colors = getDynamicColor(porcentajeHabitos);
+                  return (
+                    <div onClick={() => setSeccionActiva('habitos')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Hábitos ⚡</span>
+                      <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>{porcentajeHabitos}%</p>
+                      <div className="w-full space-y-1.5 mt-2">
+                        <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                          <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${porcentajeHabitos}%` }}></div>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-semibold">{totalCompletados} de {habitos.length} listos</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* SUEÑO */}
+                {(() => {
+                  const pctSueno = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
+                  const colors = getDynamicColor(pctSueno);
+                  return (
+                    <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Sueño 😴</span>
+                      <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
+                        {suenoHoy.horas_totales} <span className="text-xs text-slate-500 font-medium">hrs</span>
+                      </p>
+                      <div className="w-full space-y-1.5 mt-2">
+                        <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                          <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${pctSueno}%` }}></div>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-semibold">{pctSueno}% meta (8 hrs)</span>
                       </div>
                     </div>
                   );
                 })()}
 
               </div>
-            )}
 
-            <button onClick={guardarPerfil} disabled={guardandoPerfil} className={`${BTN_PRIMARY} max-w-xs mx-auto block`}>
-              {guardandoPerfil ? 'Guardando...' : '💾 Guardar Perfil'}
-            </button>
-          </section>
-        )}
+              {/* MODAL DE REFERENCIAS */}
+              {mostrarReferencias && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                  <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full relative shadow-2xl space-y-4">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                      <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                        <span>📖</span>
+                        <span>Referencias de Indicadores</span>
+                      </h3>
+                      <button 
+                        onClick={() => setMostrarReferencias(false)}
+                        className="text-slate-400 hover:text-white font-bold text-lg px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 transition"
+                      >
+                        ✕
+                      </button>
+                    </div>
 
-        {/* HÁBITOS DIARIOS (NOMBRE COMPLETO Y CONTADORES EN ESQUINA SUPERIOR DERECHA) */}
-        {seccionActiva === 'habitos' && (
-          <section className={`${CARD_CLS} space-y-6 max-w-2xl mx-auto`}>
-            <form onSubmit={agregarHabito} className="flex gap-2 bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800/80 items-center shadow-inner">
-              <input 
-                type="text" 
-                placeholder="Ej: Meditar 10 min, Leer 20 págs..." 
-                value={nuevoHabito} 
-                onChange={(e) => setNuevoHabito(e.target.value)} 
-                className={`${INPUT_CLS} flex-1`} 
-              />
-              <input 
-                type="time" 
-                value={horaObjetivo} 
-                onChange={(e) => setHoraObjetivo(e.target.value)} 
-                className="bg-slate-900 border border-slate-800 rounded-xl px-2 py-2.5 text-xs text-indigo-300 font-mono w-20 text-center shrink-0 outline-none focus:border-indigo-500 font-bold [color-scheme:dark]" 
-              />
-              <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shrink-0 transition active:scale-95 shadow-lg shadow-indigo-600/30">
-                Añadir
-              </button>
-            </form>
+                    <div className="space-y-3.5 text-xs text-slate-300">
+                      <div className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+                        <div className="w-3.5 h-3.5 rounded-full bg-rose-500 shrink-0 mt-0.5 shadow-md shadow-rose-500/50"></div>
+                        <div>
+                          <span className="font-bold text-rose-400 block mb-0.5">Rojo y Vacío (0%):</span>
+                          Estás lejos de tu objetivo o en dirección opuesta (ej. estar en déficit calórico cuando buscas subir de peso, o no haber registrado agua/hábitos).
+                        </div>
+                      </div>
 
-            <div className="space-y-3">
-              {habitos.map((h) => {
-                const completado = !!registrosHoy[h.id]?.completado;
-                const racha = rachasHabitos[h.id] || 0;
-                return (
-                  <div key={h.id} className="p-3.5 rounded-2xl border border-slate-800/80 bg-slate-950/60 flex flex-col gap-2 transition hover:border-slate-700">
-                    
-                    {/* ESQUINA SUPERIOR DERECHA CON RACHAS Y HORA */}
-                    <div className="flex items-center justify-between border-b border-slate-800/50 pb-2">
-                      <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Hábito Diario</span>
-                      
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] bg-amber-950/60 text-amber-400 border border-amber-800/80 px-2 py-0.5 rounded-full font-bold shadow-sm flex items-center gap-1">
-                          <span>🔥</span>
-                          <span>{racha}d</span>
-                        </span>
-                        <span className="text-indigo-400 font-mono text-[10px] font-bold bg-indigo-950/50 border border-indigo-800/50 px-2 py-0.5 rounded-lg flex items-center gap-1">
-                          <span>⏰</span>
-                          <span>{h.hora_objetivo}</span>
-                        </span>
-                        <button onClick={() => eliminarHabito(h.id)} className="text-rose-400 hover:text-rose-300 text-xs p-0.5 transition hover:scale-110 ml-1">
-                          🗑️
-                        </button>
+                      <div className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+                        <div className="w-3.5 h-3.5 rounded-full bg-amber-500 shrink-0 mt-0.5 shadow-md shadow-amber-500/50"></div>
+                        <div>
+                          <span className="font-bold text-amber-400 block mb-0.5">Amarillo a la Mitad (50%):</span>
+                          Progreso intermedio o superávit/déficit leve. Vas por buen camino pero aún te falta para la meta óptima del día.
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+                        <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shrink-0 mt-0.5 shadow-md shadow-emerald-500/50"></div>
+                        <div>
+                          <span className="font-bold text-emerald-400 block mb-0.5">Verde Lleno (100%):</span>
+                          ¡Meta diaria alcanzada con éxito! Has conseguido el rango ideal para tu balance calórico, hidratación o rutina.
+                        </div>
                       </div>
                     </div>
-
-                    {/* CUERPO DEL HÁBITO CON ESPACIO COMPLETO PARA EL NOMBRE */}
-                    <div className="flex items-center gap-3 pt-1">
-                      <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-all ${completado ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-md shadow-indigo-600/40' : 'border-slate-700 hover:border-indigo-500'}`}>
-                        {completado && '✓'}
-                      </button>
-                      <span className={`text-xs font-bold break-words flex-1 leading-normal ${completado ? 'line-through text-slate-500' : 'text-slate-100'}`}>
-                        {h.texto}
-                      </span>
-                    </div>
-
                   </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* NUTRICIÓN Y ENTRENAMIENTO (CON CONTADORES DE CALORÍAS Y GASTO BASE DESTACADO ANCLADO) */}
-        {seccionActiva === 'nutricion' && (
-          <section className={`${CARD_CLS} max-w-3xl mx-auto space-y-6`}>
-            <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
-              <button onClick={() => setSubSeccionNutricion('nutricion')} className={`text-xs font-bold pb-2 transition ${subSeccionNutricion === 'nutricion' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400 hover:text-slate-200'}`}>🥗 Nutrición</button>
-              <button onClick={() => setSubSeccionNutricion('entrenamiento')} className={`text-xs font-bold pb-2 transition ${subSeccionNutricion === 'entrenamiento' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🏋️ Actividad Física</button>
-            </div>
-
-            {subSeccionNutricion === 'nutricion' ? (
-              <div className="space-y-3">
-                
-                {/* CONTADOR DESTACADO DE CALORÍAS INGERIDAS */}
-                <div className="bg-slate-950/90 border border-amber-500/30 p-3.5 rounded-2xl flex justify-between items-center mb-4 shadow-lg shadow-amber-500/5">
-                  <span className="text-xs text-amber-300 font-bold flex items-center gap-1.5">
-                    <span>🔥</span>
-                    <span>Total Calorías Ingeridas Hoy:</span>
-                  </span>
-                  <span className="text-base font-black text-amber-400 font-mono">{totalIngresoCalorias} <span className="text-xs text-slate-400">kcal</span></span>
                 </div>
+              )}
 
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">🥗 Comidas del Día</h3>
-                  <button onClick={agregarComida} className="text-xs text-amber-400 font-bold hover:underline transition">+ Agregar Comida</button>
-                </div>
-                
-                {comidas.map((item, index) => (
-                  <div key={item.id} className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 flex items-center gap-2 sm:gap-3 transition hover:border-slate-700">
-                    <div className="flex flex-col gap-0.5 shrink-0">
-                      <button onClick={() => moverComida(index, 'arriba')} disabled={index === 0} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▲</button>
-                      <button onClick={() => moverComida(index, 'abajo')} disabled={index === comidas.length - 1} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▼</button>
-                    </div>
+            </div>
+          )}
 
-                    <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
-                    
-                    <div className="w-24 shrink-0 text-center">
-                      <label className="text-[10px] text-slate-400 block mb-0.5 font-medium">kcal</label>
-                      <CleanNumberInput value={item.calorias} onChange={(v: number) => actualizarComida(item.id, 'calorias', v)} className={`${INPUT_CLS} text-center font-bold`} />
-                    </div>
-
-                    <button onClick={() => eliminarComida(item.id)} className="text-rose-400 hover:text-rose-300 text-xs p-1 shrink-0 transition hover:scale-110">🗑️</button>
-                  </div>
-                ))}
+          {/* MI PERFIL Y OBJETIVOS */}
+          {seccionActiva === 'perfil' && (
+            <section className={`${CARD_CLS} max-w-xl mx-auto space-y-6`}>
+              <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
+                <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-xs font-bold pb-2 transition ${subSeccionPerfil === 'perfil' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>👤 Datos Personales</button>
+                <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-xs font-bold pb-2 transition ${subSeccionPerfil === 'objetivo' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🎯 Mi Objetivo</button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                
-                {/* CONTADOR DESTACADO DE CALORÍAS QUEMADAS */}
-                <div className="bg-slate-950/90 border border-indigo-500/30 p-3.5 rounded-2xl flex justify-between items-center mb-4 shadow-lg shadow-indigo-500/5">
-                  <span className="text-xs text-indigo-300 font-bold flex items-center gap-1.5">
-                    <span>🏃</span>
-                    <span>Total Calorías Quemadas en Ejercicio:</span>
-                  </span>
-                  <span className="text-base font-black text-indigo-400 font-mono">{totalGastoEjercicios} <span className="text-xs text-slate-400">kcal</span></span>
-                </div>
 
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">🏋️ Actividades Registradas</h3>
-                  <button onClick={agregarEjercicio} className="text-xs text-indigo-400 font-bold hover:underline transition">+ Agregar Ejercicio</button>
-                </div>
-
-                {/* PRIMERA ACTIVIDAD ANCLADA: GASTO BASE DEL USUARIO */}
-                <div className="bg-gradient-to-r from-violet-900/60 via-purple-900/60 to-indigo-900/60 p-3.5 rounded-2xl border border-violet-500/40 flex items-center justify-between gap-3 shadow-lg shadow-purple-500/10">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-xl">⚡</span>
+              {subSeccionPerfil === 'perfil' ? (
+                <div className="space-y-4 max-w-md mx-auto text-center">
+                  
+                  {/* NOMBRE Y FECHA DE NACIMIENTO EN LA MISMA LÍNEA (MISMO TAMAÑO QUE PESO Y ALTURA) */}
+                  <div className="grid grid-cols-2 gap-3 items-center">
                     <div>
-                      <span className="text-xs font-bold text-violet-200 block">Gasto Calórico Base (TMB / BMR)</span>
-                      <span className="text-[10px] text-violet-300/80">Gasto metabólico diario estimado de tu cuerpo</span>
+                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Nombre</label>
+                      <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={`${INPUT_CLS} text-center`} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Fecha Nacimiento</label>
+                      <input 
+                        type="date" 
+                        value={perfil.fecha_nacimiento} 
+                        onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} 
+                        className={`${INPUT_CLS} text-center font-mono w-full`} 
+                      />
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-sm font-black text-violet-200 font-mono">{bmrCalculado}</span>
-                    <span className="text-[10px] text-violet-300 block">kcal</span>
-                  </div>
-                </div>
 
-                {/* LISTA DE EJERCICIOS REGISTRADOS */}
-                {ejercicios.map((item, index) => (
-                  <div key={item.id} className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 flex items-center justify-between gap-2 sm:gap-3 transition hover:border-slate-700">
-                    <div className="flex flex-col gap-0.5 shrink-0 mt-3">
-                      <button onClick={() => moverEjercicio(index, 'arriba')} disabled={index === 0} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▲</button>
-                      <button onClick={() => moverEjercicio(index, 'abajo')} disabled={index === ejercicios.length - 1} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▼</button>
+                  <div className="grid grid-cols-2 gap-3 items-center">
+                    <div>
+                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Peso (kg)</label>
+                      <CleanNumberInput step="0.1" value={perfil.peso} onChange={(v: number) => setPerfil({...perfil, peso: v})} className={`${INPUT_CLS} text-center font-bold`} />
                     </div>
-
-                    <div className="flex-1 min-w-0">
-                      <label className="text-[10px] text-slate-400 block text-center mb-1 font-medium">Tipo de Actividad</label>
-                      <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${INPUT_CLS} w-full text-center truncate font-semibold`}>
-                        <option value="">Seleccionar tipo...</option>
-                        <option value="fuerza">🏋️ Fuerza / Gimnasio</option>
-                        <option value="running">🏃 Running / Carrera</option>
-                        <option value="ciclismo">🚴 Ciclismo</option>
-                        <option value="boxeo">🥊 Boxeo</option>
-                        <option value="futbol">⚽ Fútbol</option>
-                        <option value="natacion">🏊 Natación</option>
-                        <option value="caminata">🚶 Caminata</option>
-                        <option value="funcional">🤸 Funcional / HIIT</option>
-                        <option value="otro">⚡ Otro</option>
-                      </select>
+                    <div>
+                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Altura (cm)</label>
+                      <CleanNumberInput value={perfil.altura} onChange={(v: number) => setPerfil({...perfil, altura: v})} className={`${INPUT_CLS} text-center font-bold`} />
                     </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 max-w-md mx-auto text-center">
+                  <div className="max-w-[220px] mx-auto text-center">
+                    <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Objetivo Principal</label>
+                    <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={`${INPUT_CLS} text-center font-bold`}>
+                      <option value="bajar">🔥 Bajar de peso</option>
+                      <option value="mantener">⚖️ Mantener peso</option>
+                      <option value="subir">💪 Subir de peso</option>
+                    </select>
+                  </div>
 
-                    <div className="w-20 shrink-0 text-center">
-                      <label className="text-[10px] text-amber-400 block text-center mb-1 font-bold">Kcal</label>
-                      <CleanNumberInput value={item.calorias} onChange={(v: number) => actualizarEjercicio(item.id, 'calorias', v)} className={`${INPUT_CLS} text-center font-bold px-1`} />
+                  <div className="grid grid-cols-2 gap-3 items-center">
+                    <div>
+                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Kilos Objetivo</label>
+                      <CleanNumberInput value={perfil.kilos_objetivo} onChange={(v: number) => setPerfil({...perfil, kilos_objetivo: v})} className={`${INPUT_CLS} text-center font-bold`} />
                     </div>
-
-                    <button onClick={() => eliminarEjercicio(item.id)} className="text-rose-400 hover:text-rose-300 text-xs p-1 shrink-0 mt-4 transition hover:scale-110">🗑️</button>
+                    <div>
+                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Plazo (Meses)</label>
+                      <CleanNumberInput value={perfil.tiempo_objetivo_meses} onChange={(v: number) => setPerfil({...perfil, tiempo_objetivo_meses: v})} className={`${INPUT_CLS} text-center font-bold`} />
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
 
-        {/* HIDRATACIÓN Y SUEÑO */}
-        {seccionActiva === 'extra' && (
-          <section className={`${CARD_CLS} max-w-md mx-auto space-y-6`}>
-            <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
-              <button onClick={() => setSubSeccionExtra('agua')} className={`text-xs font-bold pb-2 transition ${subSeccionExtra === 'agua' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}>💧 Hidratación</button>
-              <button onClick={() => setSubSeccionExtra('sueno')} className={`text-xs font-bold pb-2 transition ${subSeccionExtra === 'sueno' ? 'text-violet-400 border-b-2 border-violet-400' : 'text-slate-400 hover:text-slate-200'}`}>😴 Descanso</button>
-            </div>
+                  {/* BARRA DE PROBABILIDAD DE CUMPLIR EL OBJETIVO */}
+                  {(() => {
+                    const prob = calcularProbabilidadObjetivo(perfil.kilos_objetivo, perfil.tiempo_objetivo_meses, perfil.objetivo);
+                    let colorBar = "bg-emerald-500 shadow-emerald-500/50";
+                    let colorTxt = "text-emerald-400";
+                    let msg = "Muy probable y saludable";
 
-            {subSeccionExtra === 'agua' ? (
-              <div className="space-y-5 text-center">
-                <p className="text-4xl font-black text-cyan-400 drop-shadow-md">{(aguaMl / 1000).toFixed(2)} <span className="text-sm font-semibold text-slate-500">/ 2.50 L</span></p>
+                    if (prob < 30) {
+                      colorBar = "bg-rose-500 shadow-rose-500/50";
+                      colorTxt = "text-rose-400";
+                      msg = "Poco probable / Poco saludable";
+                    } else if (prob < 75) {
+                      colorBar = "bg-amber-500 shadow-amber-500/50";
+                      colorTxt = "text-amber-400";
+                      msg = "Exigente, requiere alta disciplina";
+                    }
 
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs text-slate-400 font-semibold px-1">
-                    <span>Progreso</span>
-                    <span>{Math.min(100, Math.round((aguaMl / metaAguaMl) * 100))}%</span>
-                  </div>
-                  <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
-                    <div className="bg-cyan-500 h-full rounded-full transition-all duration-300 shadow-cyan-500/50" style={{ width: `${Math.min(100, (aguaMl / metaAguaMl) * 100)}%` }}></div>
-                  </div>
+                    return (
+                      <div className="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800/80 space-y-2 mt-4 text-center">
+                        <div className="flex justify-between items-center text-xs font-semibold px-1">
+                          <span className="text-slate-400">Probabilidad de cumplirse:</span>
+                          <span className={`font-bold ${colorTxt}`}>{prob}% ({msg})</span>
+                        </div>
+                        <div className="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                          <div className={`h-full rounded-full transition-all duration-500 ${colorBar}`} style={{ width: `${prob}%` }}></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                 </div>
+              )}
 
-                <div className="flex justify-center gap-2.5 pt-2">
-                  <button onClick={() => modificarAgua(250)} className="bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-800/80 text-cyan-300 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95 shadow-md">+250 ml</button>
-                  <button onClick={() => modificarAgua(500)} className="bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-800/80 text-cyan-300 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95 shadow-md">+500 ml</button>
-                  <button onClick={() => modificarAgua(-250)} className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95">-250 ml</button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-5 text-center">
-                <p className="text-4xl font-black text-violet-400 drop-shadow-md">{suenoHoy.horas_totales} <span className="text-sm font-semibold text-slate-500">/ 8.0 hrs</span></p>
+              <button onClick={guardarPerfil} disabled={guardandoPerfil} className={`${BTN_PRIMARY} max-w-xs mx-auto block`}>
+                {guardandoPerfil ? 'Guardando...' : '💾 Guardar Perfil'}
+              </button>
+            </section>
+          )}
 
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs text-slate-400 font-semibold px-1">
-                    <span>Progreso</span>
-                    <span>{Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100))}%</span>
-                  </div>
-                  <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
-                    <div className="bg-violet-500 h-full rounded-full transition-all duration-300 shadow-violet-500/50" style={{ width: `${Math.min(100, (suenoHoy.horas_totales / 8) * 100)}%` }}></div>
-                  </div>
-                </div>
-
-                <div className="flex justify-center gap-4 items-center pt-2">
-                  <div>
-                    <label className="text-[10px] text-slate-400 font-medium block mb-1">Acostarse</label>
-                    <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-indigo-300 outline-none w-28 text-center font-bold [color-scheme:dark]" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-400 font-medium block mb-1">Levantarse</label>
-                    <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-indigo-300 outline-none w-28 text-center font-bold [color-scheme:dark]" />
-                  </div>
-                </div>
-
-                <button onClick={guardarSueno} className={BTN_PRIMARY}>💾 Guardar Sueño</button>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* NOVEDADES Y SOPORTE */}
-        {seccionActiva === 'actualizaciones' && (
-          <section className={`${CARD_CLS} max-w-lg mx-auto space-y-6`}>
-            <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
-              <button onClick={() => setSubSeccionActualizaciones('novedades')} className={`text-xs font-bold pb-2 transition ${subSeccionActualizaciones === 'novedades' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🚀 Novedades</button>
-              <button onClick={() => setSubSeccionActualizaciones('soporte')} className={`text-xs font-bold pb-2 transition ${subSeccionActualizaciones === 'soporte' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>💬 Soporte</button>
-            </div>
-
-            {subSeccionActualizaciones === 'novedades' ? (
-              <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 text-xs text-slate-300 space-y-2.5">
-                <p className="font-bold text-slate-100 text-sm">Versión de la app: {ULTIMA_ACTUALIZACION_APP}</p>
-                <p>• Botón de menú rediseñado y más visible con la leyenda "Menú".</p>
-                <p>• Corrección de lógica de balance calórico: si estás en déficit buscando subir de peso, la barra se muestra roja y en 0%.</p>
-                <p>• Nueva pestaña modal con la guía de referencias para todos los indicadores visuales.</p>
-                <p>• Nueva barra dinamica de probabilidad de objetivo según kilos deseados y plazo de meses.</p>
-                <p>• Reorganización de hábitos: nombre con espacio 100% visible y rachas/horas en la parte superior derecha.</p>
-                <p>• Contadores de calorías ingeridas y quemadas destacados + gasto metabólico basal anclado al inicio de actividades.</p>
-              </div>
-            ) : (
-              <form onSubmit={enviarSoporte} className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 space-y-4">
-                <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value)} className={`${INPUT_CLS} font-semibold`}>
-                  <option value="" disabled>-- Tipo de mensaje --</option>
-                  <option value="Sugerencia">💡 Sugerencia</option>
-                  <option value="Duda">❓ Duda</option>
-                  <option value="Error">⚠️ Reporte de error</option>
-                </select>
-                <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Escribe tu mensaje..." className={INPUT_CLS} required />
-                <button type="submit" className={BTN_PRIMARY}>✉️ Enviar Comentario</button>
+          {/* HÁBITOS DIARIOS */}
+          {seccionActiva === 'habitos' && (
+            <section className={`${CARD_CLS} space-y-6 max-w-2xl mx-auto`}>
+              <form onSubmit={agregarHabito} className="flex gap-2 bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800/80 items-center shadow-inner">
+                <input 
+                  type="text" 
+                  placeholder="Ej: Meditar 10 min, Leer 20 págs..." 
+                  value={nuevoHabito} 
+                  onChange={(e) => setNuevoHabito(e.target.value)} 
+                  className={`${INPUT_CLS} flex-1`} 
+                />
+                <input 
+                  type="time" 
+                  value={horaObjetivo} 
+                  onChange={(e) => setHoraObjetivo(e.target.value)} 
+                  className="bg-slate-900 border border-slate-800 rounded-xl px-2 py-2.5 text-xs text-indigo-300 font-mono w-20 text-center shrink-0 outline-none focus:border-indigo-500 font-bold [color-scheme:dark]" 
+                />
+                <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shrink-0 transition active:scale-95 shadow-lg shadow-indigo-600/30">
+                  Añadir
+                </button>
               </form>
-            )}
-          </section>
-        )}
+
+              <div className="space-y-3">
+                {habitos.map((h) => {
+                  const completado = !!registrosHoy[h.id]?.completado;
+                  const racha = rachasHabitos[h.id] || 0;
+                  return (
+                    <div key={h.id} className="p-3.5 rounded-2xl border border-slate-800/80 bg-slate-950/60 flex flex-col gap-2 transition hover:border-slate-700">
+                      
+                      {/* ESQUINA SUPERIOR DERECHA CON RACHAS Y HORA */}
+                      <div className="flex items-center justify-between border-b border-slate-800/50 pb-2">
+                        <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Hábito Diario</span>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] bg-amber-950/60 text-amber-400 border border-amber-800/80 px-2 py-0.5 rounded-full font-bold shadow-sm flex items-center gap-1">
+                            <span>🔥</span>
+                            <span>{racha}d</span>
+                          </span>
+                          <span className="text-indigo-400 font-mono text-[10px] font-bold bg-indigo-950/50 border border-indigo-800/50 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                            <span>⏰</span>
+                            <span>{h.hora_objetivo}</span>
+                          </span>
+                          <button onClick={() => eliminarHabito(h.id)} className="text-rose-400 hover:text-rose-300 text-xs p-0.5 transition hover:scale-110 ml-1">
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* CUERPO DEL HÁBITO */}
+                      <div className="flex items-center gap-3 pt-1">
+                        <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-all ${completado ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-md shadow-indigo-600/40' : 'border-slate-700 hover:border-indigo-500'}`}>
+                          {completado && '✓'}
+                        </button>
+                        <span className={`text-xs font-bold break-words flex-1 leading-normal ${completado ? 'line-through text-slate-500' : 'text-slate-100'}`}>
+                          {h.texto}
+                        </span>
+                      </div>
+
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* NUTRICIÓN Y ENTRENAMIENTO */}
+          {seccionActiva === 'nutricion' && (
+            <section className={`${CARD_CLS} max-w-3xl mx-auto space-y-6`}>
+              <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
+                <button onClick={() => setSubSeccionNutricion('nutricion')} className={`text-xs font-bold pb-2 transition ${subSeccionNutricion === 'nutricion' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400 hover:text-slate-200'}`}>🥗 Nutrición</button>
+                <button onClick={() => setSubSeccionNutricion('entrenamiento')} className={`text-xs font-bold pb-2 transition ${subSeccionNutricion === 'entrenamiento' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🏋️ Actividad Física</button>
+              </div>
+
+              {subSeccionNutricion === 'nutricion' ? (
+                <div className="space-y-3">
+                  
+                  {/* CONTADOR DESTACADO DE CALORÍAS INGERIDAS */}
+                  <div className="bg-slate-950/90 border border-amber-500/30 p-3.5 rounded-2xl flex justify-between items-center mb-4 shadow-lg shadow-amber-500/5">
+                    <span className="text-xs text-amber-300 font-bold flex items-center gap-1.5">
+                      <span>🔥</span>
+                      <span>Total Calorías Ingeridas Hoy:</span>
+                    </span>
+                    <span className="text-base font-black text-amber-400 font-mono">{totalIngresoCalorias} <span className="text-xs text-slate-400">kcal</span></span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">🥗 Comidas del Día</h3>
+                    <button onClick={agregarComida} className="text-xs text-amber-400 font-bold hover:underline transition">+ Agregar Comida</button>
+                  </div>
+                  
+                  {comidas.map((item, index) => (
+                    <div key={item.id} className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 flex items-center gap-2 sm:gap-3 transition hover:border-slate-700">
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button onClick={() => moverComida(index, 'arriba')} disabled={index === 0} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▲</button>
+                        <button onClick={() => moverComida(index, 'abajo')} disabled={index === comidas.length - 1} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▼</button>
+                      </div>
+
+                      <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
+                      
+                      <div className="w-24 shrink-0 text-center">
+                        <label className="text-[10px] text-slate-400 block mb-0.5 font-medium">kcal</label>
+                        <CleanNumberInput value={item.calorias} onChange={(v: number) => actualizarComida(item.id, 'calorias', v)} className={`${INPUT_CLS} text-center font-bold`} />
+                      </div>
+
+                      <button onClick={() => eliminarComida(item.id)} className="text-rose-400 hover:text-rose-300 text-xs p-1 shrink-0 transition hover:scale-110">🗑️</button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  
+                  {/* CONTADOR DESTACADO DE CALORÍAS QUEMADAS */}
+                  <div className="bg-slate-950/90 border border-indigo-500/30 p-3.5 rounded-2xl flex justify-between items-center mb-4 shadow-lg shadow-indigo-500/5">
+                    <span className="text-xs text-indigo-300 font-bold flex items-center gap-1.5">
+                      <span>🏃</span>
+                      <span>Total Calorías Quemadas en Ejercicio:</span>
+                    </span>
+                    <span className="text-base font-black text-indigo-400 font-mono">{totalGastoEjercicios} <span className="text-xs text-slate-400">kcal</span></span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">🏋️ Actividades Registradas</h3>
+                    <button onClick={agregarEjercicio} className="text-xs text-indigo-400 font-bold hover:underline transition">+ Agregar Ejercicio</button>
+                  </div>
+
+                  {/* PRIMERA ACTIVIDAD ANCLADA: GASTO BASE DEL USUARIO */}
+                  <div className="bg-gradient-to-r from-violet-900/60 via-purple-900/60 to-indigo-900/60 p-3.5 rounded-2xl border border-violet-500/40 flex items-center justify-between gap-3 shadow-lg shadow-purple-500/10">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xl">⚡</span>
+                      <div>
+                        <span className="text-xs font-bold text-violet-200 block">Gasto Calórico Base (TMB / BMR)</span>
+                        <span className="text-[10px] text-violet-300/80">Gasto metabólico diario estimado de tu cuerpo</span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-sm font-black text-violet-200 font-mono">{bmrCalculado}</span>
+                      <span className="text-[10px] text-violet-300 block">kcal</span>
+                    </div>
+                  </div>
+
+                  {/* LISTA DE EJERCICIOS REGISTRADOS */}
+                  {ejercicios.map((item, index) => (
+                    <div key={item.id} className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 flex items-center justify-between gap-2 sm:gap-3 transition hover:border-slate-700">
+                      <div className="flex flex-col gap-0.5 shrink-0 mt-3">
+                        <button onClick={() => moverEjercicio(index, 'arriba')} disabled={index === 0} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▲</button>
+                        <button onClick={() => moverEjercicio(index, 'abajo')} disabled={index === ejercicios.length - 1} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▼</button>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <label className="text-[10px] text-slate-400 block text-center mb-1 font-medium">Tipo de Actividad</label>
+                        <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${INPUT_CLS} w-full text-center truncate font-semibold`}>
+                          <option value="">Seleccionar tipo...</option>
+                          <option value="fuerza">🏋️ Fuerza / Gimnasio</option>
+                          <option value="running">🏃 Running / Carrera</option>
+                          <option value="ciclismo">🚴 Ciclismo</option>
+                          <option value="boxeo">🥊 Boxeo</option>
+                          <option value="futbol">⚽ Fútbol</option>
+                          <option value="natacion">🏊 Natación</option>
+                          <option value="caminata">🚶 Caminata</option>
+                          <option value="funcional">🤸 Funcional / HIIT</option>
+                          <option value="otro">⚡ Otro</option>
+                        </select>
+                      </div>
+
+                      <div className="w-20 shrink-0 text-center">
+                        <label className="text-[10px] text-amber-400 block text-center mb-1 font-bold">Kcal</label>
+                        <CleanNumberInput value={item.calorias} onChange={(v: number) => actualizarEjercicio(item.id, 'calorias', v)} className={`${INPUT_CLS} text-center font-bold px-1`} />
+                      </div>
+
+                      <button onClick={() => eliminarEjercicio(item.id)} className="text-rose-400 hover:text-rose-300 text-xs p-1 shrink-0 mt-4 transition hover:scale-110">🗑️</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* HIDRATACIÓN Y SUEÑO */}
+          {seccionActiva === 'extra' && (
+            <section className={`${CARD_CLS} max-w-md mx-auto space-y-6`}>
+              <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
+                <button onClick={() => setSubSeccionExtra('agua')} className={`text-xs font-bold pb-2 transition ${subSeccionExtra === 'agua' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}>💧 Hidratación</button>
+                <button onClick={() => setSubSeccionExtra('sueno')} className={`text-xs font-bold pb-2 transition ${subSeccionExtra === 'sueno' ? 'text-violet-400 border-b-2 border-violet-400' : 'text-slate-400 hover:text-slate-200'}`}>😴 Descanso</button>
+              </div>
+
+              {subSeccionExtra === 'agua' ? (
+                <div className="space-y-5 text-center">
+                  <p className="text-4xl font-black text-cyan-400 drop-shadow-md">{(aguaMl / 1000).toFixed(2)} <span className="text-sm font-semibold text-slate-500">/ 2.50 L</span></p>
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs text-slate-400 font-semibold px-1">
+                      <span>Progreso</span>
+                      <span>{Math.min(100, Math.round((aguaMl / metaAguaMl) * 100))}%</span>
+                    </div>
+                    <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                      <div className="bg-cyan-500 h-full rounded-full transition-all duration-300 shadow-cyan-500/50" style={{ width: `${Math.min(100, (aguaMl / metaAguaMl) * 100)}%` }}></div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center gap-2.5 pt-2">
+                    <button onClick={() => modificarAgua(250)} className="bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-800/80 text-cyan-300 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95 shadow-md">+250 ml</button>
+                    <button onClick={() => modificarAgua(500)} className="bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-800/80 text-cyan-300 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95 shadow-md">+500 ml</button>
+                    <button onClick={() => modificarAgua(-250)} className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95">-250 ml</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5 text-center">
+                  <p className="text-4xl font-black text-violet-400 drop-shadow-md">{suenoHoy.horas_totales} <span className="text-sm font-semibold text-slate-500">/ 8.0 hrs</span></p>
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs text-slate-400 font-semibold px-1">
+                      <span>Progreso</span>
+                      <span>{Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100))}%</span>
+                    </div>
+                    <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                      <div className="bg-violet-500 h-full rounded-full transition-all duration-300 shadow-violet-500/50" style={{ width: `${Math.min(100, (suenoHoy.horas_totales / 8) * 100)}%` }}></div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center gap-4 items-center pt-2">
+                    <div>
+                      <label className="text-[10px] text-slate-400 font-medium block mb-1">Acostarse</label>
+                      <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-indigo-300 outline-none w-28 text-center font-bold [color-scheme:dark]" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 font-medium block mb-1">Levantarse</label>
+                      <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-indigo-300 outline-none w-28 text-center font-bold [color-scheme:dark]" />
+                    </div>
+                  </div>
+
+                  <button onClick={guardarSueno} className={BTN_PRIMARY}>💾 Guardar Sueño</button>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* NOVEDADES Y SOPORTE */}
+          {seccionActiva === 'actualizaciones' && (
+            <section className={`${CARD_CLS} max-w-lg mx-auto space-y-6`}>
+              <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
+                <button onClick={() => setSubSeccionActualizaciones('novedades')} className={`text-xs font-bold pb-2 transition ${subSeccionActualizaciones === 'novedades' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🚀 Novedades</button>
+                <button onClick={() => setSubSeccionActualizaciones('soporte')} className={`text-xs font-bold pb-2 transition ${subSeccionActualizaciones === 'soporte' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>💬 Soporte</button>
+              </div>
+
+              {subSeccionActualizaciones === 'novedades' ? (
+                <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 text-xs text-slate-300 space-y-2.5">
+                  <p className="font-bold text-slate-100 text-sm">Versión de la app: {ULTIMA_ACTUALIZACION_APP}</p>
+                  <p>• Corrección del autoguardado para evitar reseteos involuntarios al cargar o actualizar la app.</p>
+                  <p>• Flechas de navegación interactivas en el encabezado con transición animada entre pestañas.</p>
+                  <p>• Nombre y Fecha de Nacimiento alineados perfectamente en el perfil.</p>
+                  <p>• Cuadro de referencias ubicado en la parte superior del Resumen General.</p>
+                </div>
+              ) : (
+                <form onSubmit={enviarSoporte} className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 space-y-4">
+                  <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value)} className={`${INPUT_CLS} font-semibold`}>
+                    <option value="" disabled>-- Tipo de mensaje --</option>
+                    <option value="Sugerencia">💡 Sugerencia</option>
+                    <option value="Duda">❓ Duda</option>
+                    <option value="Error">⚠️ Reporte de error</option>
+                  </select>
+                  <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Escribe tu mensaje..." className={INPUT_CLS} required />
+                  <button type="submit" className={BTN_PRIMARY}>✉️ Enviar Comentario</button>
+                </form>
+              )}
+            </section>
+          )}
+
+        </div>
 
       </main>
     </div>
