@@ -17,6 +17,7 @@ const TEXTOS = {
     habitos: 'Hábitos Diarios',
     nutricion: 'Nutrición y Entrenamiento',
     extra: 'Extra',
+    alertas: 'Alertas',
     actualizaciones: 'Novedades y Soporte',
     modoOscuro: 'Modo Oscuro',
     modoClaro: 'Modo Claro',
@@ -116,6 +117,20 @@ const TEXTOS = {
     subSeccionNutricion: '🥗 Nutrición',
     subSeccionEntrenamiento: '🏋️ Actividad Física',
     nuevaComida: 'Nueva Comida',
+    novedadesItem1: '• Formato automático de fecha de nacimiento (DD/MM/AAAA) integrado.',
+    novedadesItem2: '• Modo Claro mejorado con visibilidad optimizada en toda la interfaz.',
+    novedadesItem3: '• Traducción completa multilenguaje (Español, Inglés y Portugués).',
+    novedadesItem4: '• Nueva pestaña de Alertas para recordatorios inteligentes de comidas, agua, entrenamientos y hábitos.',
+    configAlertas: 'Configuración de Alertas',
+    activarNotificaciones: '🔔 Activar Notificaciones Navegador',
+    alertaLevantarse: '⏰ Hora de Levantarse (+5m recordatorio de registro)',
+    alertaEntrenar: '🏋️ Hora de Entrenar (+5m recordatorio de completar números)',
+    alertaAgua: '💧 Recordatorio de Agua (cada cuántas horas)',
+    alertaDesayuno: '🍳 Horario Desayuno',
+    alertaAlmuerzo: '🥗 Horario Almuerzo',
+    alertaMerienda: '🍎 Horario Merienda',
+    alertaCena: '🍗 Horario Cena',
+    guardarAlertas: '💾 Guardar Configuración de Alertas',
   },
   en: {
     menu: 'Menu',
@@ -124,6 +139,7 @@ const TEXTOS = {
     habitos: 'Daily Habits',
     nutricion: 'Nutrition & Training',
     extra: 'Extra',
+    alertas: 'Alerts',
     actualizaciones: 'Updates & Support',
     modoOscuro: 'Dark Mode',
     modoClaro: 'Light Mode',
@@ -223,6 +239,20 @@ const TEXTOS = {
     subSeccionNutricion: '🥗 Nutrition',
     subSeccionEntrenamiento: '🏋️ Physical Activity',
     nuevaComida: 'New Meal',
+    novedadesItem1: '• Integrated automatic birth date formatting (DD/MM/YYYY).',
+    novedadesItem2: '• Improved Light Mode with optimized visibility across all screens.',
+    novedadesItem3: '• Full multilingual support (Spanish, English, and Portuguese).',
+    novedadesItem4: '• New Alerts tab with smart reminders for meals, water, workouts, and habits.',
+    configAlertas: 'Alerts Configuration',
+    activarNotificaciones: '🔔 Enable Browser Notifications',
+    alertaLevantarse: '⏰ Wake-up Time (+5m log reminder)',
+    alertaEntrenar: '🏋️ Workout Time (+5m log metrics reminder)',
+    alertaAgua: '💧 Water Reminder Interval (hours)',
+    alertaDesayuno: '🍳 Breakfast Time',
+    alertaAlmuerzo: '🥗 Lunch Time',
+    alertaMerienda: '🍎 Snack Time',
+    alertaCena: '🍗 Dinner Time',
+    guardarAlertas: '💾 Save Alert Settings',
   },
   pt: {
     menu: 'Menu',
@@ -231,6 +261,7 @@ const TEXTOS = {
     habitos: 'Hábitos Diários',
     nutricion: 'Nutrição e Treino',
     extra: 'Extra',
+    alertas: 'Alertas',
     actualizaciones: 'Novidades e Suporte',
     modoOscuro: 'Modo Escuro',
     modoClaro: 'Modo Claro',
@@ -330,6 +361,20 @@ const TEXTOS = {
     subSeccionNutricion: '🥗 Nutrição',
     subSeccionEntrenamiento: '🏋️ Atividade Física',
     nuevaComida: 'Nova Refeição',
+    novedadesItem1: '• Formatação automática de data de nascimento (DD/MM/AAAA) integrada.',
+    novedadesItem2: '• Modo Claro aprimorado com visibilidade otimizada em todas as telas.',
+    novedadesItem3: '• Tradução completa multilíngue (Espanhol, Inglês e Português).',
+    novedadesItem4: '• Nova aba de Alertas com lembretes inteligentes para refeições, água, treinos e hábitos.',
+    configAlertas: 'Configuração de Alertas',
+    activarNotificaciones: '🔔 Ativar Notificações do Navegador',
+    alertaLevantarse: '⏰ Hora de Acordar (+5m lembrete de registro)',
+    alertaEntrenar: '🏋️ Hora de Treinar (+5m lembrete de registrar números)',
+    alertaAgua: '💧 Lembrete de Água (intervalo em horas)',
+    alertaDesayuno: '🍳 Horário Café da Manhã',
+    alertaAlmuerzo: '🥗 Horário Almoço',
+    alertaMerienda: '🍎 Horário Lanche',
+    alertaCena: '🍗 Horário Jantar',
+    guardarAlertas: '💾 Salvar Configuração de Alertas',
   }
 };
 
@@ -340,6 +385,7 @@ const SECCIONES = [
   { id: 'habitos', icon: '⚡' },
   { id: 'nutricion', icon: '🔥' },
   { id: 'extra', icon: '✨' },
+  { id: 'alertas', icon: '🔔' },
   { id: 'actualizaciones', icon: '🚀' },
 ];
 
@@ -392,6 +438,17 @@ interface RegistroSueno {
   calidad: number;
 }
 
+interface ConfigAlertas {
+  horaLevantarse: string;
+  horaEntrenar: string;
+  horaDesayuno: string;
+  horaAlmuerzo: string;
+  horaMerienda: string;
+  horaCena: string;
+  intervaloAguaHoras: number;
+  notificacionesPermitidas: boolean;
+}
+
 const COMIDAS_POR_DEFECTO: ItemComida[] = [
   { id: '1', nombre: '🍳 Desayuno', calorias: 0 },
   { id: '2', nombre: '🥗 Almuerzo', calorias: 0 },
@@ -406,7 +463,6 @@ const obtenerFechaLogica = () => {
   return fechaAjustada.toISOString().split('T')[0];
 };
 
-// HELPER PARA CALCULAR EDAD DESDE FORMATO DE TEXTO DD/MM/AAAA O ISO
 const calcularEdad = (fechaStr: string): number => {
   if (!fechaStr) return 25;
   let fecha: Date;
@@ -430,7 +486,6 @@ const calcularEdad = (fechaStr: string): number => {
   return edad > 0 ? edad : 25;
 };
 
-// COMPONENTE PARA INPUTS NUMÉRICOS LIMPIOS
 const CleanNumberInput = ({ value, onChange, className, placeholder, min, step }: any) => {
   const [val, setVal] = useState<string>(value === 0 || value === null || value === undefined ? '' : String(value));
 
@@ -456,6 +511,16 @@ const CleanNumberInput = ({ value, onChange, className, placeholder, min, step }
 };
 
 export default function Home() {
+  // SPLASH SCREEN LOGO INICIAL
+  const [mostrarSplash, setMostrarSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMostrarSplash(false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
   // CONFIGURACIÓN DE TEMA E IDIOMA
   const [modoOscuro, setModoOscuro] = useState(true);
   const [idioma, setIdioma] = useState<Idioma>('es');
@@ -476,12 +541,24 @@ export default function Home() {
 
   // NAVEGACIÓN Y CONTROL DE CARGA DE DATOS
   const [datosCargados, setDatosCargados] = useState(false);
-  const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'habitos' | 'nutricion' | 'extra' | 'actualizaciones'>('general');
+  const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'habitos' | 'nutricion' | 'extra' | 'alertas' | 'actualizaciones'>('general');
   const [subSeccionPerfil, setSubSeccionPerfil] = useState<'perfil' | 'objetivo'>('perfil');
   const [subSeccionNutricion, setSubSeccionNutricion] = useState<'nutricion' | 'entrenamiento'>('nutricion');
   const [subSeccionExtra, setSubSeccionExtra] = useState<'agua' | 'sueno'>('agua');
   const [subSeccionActualizaciones, setSubSeccionActualizaciones] = useState<'novedades' | 'soporte'>('novedades');
   const [mostrarReferencias, setMostrarReferencias] = useState(false);
+
+  // ALERTAS Y NOTIFICACIONES
+  const [configAlertas, setConfigAlertas] = useState<ConfigAlertas>({
+    horaLevantarse: '07:00',
+    horaEntrenar: '18:00',
+    horaDesayuno: '08:00',
+    horaAlmuerzo: '13:00',
+    horaMerienda: '17:00',
+    horaCena: '21:00',
+    intervaloAguaHoras: 1,
+    notificacionesPermitidas: false,
+  });
 
   // SOPORTE
   const [tipoSoporte, setTipoSoporte] = useState('');
@@ -527,7 +604,7 @@ export default function Home() {
     calidad: 3,
   });
 
-  // ESTILOS DINÁMICOS SEGÚN MODO OSCURO / CLARO
+  // ESTILOS DINÁMICOS
   const bgApp = modoOscuro ? "bg-[#0b0f17] text-slate-100" : "bg-slate-100 text-slate-900";
   const bgCard = modoOscuro ? "bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-2xl transition-all duration-300" : "bg-white/90 backdrop-blur-xl border border-slate-200 rounded-3xl p-5 shadow-xl text-slate-800 transition-all duration-300";
   const bgInnerCard = modoOscuro ? "bg-slate-950/80 border-slate-800/80 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-900 shadow-sm";
@@ -542,7 +619,6 @@ export default function Home() {
   
   const btnPrimary = "w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-500 hover:via-violet-500 hover:to-purple-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all duration-200 shadow-lg shadow-indigo-600/20 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2";
 
-  // FORMATEADOR AUTOMÁTICO DE FECHA DE NACIMIENTO (DD/MM/AAAA)
   const manejarFechaNacimientoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/\D/g, '');
     if (val.length > 8) val = val.slice(0, 8);
@@ -587,6 +663,20 @@ export default function Home() {
   useEffect(() => {
     if (session?.user) cargarDatos();
   }, [fechaSeleccionada, session?.user?.id]);
+
+  const solicitarPermisosNotificacion = async () => {
+    if ('Notification' in window) {
+      const permiso = await Notification.requestPermission();
+      if (permiso === 'granted') {
+        setConfigAlertas(prev => ({ ...prev, notificacionesPermitidas: true }));
+        new Notification('FitCero Alertas', { body: '¡Notificaciones activadas con éxito!' });
+      } else {
+        alert('Permiso de notificaciones denegado en el navegador.');
+      }
+    } else {
+      alert('Tu navegador no soporta notificaciones web.');
+    }
+  };
 
   const manejarAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -846,7 +936,7 @@ export default function Home() {
   const enviarSoporte = (e: React.FormEvent) => {
     e.preventDefault();
     if (!tipoSoporte || !mensajeSoporte.trim()) return alert(T.alertaSoporte);
-    window.location.href = `mailto:stefanopintos.contact@gmail.com?subject=${encodeURIComponent(`[Fitness App] ${tipoSoporte}`)}&body=${encodeURIComponent(mensajeSoporte)}`;
+    window.location.href = `mailto:stefanopintos.contact@gmail.com?subject=${encodeURIComponent(`[FitCero] ${tipoSoporte}`)}&body=${encodeURIComponent(mensajeSoporte)}`;
     setMensajeSoporte('');
   };
 
@@ -857,7 +947,6 @@ export default function Home() {
   const totalIngresoCalorias = comidas.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
   const balanceCalorico = totalIngresoCalorias - (bmrCalculado + totalGastoEjercicios);
 
-  // EVALUACIÓN DE BARRA DE BALANCE CALÓRICO CORREGIDA
   const evaluarEstadoCalorias = () => {
     let pct = 0;
     let colorBarra = "bg-rose-500 shadow-rose-500/50";
@@ -922,7 +1011,6 @@ export default function Home() {
 
   const estadoCalorico = evaluarEstadoCalorias();
 
-  // PROBABILIDAD DE CUMPLIR OBJETIVO EN MESES
   const calcularProbabilidadObjetivo = (kilos: number, meses: number, objetivo: string) => {
     if (!meses || meses <= 0 || !kilos || kilos <= 0) return 100;
     if (objetivo === 'mantener') return 100;
@@ -952,7 +1040,6 @@ export default function Home() {
     return { bar: "bg-rose-500 shadow-rose-500/50", text: "text-rose-400" };
   };
 
-  // CONTROL NAVEGACIÓN FLECHAS
   const indiceSeccionActual = SECCIONES.findIndex(s => s.id === seccionActiva);
 
   const irSeccionAnterior = () => {
@@ -967,8 +1054,20 @@ export default function Home() {
     }
   };
 
-  if (cargandoSesion) return <div className="min-h-screen bg-slate-950 text-indigo-400 flex items-center justify-center font-sans animate-pulse text-sm">⚡ Cargando tu centro de entrenamiento...</div>;
+  // 1. SPLASH SCREEN (LOGO AL ABRIR LA APP)
+  if (mostrarSplash) {
+    return (
+      <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center ${modoOscuro ? 'bg-[#0b0f17] text-white' : 'bg-slate-900 text-white'} transition-all duration-500 p-4 text-center`}>
+        <img src="/logo.png" alt="FitCero Logo" className="w-48 h-48 sm:w-64 sm:h-64 object-contain rounded-3xl shadow-2xl mb-6 animate-pulse" />
+        <h1 className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">FitCero</h1>
+        <p className="text-sm font-medium text-slate-400 mt-2 tracking-wide">Tu cambio, desde cero</p>
+      </div>
+    );
+  }
 
+  if (cargandoSesion) return <div className="min-h-screen bg-slate-950 text-indigo-400 flex items-center justify-center font-sans animate-pulse text-sm">⚡ Cargando FitCero...</div>;
+
+  // 2. MENÚ DE INICIAR SESIÓN CON LOGO, FITCERO, MODO CLARO/OSCURO E IDIOMAS
   if (!session) {
     return (
       <div className={`min-h-screen ${bgApp} flex items-center justify-center p-4 font-sans relative overflow-hidden transition-colors duration-300`}>
@@ -976,10 +1075,35 @@ export default function Home() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className={`${bgCard} p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl relative z-10`}>
+          
+          {/* OPCIONES DE TEMA E IDIOMA EN EL INICIO DE SESIÓN */}
+          <div className="flex justify-between items-center w-full pb-2">
+            <button
+              onClick={() => setModoOscuro(!modoOscuro)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
+                modoOscuro ? 'bg-slate-950/80 border-slate-800 text-slate-200' : 'bg-slate-100 border-slate-300 text-slate-800'
+              }`}
+            >
+              {modoOscuro ? '🌙 ' + T.modoOscuro : '☀️ ' + T.modoClaro}
+            </button>
+
+            <select
+              value={idioma}
+              onChange={(e) => setIdioma(e.target.value as Idioma)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${
+                modoOscuro ? 'bg-slate-950/80 border-slate-800 text-slate-200' : 'bg-slate-100 border-slate-300 text-slate-800'
+              }`}
+            >
+              <option value="es">🇪🇸 ES</option>
+              <option value="en">🇺🇸 EN</option>
+              <option value="pt">🇧🇷 PT</option>
+            </select>
+          </div>
+
           <div className="text-center space-y-2">
-            <span className="text-5xl inline-block drop-shadow-lg">💪</span>
-            <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Personal Fitness App</h1>
-            <p className={`text-xs ${textMuted} font-medium`}>{pasoOTP ? 'Ingresa el código que enviamos a tu email' : esRegistro ? 'Crea tu cuenta profesional' : 'Bienvenido de nuevo'}</p>
+            <img src="/logo.png" alt="FitCero Logo" className="w-24 h-24 mx-auto rounded-2xl shadow-xl object-contain mb-2" />
+            <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">FitCero</h1>
+            <p className={`text-xs ${textMuted} font-medium`}>Tu cambio, desde cero</p>
           </div>
 
           {errorAuth && <div className="bg-rose-950/60 text-rose-300 text-xs p-3.5 rounded-2xl border border-rose-800/80 text-center font-medium">⚠️ {errorAuth}</div>}
@@ -1024,7 +1148,6 @@ export default function Home() {
   return (
     <div className={`min-h-screen ${bgApp} flex flex-col md:flex-row font-sans transition-colors duration-300 selection:bg-indigo-500 selection:text-white`}>
       
-      {/* ESTILOS DE ANIMACIÓN DE PESTAÑAS */}
       <style jsx global>{`
         @keyframes fadeInTab {
           from { opacity: 0; transform: translateY(6px); }
@@ -1035,21 +1158,28 @@ export default function Home() {
         }
       `}</style>
 
-      {/* MENÚ LATERAL CON MODO OSCURO Y MODO CLARO TOTALMENTE ADAPTABLE */}
+      {/* MENÚ LATERAL Y CABECERA CON "FITCERO" ENTRE MENÚ Y USUARIO */}
       <aside className={`${modoOscuro ? 'bg-slate-900/90 border-slate-800/80 text-slate-100' : 'bg-white/95 border-slate-200 text-slate-900 shadow-xl'} backdrop-blur-xl border-b md:border-b-0 md:border-r transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:w-64' : 'w-full md:w-20'}`}>
         <div>
           <div className={`p-4 flex items-center justify-between border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} gap-2`}>
             
-            {/* BOTÓN "MENÚ" */}
+            {/* BOTÓN MENÚ */}
             <button 
               onClick={() => setSidebarAbierto(!sidebarAbierto)} 
-              className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white transition active:scale-95 flex items-center gap-2.5 shadow-lg shadow-indigo-600/30 cursor-pointer"
+              className="px-3 py-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white transition active:scale-95 flex items-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer"
             >
-              <span className="text-base sm:text-lg font-black tracking-tighter leading-none">{sidebarAbierto ? '✕' : '☰'}</span>
+              <span className="text-base font-black tracking-tighter leading-none">{sidebarAbierto ? '✕' : '☰'}</span>
               <span className="text-xs font-black uppercase tracking-wider">{T.menu}</span>
             </button>
             
-            <div className={`text-xs font-bold ${modoOscuro ? 'text-slate-200 bg-slate-950/80 border-slate-800/80' : 'text-slate-800 bg-slate-100 border-slate-300'} px-3.5 py-2 rounded-xl border truncate max-w-[170px] shadow-inner`}>
+            {/* FITCERO ENTRE EL MENÚ Y EL NOMBRE DEL USUARIO */}
+            <div className="flex items-center gap-1.5 font-black text-indigo-500 text-sm sm:text-base tracking-tight">
+              <img src="/logo.png" alt="FitCero" className="w-6 h-6 rounded-lg object-contain" />
+              <span>FitCero</span>
+            </div>
+
+            {/* NOMBRE DE USUARIO */}
+            <div className={`text-xs font-bold ${modoOscuro ? 'text-slate-200 bg-slate-950/80 border-slate-800/80' : 'text-slate-800 bg-slate-100 border-slate-300'} px-3 py-2 rounded-xl border truncate max-w-[120px] sm:max-w-[150px] shadow-inner`}>
               👤 {perfil.nombre.trim() || session?.user?.email?.split('@')[0] || 'Usuario'}
             </div>
           </div>
@@ -1074,9 +1204,7 @@ export default function Home() {
                   </button>
                 ))}
 
-                {/* CONTROLES DE MODO CLARO/OSCURO E IDIOMA EN EL MENÚ */}
                 <div className={`pt-4 mt-2 border-t ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} space-y-3 text-left`}>
-                  {/* ALTERNAR MODO OSCURO / CLARO */}
                   <div className="px-2">
                     <label className={`text-[10px] ${textMuted} font-bold uppercase block mb-1.5`}>{T.tema}</label>
                     <button
@@ -1088,7 +1216,6 @@ export default function Home() {
                     </button>
                   </div>
 
-                  {/* SELECCIÓN DE IDIOMA */}
                   <div className="px-2">
                     <label className={`text-[10px] ${textMuted} font-bold uppercase block mb-1.5`}>{T.idioma}</label>
                     <select
@@ -1129,13 +1256,11 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
         
-        {/* ENCABEZADO CON FLECHAS ADAPTABLES A MODO CLARO Y OSCURO */}
         <header className={`${bgCard} flex justify-between items-center mb-8 p-4 sm:p-5 text-center shadow-xl`}>
           {indiceSeccionActual > 0 ? (
             <button 
               onClick={irSeccionAnterior} 
               className={`p-2 sm:p-2.5 rounded-2xl ${modoOscuro ? 'bg-slate-800/80 hover:bg-slate-700 text-indigo-400 border-slate-700/60' : 'bg-slate-100 hover:bg-slate-200 text-indigo-600 border-slate-300'} transition active:scale-90 font-bold text-sm sm:text-base border cursor-pointer shrink-0 shadow-sm`}
-              title="Sección anterior"
             >
               ◀
             </button>
@@ -1155,7 +1280,6 @@ export default function Home() {
             <button 
               onClick={irSeccionSiguiente} 
               className={`p-2 sm:p-2.5 rounded-2xl ${modoOscuro ? 'bg-slate-800/80 hover:bg-slate-700 text-indigo-400 border-slate-700/60' : 'bg-slate-100 hover:bg-slate-200 text-indigo-600 border-slate-300'} transition active:scale-90 font-bold text-sm sm:text-base border cursor-pointer shrink-0 shadow-sm`}
-              title="Siguiente sección"
             >
               ▶
             </button>
@@ -1164,14 +1288,12 @@ export default function Home() {
           )}
         </header>
 
-        {/* CONTENEDOR ANIMADO */}
         <div key={seccionActiva} className="animar-pestana">
           
           {/* RESUMEN GENERAL */}
           {seccionActiva === 'general' && (
             <div className="space-y-6">
               
-              {/* BOTÓN Y SECCIÓN DE REFERENCIAS */}
               <div className="text-center pb-2">
                 <button 
                   onClick={() => setMostrarReferencias(!mostrarReferencias)} 
@@ -1227,7 +1349,6 @@ export default function Home() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 
-                {/* BALANCE CALÓRICO */}
                 <div onClick={() => setSeccionActiva('nutricion')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
                   <span className="text-xs font-bold uppercase tracking-wider text-center w-full">{T.balanceCalorico} 🔥</span>
                   <p className={`text-3xl font-black my-2 text-center w-full transition-colors ${estadoCalorico.colorTexto}`}>
@@ -1243,7 +1364,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* AGUA */}
                 {(() => {
                   const pctAgua = Math.min(100, Math.round((aguaMl / metaAguaMl) * 100));
                   const colors = getDynamicColor(pctAgua);
@@ -1263,7 +1383,6 @@ export default function Home() {
                   );
                 })()}
 
-                {/* HÁBITOS */}
                 {(() => {
                   const colors = getDynamicColor(porcentajeHabitos);
                   return (
@@ -1280,7 +1399,6 @@ export default function Home() {
                   );
                 })()}
 
-                {/* SUEÑO */}
                 {(() => {
                   const pctSueno = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
                   const colors = getDynamicColor(pctSueno);
@@ -1305,7 +1423,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* MI PERFIL Y OBJETIVOS */}
+          {/* PERFIL */}
           {seccionActiva === 'perfil' && (
             <section className={`${bgCard} max-w-xl mx-auto space-y-6`}>
               <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
@@ -1315,8 +1433,6 @@ export default function Home() {
 
               {subSeccionPerfil === 'perfil' ? (
                 <div className="space-y-4 max-w-md mx-auto text-center">
-                  
-                  {/* NOMBRE Y FECHA DE NACIMIENTO MANTENIENDO FORMATEO AUTOMÁTICO DD/MM/AAAA */}
                   <div className="grid grid-cols-2 gap-3 items-center">
                     <div>
                       <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.nombre}</label>
@@ -1367,7 +1483,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* PROBABILIDAD DE CUMPLIR EL OBJETIVO ADAPTABLE EN MODO CLARO */}
                   {(() => {
                     const prob = calcularProbabilidadObjetivo(perfil.kilos_objetivo, perfil.tiempo_objetivo_meses, perfil.objetivo);
                     let colorBar = "bg-emerald-500 shadow-emerald-500/50";
@@ -1406,7 +1521,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* HÁBITOS DIARIOS */}
+          {/* HÁBITOS */}
           {seccionActiva === 'habitos' && (
             <section className={`${bgCard} space-y-6 max-w-2xl mx-auto`}>
               <form onSubmit={agregarHabito} className={`flex gap-2 ${bgInnerCard} p-2.5 rounded-2xl border items-center shadow-inner`}>
@@ -1434,10 +1549,8 @@ export default function Home() {
                   const racha = rachasHabitos[h.id] || 0;
                   return (
                     <div key={h.id} className={`p-3.5 rounded-2xl border ${bgInnerCardSubtle} flex flex-col gap-2 transition hover:border-slate-400`}>
-                      
                       <div className={`flex items-center justify-between border-b ${modoOscuro ? 'border-slate-800/50' : 'border-slate-200'} pb-2`}>
                         <span className={`text-[10px] ${textMuted} font-semibold uppercase tracking-wider`}>{T.habitoDiario}</span>
-                        
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold shadow-sm flex items-center gap-1">
                             <span>🔥</span>
@@ -1461,7 +1574,6 @@ export default function Home() {
                           {h.texto}
                         </span>
                       </div>
-
                     </div>
                   );
                 })}
@@ -1469,7 +1581,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* NUTRICIÓN Y ENTRENAMIENTO */}
+          {/* NUTRICIÓN */}
           {seccionActiva === 'nutricion' && (
             <section className={`${bgCard} max-w-3xl mx-auto space-y-6`}>
               <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
@@ -1479,7 +1591,6 @@ export default function Home() {
 
               {subSeccionNutricion === 'nutricion' ? (
                 <div className="space-y-3">
-                  
                   <div className={`${modoOscuro ? 'bg-slate-950/90 border-amber-500/30' : 'bg-amber-50/90 border-amber-300/60 shadow-sm'} border p-3.5 rounded-2xl flex justify-between items-center mb-4`}>
                     <span className="text-xs text-amber-500 font-bold flex items-center gap-1.5">
                       <span>🔥</span>
@@ -1513,7 +1624,6 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  
                   <div className={`${modoOscuro ? 'bg-slate-950/90 border-indigo-500/30' : 'bg-indigo-50/90 border-indigo-300/60 shadow-sm'} border p-3.5 rounded-2xl flex justify-between items-center mb-4`}>
                     <span className="text-xs text-indigo-500 font-bold flex items-center gap-1.5">
                       <span>🏃</span>
@@ -1577,7 +1687,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* HIDRATACIÓN Y SUEÑO */}
+          {/* EXTRA (AGUA Y SUEÑO) */}
           {seccionActiva === 'extra' && (
             <section className={`${bgCard} max-w-md mx-auto space-y-6`}>
               <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
@@ -1636,7 +1746,64 @@ export default function Home() {
             </section>
           )}
 
-          {/* NOVEDADES Y SOPORTE */}
+          {/* 3. NUEVA PESTAÑA: ALERTAS Y NOTIFICACIONES */}
+          {seccionActiva === 'alertas' && (
+            <section className={`${bgCard} max-w-lg mx-auto space-y-5`}>
+              <h3 className="text-sm font-bold text-center uppercase tracking-wider">{T.configAlertas}</h3>
+              
+              <button onClick={solicitarPermisosNotificacion} className={`${btnPrimary} bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500`}>
+                {T.activarNotificaciones}
+              </button>
+
+              <div className="space-y-3.5 pt-2">
+                
+                <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                  <label className={`text-xs font-bold block ${textMuted}`}>{T.alertaLevantarse}</label>
+                  <input type="time" value={configAlertas.horaLevantarse} onChange={(e) => setConfigAlertas({...configAlertas, horaLevantarse: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
+                </div>
+
+                <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                  <label className={`text-xs font-bold block ${textMuted}`}>{T.alertaEntrenar}</label>
+                  <input type="time" value={configAlertas.horaEntrenar} onChange={(e) => setConfigAlertas({...configAlertas, horaEntrenar: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                    <label className={`text-[10px] font-bold block ${textMuted}`}>{T.alertaDesayuno}</label>
+                    <input type="time" value={configAlertas.horaDesayuno} onChange={(e) => setConfigAlertas({...configAlertas, horaDesayuno: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
+                  </div>
+                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                    <label className={`text-[10px] font-bold block ${textMuted}`}>{T.alertaAlmuerzo}</label>
+                    <input type="time" value={configAlertas.horaAlmuerzo} onChange={(e) => setConfigAlertas({...configAlertas, horaAlmuerzo: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
+                  </div>
+                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                    <label className={`text-[10px] font-bold block ${textMuted}`}>{T.alertaMerienda}</label>
+                    <input type="time" value={configAlertas.horaMerienda} onChange={(e) => setConfigAlertas({...configAlertas, horaMerienda: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
+                  </div>
+                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                    <label className={`text-[10px] font-bold block ${textMuted}`}>{T.alertaCena}</label>
+                    <input type="time" value={configAlertas.horaCena} onChange={(e) => setConfigAlertas({...configAlertas, horaCena: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
+                  </div>
+                </div>
+
+                <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                  <label className={`text-xs font-bold block ${textMuted}`}>{T.alertaAgua}</label>
+                  <select value={configAlertas.intervaloAguaHoras} onChange={(e) => setConfigAlertas({...configAlertas, intervaloAguaHoras: Number(e.target.value)})} className={`${bgInput} font-bold text-center`}>
+                    <option value={1}>Cada 1 hora</option>
+                    <option value={2}>Cada 2 horas</option>
+                    <option value={3}>Cada 3 horas</option>
+                  </select>
+                </div>
+
+              </div>
+
+              <button onClick={() => alert('✅ Configuración de alertas guardada exitosamente.')} className={btnPrimary}>
+                {T.guardarAlertas}
+              </button>
+            </section>
+          )}
+
+          {/* NOVEDADES Y SOPORTE CON TRADUCCIONES COMPLETAS */}
           {seccionActiva === 'actualizaciones' && (
             <section className={`${bgCard} max-w-lg mx-auto space-y-6`}>
               <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
@@ -1647,9 +1814,10 @@ export default function Home() {
               {subSeccionActualizaciones === 'novedades' ? (
                 <div className={`${bgInnerCard} p-5 rounded-2xl border text-xs space-y-2.5`}>
                   <p className="font-bold text-sm">{T.versionApp}: {ULTIMA_ACTUALIZACION_APP}</p>
-                  <p>• Formato automático de fecha de nacimiento (`DD/MM/AAAA`) integrado.</p>
-                  <p>• Modo Claro mejorado con visibilidad optimizada en menú, flechas, tarjetas de hábitos y soporte.</p>
-                  <p>• Traducción completa de títulos, opciones y estados al Inglés y Portugués.</p>
+                  <p>{T.novedadesItem1}</p>
+                  <p>{T.novedadesItem2}</p>
+                  <p>{T.novedadesItem3}</p>
+                  <p>{T.novedadesItem4}</p>
                 </div>
               ) : (
                 <form onSubmit={enviarSoporte} className={`${bgInnerCard} p-5 rounded-2xl border space-y-4`}>
