@@ -228,7 +228,7 @@ export default function Home() {
       }
     } catch (err: any) {
       setErrorAuth(err.message || 'Error al autenticar');
-    } fontally {
+    } finally {
       setCargandoAuth(false);
     }
   };
@@ -432,7 +432,7 @@ export default function Home() {
   const moverEjercicio = (index: number, direccion: 'arriba' | 'abajo') => {
     const destino = direccion === 'arriba' ? index - 1 : index + 1;
     if (destino < 0 || destino >= ejercicios.length) return;
-    const copia = [...comidas];
+    const copia = [...ejercicios]; // 👈 Corregido a [...ejercicios]
     const [removido] = copia.splice(index, 1);
     copia.splice(destino, 0, removido);
     setEjercicios(copia);
