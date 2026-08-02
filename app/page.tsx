@@ -6,19 +6,119 @@ import { supabase } from '../lib/supabase';
 // FECHA Y HORA FIJA DE LA ÚLTIMA ACTUALIZACIÓN
 const ULTIMA_ACTUALIZACION_APP = '2/8/2026';
 
-// ESTILOS REUTILIZABLES PREMIUM
-const INPUT_CLS = "w-full min-w-0 box-border bg-slate-950/80 border border-slate-800/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 transition-all duration-200 placeholder:text-slate-600 outline-none hover:border-slate-700 font-medium [color-scheme:dark]";
-const BTN_PRIMARY = "w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-500 hover:via-violet-500 hover:to-purple-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all duration-200 shadow-lg shadow-indigo-600/20 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2";
-const CARD_CLS = "bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-2xl transition-all duration-300 hover:border-slate-700/80 hover:shadow-indigo-500/5";
+// TRADUCCIONES Y SISTEMA MULTI-IDIOMA
+type Idioma = 'es' | 'en' | 'pt';
+
+const TEXTOS = {
+  es: {
+    menu: 'Menú',
+    general: 'Resumen General',
+    perfil: 'Mi Perfil y Objetivos',
+    habitos: 'Hábitos Diarios',
+    nutricion: 'Nutrición y Entrenamiento',
+    extra: 'Extra',
+    actualizaciones: 'Novedades y Soporte',
+    modoOscuro: 'Modo Oscuro',
+    modoClaro: 'Modo Claro',
+    idioma: 'Idioma',
+    cerrarSesion: 'Cerrar Sesión',
+    totalQuemadasHoy: 'Total calorías quemadas hoy:',
+    totalIngeridasHoy: 'Total Calorías Ingeridas Hoy:',
+    verReferencias: 'Toca aquí para ver las referencias de los colores e indicadores',
+    ocultarReferencias: 'Ocultar referencias',
+    tituloReferencias: 'Referencias de Indicadores',
+    errorAuth: 'Correo y/o contraseña incorrectas',
+    cerrar: 'Cerrar',
+    datosPersonales: 'Datos Personales',
+    miObjetivo: 'Mi Objetivo',
+    nombre: 'Nombre',
+    fechaNacimiento: 'Fecha Nacimiento',
+    peso: 'Peso (kg)',
+    altura: 'Altura (cm)',
+    guardarPerfil: '💾 Guardar Perfil',
+    comidasDelDia: '🥗 Comidas del Día',
+    agregarComida: '+ Agregar Comida',
+    actividadesRegistradas: '🏋️ Actividades Registradas',
+    agregarEjercicio: '+ Agregar Ejercicio',
+    gastoBase: 'Gasto Calórico Base (TMB / BMR)',
+    gastoBaseDesc: 'Gasto metabólico diario estimado de tu cuerpo',
+  },
+  en: {
+    menu: 'Menu',
+    general: 'General Summary',
+    perfil: 'My Profile & Goals',
+    habitos: 'Daily Habits',
+    nutricion: 'Nutrition & Training',
+    extra: 'Extra',
+    actualizaciones: 'Updates & Support',
+    modoOscuro: 'Dark Mode',
+    modoClaro: 'Light Mode',
+    idioma: 'Language',
+    cerrarSesion: 'Log Out',
+    totalQuemadasHoy: 'Total calories burned today:',
+    totalIngeridasHoy: 'Total Calories Consumed Today:',
+    verReferencias: 'Tap here to view color and indicator references',
+    ocultarReferencias: 'Hide references',
+    tituloReferencias: 'Indicator References',
+    errorAuth: 'Correo y/o contraseña incorrectas',
+    cerrar: 'Close',
+    datosPersonales: 'Personal Data',
+    miObjetivo: 'My Goal',
+    nombre: 'Name',
+    fechaNacimiento: 'Date of Birth',
+    peso: 'Weight (kg)',
+    altura: 'Height (cm)',
+    guardarPerfil: '💾 Save Profile',
+    comidasDelDia: '🥗 Daily Meals',
+    agregarComida: '+ Add Meal',
+    actividadesRegistradas: '🏋️ Registered Activities',
+    agregarEjercicio: '+ Add Exercise',
+    gastoBase: 'Base Metabolic Rate (BMR)',
+    gastoBaseDesc: 'Estimated daily metabolic expenditure of your body',
+  },
+  pt: {
+    menu: 'Menu',
+    general: 'Resumo Geral',
+    perfil: 'Meu Perfil e Objetivos',
+    habitos: 'Hábitos Diários',
+    nutricion: 'Nutrição e Treino',
+    extra: 'Extra',
+    actualizaciones: 'Novidades e Suporte',
+    modoOscuro: 'Modo Escuro',
+    modoClaro: 'Modo Claro',
+    idioma: 'Idioma',
+    cerrarSesion: 'Sair',
+    totalQuemadasHoy: 'Total de calorias queimadas hoje:',
+    totalIngeridasHoy: 'Total de Calorias Ingeridas Hoje:',
+    verReferencias: 'Toque aqui para ver as referências de cores e indicadores',
+    ocultarReferencias: 'Ocultar referências',
+    tituloReferencias: 'Referências dos Indicadores',
+    errorAuth: 'Correo y/o contraseña incorrectas',
+    cerrar: 'Fechar',
+    datosPersonales: 'Dados Pessoais',
+    miObjetivo: 'Meu Objetivo',
+    nombre: 'Nome',
+    fechaNacimiento: 'Data de Nascimento',
+    peso: 'Peso (kg)',
+    altura: 'Altura (cm)',
+    guardarPerfil: '💾 Salvar Perfil',
+    comidasDelDia: '🥗 Refeições do Dia',
+    agregarComida: '+ Adicionar Refeição',
+    actividadesRegistradas: '🏋️ Atividades Registradas',
+    agregarEjercicio: '+ Adicionar Exercício',
+    gastoBase: 'Gasto Calórico Base (TMB / BMR)',
+    gastoBaseDesc: 'Gasto metabólico diário estimado do seu corpo',
+  }
+};
 
 // LISTA DE SECCIONES
 const SECCIONES = [
-  { id: 'general', label: 'General', icon: '📊' },
-  { id: 'perfil', label: 'Mi Perfil', icon: '👤' },
-  { id: 'habitos', label: 'Hábitos', icon: '⚡' },
-  { id: 'nutricion', label: 'Nutrición / Entreno', icon: '🔥' },
-  { id: 'extra', label: 'Extra', icon: '✨' },
-  { id: 'actualizaciones', label: 'Actualizaciones', icon: '🚀' },
+  { id: 'general', icon: '📊' },
+  { id: 'perfil', icon: '👤' },
+  { id: 'habitos', icon: '⚡' },
+  { id: 'nutricion', icon: '🔥' },
+  { id: 'extra', icon: '✨' },
+  { id: 'actualizaciones', icon: '🚀' },
 ];
 
 // INTERFACES
@@ -84,6 +184,30 @@ const obtenerFechaLogica = () => {
   return fechaAjustada.toISOString().split('T')[0];
 };
 
+// HELPER PARA CALCULAR EDAD DESDE FORMATO DE TEXTO DD/MM/AAAA O ISO
+const calcularEdad = (fechaStr: string): number => {
+  if (!fechaStr) return 25;
+  let fecha: Date;
+  if (fechaStr.includes('/')) {
+    const partes = fechaStr.split('/');
+    if (partes.length === 3) {
+      fecha = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]));
+    } else {
+      fecha = new Date(fechaStr);
+    }
+  } else {
+    fecha = new Date(fechaStr);
+  }
+  if (isNaN(fecha.getTime())) return 25;
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - fecha.getFullYear();
+  const m = hoy.getMonth() - fecha.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < fecha.getDate())) {
+    edad--;
+  }
+  return edad > 0 ? edad : 25;
+};
+
 // COMPONENTE PARA INPUTS NUMÉRICOS LIMPIOS
 const CleanNumberInput = ({ value, onChange, className, placeholder, min, step }: any) => {
   const [val, setVal] = useState<string>(value === 0 || value === null || value === undefined ? '' : String(value));
@@ -110,6 +234,11 @@ const CleanNumberInput = ({ value, onChange, className, placeholder, min, step }
 };
 
 export default function Home() {
+  // CONFIGURACIÓN DE TEMA E IDIOMA
+  const [modoOscuro, setModoOscuro] = useState(true);
+  const [idioma, setIdioma] = useState<Idioma>('es');
+  const T = TEXTOS[idioma];
+
   // AUTENTICACIÓN
   const [session, setSession] = useState<any>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
@@ -142,7 +271,7 @@ export default function Home() {
   // PERFIL
   const [perfil, setPerfil] = useState<PerfilUsuario>({
     nombre: '',
-    fecha_nacimiento: '2000-01-01',
+    fecha_nacimiento: '01/01/2000',
     peso: 75,
     altura: 175,
     sexo: 'masculino',
@@ -176,6 +305,12 @@ export default function Home() {
     calidad: 3,
   });
 
+  // ESTILOS DINÁMICOS SEGÚN MODO OSCURO / CLARO
+  const bgApp = modoOscuro ? "bg-[#0b0f17] text-slate-100" : "bg-slate-100 text-slate-900";
+  const bgCard = modoOscuro ? "bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-2xl transition-all duration-300" : "bg-white/90 backdrop-blur-xl border border-slate-200 rounded-3xl p-5 shadow-xl text-slate-800 transition-all duration-300";
+  const bgInput = modoOscuro ? "w-full min-w-0 box-border bg-slate-950/80 border border-slate-800/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 transition-all duration-200 placeholder:text-slate-600 outline-none hover:border-slate-700 font-medium [color-scheme:dark]" : "w-full min-w-0 box-border bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 transition-all duration-200 placeholder:text-slate-400 outline-none hover:border-slate-400 font-medium";
+  const btnPrimary = "w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-500 hover:via-violet-500 hover:to-purple-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all duration-200 shadow-lg shadow-indigo-600/20 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2";
+
   const ordenarHabitosPorHora = (lista: Habito[]): Habito[] => {
     return [...lista].sort((a, b) => (a.hora_objetivo || '00:00').localeCompare(b.hora_objetivo || '00:00'));
   };
@@ -207,6 +342,7 @@ export default function Home() {
     if (session?.user) cargarDatos();
   }, [fechaSeleccionada, session?.user?.id]);
 
+  // MANEJO DE INICIO DE SESIÓN CON ERROR FORZADO EN ESPAÑOL
   const manejarAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorAuth('');
@@ -228,7 +364,8 @@ export default function Home() {
         if (error) throw error;
       }
     } catch (err: any) {
-      setErrorAuth(err.message || 'Error al autenticar');
+      // Error personalizado siempre en español según requerimiento
+      setErrorAuth('Correo y/o contraseña incorrectas');
     } finally {
       setCargandoAuth(false);
     }
@@ -295,11 +432,9 @@ export default function Home() {
   };
 
   const bmrCalculado = useMemo(() => {
-    if (!perfil.fecha_nacimiento || !perfil.peso || !perfil.altura) return 1500;
-    const hoy = new Date();
-    const cumple = new Date(perfil.fecha_nacimiento);
-    let edad = hoy.getFullYear() - cumple.getFullYear();
-    let bmr = (10 * perfil.peso) + (6.25 * perfil.altura) - (5 * (isNaN(edad) ? 25 : edad));
+    if (!perfil.peso || !perfil.altura) return 1500;
+    const edad = calcularEdad(perfil.fecha_nacimiento);
+    let bmr = (10 * perfil.peso) + (6.25 * perfil.altura) - (5 * edad);
     return Math.round(perfil.sexo === 'masculino' ? bmr + 5 : bmr - 161);
   }, [perfil]);
 
@@ -434,14 +569,14 @@ export default function Home() {
   };
 
   const moverEjercicio = (index: number, direccion: 'arriba' | 'abajo') => {
-    const destino = direccion === 'arriba' ? index - 1 : index + 1;
-    if (destino < 0 || destino >= ejercicios.length) return;
-    const copia = [...ejercicios];
-    const [removido] = copia.splice(index, 1);
-    copia.splice(destino, 0, removido);
-    setEjercicios(copia);
-    guardarCaloriasDB(copia, comidas, aguaMl);
-  };
+  const destino = direccion === 'arriba' ? index - 1 : index + 1;
+  if (destino < 0 || destino >= ejercicios.length) return;
+  const copia = [...ejercicios];
+  const [removido] = copia.splice(index, 1);
+  copia.splice(destino, 0, removido);
+  setEjercicios(copia);
+  guardarCaloriasDB(copia, comidas, aguaMl); // 👈 Se cambió 'ejercicios' por 'comidas'
+};
 
   const modificarAgua = (deltaMl: number) => {
     setAguaMl(prev => {
@@ -592,11 +727,11 @@ export default function Home() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-[#0b0f17] text-white flex items-center justify-center p-4 font-sans relative overflow-hidden">
+      <div className={`min-h-screen ${bgApp} flex items-center justify-center p-4 font-sans relative overflow-hidden transition-colors duration-300`}>
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="bg-slate-900/80 backdrop-blur-2xl border border-slate-800/80 p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl relative z-10">
+        <div className={`${bgCard} p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl relative z-10`}>
           <div className="text-center space-y-2">
             <span className="text-5xl inline-block drop-shadow-lg">💪</span>
             <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Personal Fitness App</h1>
@@ -607,26 +742,26 @@ export default function Home() {
 
           {pasoOTP ? (
             <form onSubmit={verificarCodigoOTP} className="space-y-4">
-              <input type="text" required value={codigoOTP} onChange={(e) => setCodigoOTP(e.target.value)} placeholder="Código de 6 dígitos" className={`${INPUT_CLS} text-center font-mono text-base tracking-widest`} />
-              <button type="submit" disabled={cargandoAuth} className={BTN_PRIMARY}>{cargandoAuth ? 'Verificando...' : 'Confirmar Código'}</button>
+              <input type="text" required value={codigoOTP} onChange={(e) => setCodigoOTP(e.target.value)} placeholder="Código de 6 dígitos" className={`${bgInput} text-center font-mono text-base tracking-widest`} />
+              <button type="submit" disabled={cargandoAuth} className={btnPrimary}>{cargandoAuth ? 'Verificando...' : 'Confirmar Código'}</button>
               <button type="button" onClick={() => setPasoOTP(false)} className="w-full text-xs text-slate-400 hover:text-indigo-400 transition">← Volver al formulario</button>
             </form>
           ) : (
             <form onSubmit={manejarAuth} className="space-y-4">
-              <input type="email" required value={emailAuth} onChange={(e) => setEmailAuth(e.target.value)} placeholder="tu@email.com" className={INPUT_CLS} />
+              <input type="email" required value={emailAuth} onChange={(e) => setEmailAuth(e.target.value)} placeholder="tu@email.com" className={bgInput} />
               
               <div className="relative">
-                <input type={mostrarPassword ? "text" : "password"} required value={passwordAuth} onChange={(e) => setPasswordAuth(e.target.value)} placeholder="Contraseña" className={INPUT_CLS} />
+                <input type={mostrarPassword ? "text" : "password"} required value={passwordAuth} onChange={(e) => setPasswordAuth(e.target.value)} placeholder="Contraseña" className={bgInput} />
                 <button type="button" onClick={() => setMostrarPassword(!mostrarPassword)} className="absolute right-3.5 top-3 text-xs text-slate-400 hover:text-slate-200 transition">
                   {mostrarPassword ? '🙈' : '👁️'}
                 </button>
               </div>
 
               {esRegistro && (
-                <input type={mostrarPassword ? "text" : "password"} required value={confirmPasswordAuth} onChange={(e) => setConfirmPasswordAuth(e.target.value)} placeholder="Confirmar contraseña" className={INPUT_CLS} />
+                <input type={mostrarPassword ? "text" : "password"} required value={confirmPasswordAuth} onChange={(e) => setConfirmPasswordAuth(e.target.value)} placeholder="Confirmar contraseña" className={bgInput} />
               )}
 
-              <button type="submit" disabled={cargandoAuth} className={BTN_PRIMARY}>
+              <button type="submit" disabled={cargandoAuth} className={btnPrimary}>
                 {cargandoAuth ? 'Procesando...' : esRegistro ? 'Registrarse' : 'Iniciar Sesión'}
               </button>
             </form>
@@ -643,7 +778,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b0f17] text-slate-100 flex flex-col md:flex-row font-sans selection:bg-indigo-500 selection:text-white">
+    <div className={`min-h-screen ${bgApp} flex flex-col md:flex-row font-sans transition-colors duration-300 selection:bg-indigo-500 selection:text-white`}>
       
       {/* ESTILOS DE ANIMACIÓN DE PESTAÑAS */}
       <style jsx global>{`
@@ -656,18 +791,18 @@ export default function Home() {
         }
       `}</style>
 
-      {/* MENÚ LATERAL Y NAVEGACIÓN */}
+      {/* MENÚ LATERAL CON CONTROLES DE IDIOMA Y MODO CLARO/OSCURO */}
       <aside className={`bg-slate-900/90 backdrop-blur-xl border-b md:border-b-0 md:border-r border-slate-800/80 transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:w-64' : 'w-full md:w-20'}`}>
         <div>
           <div className="p-4 flex items-center justify-between border-b border-slate-800/80 gap-2">
             
-            {/* BOTÓN CON BARRA Y TEXTO "MENÚ" */}
+            {/* BOTÓN "MENÚ" */}
             <button 
               onClick={() => setSidebarAbierto(!sidebarAbierto)} 
               className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white transition active:scale-95 flex items-center gap-2.5 shadow-lg shadow-indigo-600/30 cursor-pointer"
             >
               <span className="text-base sm:text-lg font-black tracking-tighter leading-none">{sidebarAbierto ? '✕' : '☰'}</span>
-              <span className="text-xs font-black uppercase tracking-wider">Menú</span>
+              <span className="text-xs font-black uppercase tracking-wider">{T.menu}</span>
             </button>
             
             <div className="text-xs font-bold text-slate-200 bg-slate-950/80 px-3.5 py-2 rounded-xl border border-slate-800/80 truncate max-w-[170px] shadow-inner">
@@ -675,7 +810,7 @@ export default function Home() {
             </div>
           </div>
 
-          <nav className="p-3 text-center flex flex-col items-center justify-center">
+          <nav className="p-3 text-center flex flex-col items-center justify-center space-y-3">
             {sidebarAbierto ? (
               <div className="w-full flex flex-col space-y-2">
                 {SECCIONES.map((item) => (
@@ -689,9 +824,39 @@ export default function Home() {
                     }`}
                   >
                     <span className="text-xl">{item.icon}</span>
-                    <span>{item.label}</span>
+                    <span>{T[item.id as keyof typeof T] || item.id}</span>
                   </button>
                 ))}
+
+                {/* CONTROLES DE MODO CLARO/OSCURO E IDIOMA EN EL MENÚ */}
+                <div className="pt-4 mt-2 border-t border-slate-800/80 space-y-3 text-left">
+                  {/* ALTERNAR MODO OSCURO / CLARO */}
+                  <div className="px-2">
+                    <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1.5">Tema</label>
+                    <button
+                      onClick={() => setModoOscuro(!modoOscuro)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-indigo-500 text-xs font-semibold transition"
+                    >
+                      <span>{modoOscuro ? '🌙 ' + T.modoOscuro : '☀️ ' + T.modoClaro}</span>
+                      <span className="text-[10px] bg-indigo-600/30 text-indigo-300 px-2 py-0.5 rounded-md">Cambiar</span>
+                    </button>
+                  </div>
+
+                  {/* SELECCIÓN DE IDIOMA */}
+                  <div className="px-2">
+                    <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1.5">{T.idioma}</label>
+                    <select
+                      value={idioma}
+                      onChange={(e) => setIdioma(e.target.value as Idioma)}
+                      className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 outline-none focus:border-indigo-500"
+                    >
+                      <option value="es">🇪🇸 Español</option>
+                      <option value="en">🇺🇸 English</option>
+                      <option value="pt">🇧🇷 Português</option>
+                    </select>
+                  </div>
+                </div>
+
               </div>
             ) : (
               <button
@@ -709,7 +874,7 @@ export default function Home() {
 
         {sidebarAbierto && (
           <div className="p-4 border-t border-slate-800/80 bg-slate-950/50 space-y-3 mt-auto text-center">
-            <button onClick={cerrarSesion} className="w-full bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/80 text-rose-300 font-bold py-2.5 rounded-xl text-xs transition active:scale-95">🚪 Cerrar Sesión</button>
+            <button onClick={cerrarSesion} className="w-full bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/80 text-rose-300 font-bold py-2.5 rounded-xl text-xs transition active:scale-95">🚪 {T.cerrarSesion}</button>
             <div className="text-[10px] text-slate-500 font-mono">🚀 v{ULTIMA_ACTUALIZACION_APP}</div>
           </div>
         )}
@@ -718,8 +883,8 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
         
-        {/* ENCABEZADO CON FLECHAS DE NAVEGACIÓN A LOS LADOS */}
-        <header className="flex justify-between items-center mb-8 bg-slate-900/60 backdrop-blur-xl p-4 sm:p-5 rounded-3xl border border-slate-800/80 text-center shadow-xl">
+        {/* ENCABEZADO CON FLECHAS */}
+        <header className={`${bgCard} flex justify-between items-center mb-8 p-4 sm:p-5 text-center shadow-xl`}>
           {indiceSeccionActual > 0 ? (
             <button 
               onClick={irSeccionAnterior} 
@@ -733,48 +898,11 @@ export default function Home() {
           )}
 
           <h2 className="text-lg sm:text-2xl font-black text-center flex-1 flex items-center justify-center gap-2.5 px-2">
-            {seccionActiva === 'general' && (
-              <>
-                <span>📊</span>
-                <span className="bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent">Resumen General</span>
-                <span>📊</span>
-              </>
-            )}
-            {seccionActiva === 'perfil' && (
-              <>
-                <span>👤</span>
-                <span className="bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent">Mi Perfil y Objetivos</span>
-                <span>👤</span>
-              </>
-            )}
-            {seccionActiva === 'habitos' && (
-              <>
-                <span>⚡</span>
-                <span className="bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent">Hábitos Diarios</span>
-                <span>⚡</span>
-              </>
-            )}
-            {seccionActiva === 'nutricion' && (
-              <>
-                <span>🔥</span>
-                <span className="bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent">Nutrición y Entrenamiento</span>
-                <span>🔥</span>
-              </>
-            )}
-            {seccionActiva === 'extra' && (
-              <>
-                <span>✨</span>
-                <span className="bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent">Extra</span>
-                <span>✨</span>
-              </>
-            )}
-            {seccionActiva === 'actualizaciones' && (
-              <>
-                <span>🚀</span>
-                <span className="bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-300 bg-clip-text text-transparent">Novedades y Soporte</span>
-                <span>🚀</span>
-              </>
-            )}
+            <span>{SECCIONES.find(s => s.id === seccionActiva)?.icon}</span>
+            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              {T[seccionActiva as keyof typeof T]}
+            </span>
+            <span>{SECCIONES.find(s => s.id === seccionActiva)?.icon}</span>
           </h2>
 
           {indiceSeccionActual < SECCIONES.length - 1 ? (
@@ -790,29 +918,73 @@ export default function Home() {
           )}
         </header>
 
-        {/* CONTENEDOR ANIMADO DE CADA SECCIÓN */}
+        {/* CONTENEDOR ANIMADO */}
         <div key={seccionActiva} className="animar-pestana">
           
           {/* RESUMEN GENERAL */}
           {seccionActiva === 'general' && (
             <div className="space-y-6">
               
-              {/* BOTÓN PARA ABRIR REFERENCIAS (UBICADO ARRIBA DEL TODO) */}
+              {/* BOTÓN Y SECCIÓN DE REFERENCIAS (UBICADO ARRIBA DEL TODO Y SIN FONDO NEGRO) */}
               <div className="text-center pb-2">
                 <button 
-                  onClick={() => setMostrarReferencias(true)} 
-                  className="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium cursor-pointer transition flex items-center justify-center gap-1.5 mx-auto bg-slate-900/60 hover:bg-slate-900/90 px-4 py-2.5 rounded-xl border border-slate-800/80 shadow-md"
+                  onClick={() => setMostrarReferencias(!mostrarReferencias)} 
+                  className={`text-xs ${modoOscuro ? 'bg-slate-900/60 text-indigo-400 border-slate-800/80' : 'bg-white text-indigo-600 border-slate-200'} hover:underline font-medium cursor-pointer transition flex items-center justify-center gap-1.5 mx-auto px-4 py-2.5 rounded-xl border shadow-md`}
                 >
                   <span>🔍</span>
-                  <span>Toca aquí para ver las referencias de los colores e indicadores</span>
+                  <span>{mostrarReferencias ? T.ocultarReferencias : T.verReferencias}</span>
                 </button>
               </div>
+
+              {/* PESTAÑA DE AYUDA DESPLEGABLE DIRECTAMENTE ARRIBA SIN FONDO NEGRO OVERLAY */}
+              {mostrarReferencias && (
+                <div className={`${bgCard} p-5 rounded-3xl border space-y-4 animar-pestana shadow-xl`}>
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <h3 className="text-xs font-bold flex items-center gap-2 uppercase tracking-wider">
+                      <span>📖</span>
+                      <span>{T.tituloReferencias}</span>
+                    </h3>
+                    <button 
+                      onClick={() => setMostrarReferencias(false)}
+                      className="text-xs font-bold px-3 py-1 rounded-xl bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition"
+                    >
+                      ✕ {T.cerrar}
+                    </button>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div className="flex items-start gap-3 bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60">
+                      <div className="w-3.5 h-3.5 rounded-full bg-rose-500 shrink-0 mt-0.5 shadow-md shadow-rose-500/50"></div>
+                      <div>
+                        <span className="font-bold text-rose-400 block mb-0.5">Rojo y Vacío (0%):</span>
+                        Estás lejos de tu objetivo o en dirección opuesta (ej. estar en déficit calórico cuando buscas subir de peso, o no haber registrado agua/hábitos).
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3 bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60">
+                      <div className="w-3.5 h-3.5 rounded-full bg-amber-500 shrink-0 mt-0.5 shadow-md shadow-amber-500/50"></div>
+                      <div>
+                        <span className="font-bold text-amber-400 block mb-0.5">Amarillo a la Mitad (50%):</span>
+                        Progreso intermedio o superávit/déficit leve. Vas por buen camino pero aún te falta para la meta óptima del día.
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3 bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60">
+                      <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shrink-0 mt-0.5 shadow-md shadow-emerald-500/50"></div>
+                      <div>
+                        <span className="font-bold text-emerald-400 block mb-0.5">Verde Lleno (100%):</span>
+                        ¡Meta diaria alcanzada con éxito! Has conseguido el rango ideal para tu balance calórico, hidratación o rutina.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 
                 {/* BALANCE CALÓRICO */}
-                <div onClick={() => setSeccionActiva('nutricion')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                  <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center w-full">Balance Calórico 🔥</span>
+                <div onClick={() => setSeccionActiva('nutricion')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                  <span className="text-xs font-bold uppercase tracking-wider text-center w-full">Balance Calórico 🔥</span>
                   <p className={`text-3xl font-black my-2 text-center w-full transition-colors ${estadoCalorico.colorTexto}`}>
                     {balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs text-slate-500 font-medium">kcal</span>
                   </p>
@@ -831,8 +1003,8 @@ export default function Home() {
                   const pctAgua = Math.min(100, Math.round((aguaMl / metaAguaMl) * 100));
                   const colors = getDynamicColor(pctAgua);
                   return (
-                    <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Agua Diaria 💧</span>
+                    <div onClick={() => setSeccionActiva('extra')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                      <span className="text-xs font-bold uppercase tracking-wider text-center">Agua Diaria 💧</span>
                       <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
                         {(aguaMl / 1000).toFixed(2)}L <span className="text-xs text-slate-500 font-medium">/ 2.5L</span>
                       </p>
@@ -850,8 +1022,8 @@ export default function Home() {
                 {(() => {
                   const colors = getDynamicColor(porcentajeHabitos);
                   return (
-                    <div onClick={() => setSeccionActiva('habitos')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Hábitos ⚡</span>
+                    <div onClick={() => setSeccionActiva('habitos')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                      <span className="text-xs font-bold uppercase tracking-wider text-center">Hábitos ⚡</span>
                       <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>{porcentajeHabitos}%</p>
                       <div className="w-full space-y-1.5 mt-2">
                         <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
@@ -868,8 +1040,8 @@ export default function Home() {
                   const pctSueno = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
                   const colors = getDynamicColor(pctSueno);
                   return (
-                    <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Sueño 😴</span>
+                    <div onClick={() => setSeccionActiva('extra')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                      <span className="text-xs font-bold uppercase tracking-wider text-center">Sueño 😴</span>
                       <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
                         {suenoHoy.horas_totales} <span className="text-xs text-slate-500 font-medium">hrs</span>
                       </p>
@@ -885,91 +1057,46 @@ export default function Home() {
 
               </div>
 
-              {/* MODAL DE REFERENCIAS */}
-              {mostrarReferencias && (
-                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-                  <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full relative shadow-2xl space-y-4">
-                    <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                      <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                        <span>📖</span>
-                        <span>Referencias de Indicadores</span>
-                      </h3>
-                      <button 
-                        onClick={() => setMostrarReferencias(false)}
-                        className="text-slate-400 hover:text-white font-bold text-lg px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 transition"
-                      >
-                        ✕
-                      </button>
-                    </div>
-
-                    <div className="space-y-3.5 text-xs text-slate-300">
-                      <div className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
-                        <div className="w-3.5 h-3.5 rounded-full bg-rose-500 shrink-0 mt-0.5 shadow-md shadow-rose-500/50"></div>
-                        <div>
-                          <span className="font-bold text-rose-400 block mb-0.5">Rojo y Vacío (0%):</span>
-                          Estás lejos de tu objetivo o en dirección opuesta (ej. estar en déficit calórico cuando buscas subir de peso, o no haber registrado agua/hábitos).
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
-                        <div className="w-3.5 h-3.5 rounded-full bg-amber-500 shrink-0 mt-0.5 shadow-md shadow-amber-500/50"></div>
-                        <div>
-                          <span className="font-bold text-amber-400 block mb-0.5">Amarillo a la Mitad (50%):</span>
-                          Progreso intermedio o superávit/déficit leve. Vas por buen camino pero aún te falta para la meta óptima del día.
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
-                        <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shrink-0 mt-0.5 shadow-md shadow-emerald-500/50"></div>
-                        <div>
-                          <span className="font-bold text-emerald-400 block mb-0.5">Verde Lleno (100%):</span>
-                          ¡Meta diaria alcanzada con éxito! Has conseguido el rango ideal para tu balance calórico, hidratación o rutina.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
             </div>
           )}
 
           {/* MI PERFIL Y OBJETIVOS */}
           {seccionActiva === 'perfil' && (
-            <section className={`${CARD_CLS} max-w-xl mx-auto space-y-6`}>
+            <section className={`${bgCard} max-w-xl mx-auto space-y-6`}>
               <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
-                <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-xs font-bold pb-2 transition ${subSeccionPerfil === 'perfil' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>👤 Datos Personales</button>
-                <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-xs font-bold pb-2 transition ${subSeccionPerfil === 'objetivo' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🎯 Mi Objetivo</button>
+                <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-xs font-bold pb-2 transition ${subSeccionPerfil === 'perfil' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>👤 {T.datosPersonales}</button>
+                <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-xs font-bold pb-2 transition ${subSeccionPerfil === 'objetivo' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🎯 {T.miObjetivo}</button>
               </div>
 
               {subSeccionPerfil === 'perfil' ? (
                 <div className="space-y-4 max-w-md mx-auto text-center">
                   
-                  {/* NOMBRE Y FECHA DE NACIMIENTO EN LA MISMA LÍNEA (MISMO TAMAÑO QUE PESO Y ALTURA) */}
+                  {/* NOMBRE Y FECHA DE NACIMIENTO MANTENIENDO EL MISMO TAMAÑO Y FORMATO DD/MM/AAAA */}
                   <div className="grid grid-cols-2 gap-3 items-center">
                     <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Nombre</label>
-                      <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={`${INPUT_CLS} text-center`} />
+                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">{T.nombre}</label>
+                      <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={`${bgInput} text-center`} />
                     </div>
                     <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Fecha Nacimiento</label>
+                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">{T.fechaNacimiento}</label>
                       <input 
-                        type="date" 
+                        type="text" 
+                        placeholder="DD/MM/AAAA"
                         value={perfil.fecha_nacimiento} 
                         onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} 
-                        className={`${INPUT_CLS} text-center font-mono w-full`} 
+                        className={`${bgInput} text-center font-mono w-full`} 
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 items-center">
                     <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Peso (kg)</label>
-                      <CleanNumberInput step="0.1" value={perfil.peso} onChange={(v: number) => setPerfil({...perfil, peso: v})} className={`${INPUT_CLS} text-center font-bold`} />
+                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">{T.peso}</label>
+                      <CleanNumberInput step="0.1" value={perfil.peso} onChange={(v: number) => setPerfil({...perfil, peso: v})} className={`${bgInput} text-center font-bold`} />
                     </div>
                     <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Altura (cm)</label>
-                      <CleanNumberInput value={perfil.altura} onChange={(v: number) => setPerfil({...perfil, altura: v})} className={`${INPUT_CLS} text-center font-bold`} />
+                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">{T.altura}</label>
+                      <CleanNumberInput value={perfil.altura} onChange={(v: number) => setPerfil({...perfil, altura: v})} className={`${bgInput} text-center font-bold`} />
                     </div>
                   </div>
                 </div>
@@ -977,7 +1104,7 @@ export default function Home() {
                 <div className="space-y-4 max-w-md mx-auto text-center">
                   <div className="max-w-[220px] mx-auto text-center">
                     <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Objetivo Principal</label>
-                    <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={`${INPUT_CLS} text-center font-bold`}>
+                    <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={`${bgInput} text-center font-bold`}>
                       <option value="bajar">🔥 Bajar de peso</option>
                       <option value="mantener">⚖️ Mantener peso</option>
                       <option value="subir">💪 Subir de peso</option>
@@ -987,11 +1114,11 @@ export default function Home() {
                   <div className="grid grid-cols-2 gap-3 items-center">
                     <div>
                       <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Kilos Objetivo</label>
-                      <CleanNumberInput value={perfil.kilos_objetivo} onChange={(v: number) => setPerfil({...perfil, kilos_objetivo: v})} className={`${INPUT_CLS} text-center font-bold`} />
+                      <CleanNumberInput value={perfil.kilos_objetivo} onChange={(v: number) => setPerfil({...perfil, kilos_objetivo: v})} className={`${bgInput} text-center font-bold`} />
                     </div>
                     <div>
                       <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Plazo (Meses)</label>
-                      <CleanNumberInput value={perfil.tiempo_objetivo_meses} onChange={(v: number) => setPerfil({...perfil, tiempo_objetivo_meses: v})} className={`${INPUT_CLS} text-center font-bold`} />
+                      <CleanNumberInput value={perfil.tiempo_objetivo_meses} onChange={(v: number) => setPerfil({...perfil, tiempo_objetivo_meses: v})} className={`${bgInput} text-center font-bold`} />
                     </div>
                   </div>
 
@@ -1028,22 +1155,22 @@ export default function Home() {
                 </div>
               )}
 
-              <button onClick={guardarPerfil} disabled={guardandoPerfil} className={`${BTN_PRIMARY} max-w-xs mx-auto block`}>
-                {guardandoPerfil ? 'Guardando...' : '💾 Guardar Perfil'}
+              <button onClick={guardarPerfil} disabled={guardandoPerfil} className={`${btnPrimary} max-w-xs mx-auto block`}>
+                {guardandoPerfil ? 'Guardando...' : T.guardarPerfil}
               </button>
             </section>
           )}
 
           {/* HÁBITOS DIARIOS */}
           {seccionActiva === 'habitos' && (
-            <section className={`${CARD_CLS} space-y-6 max-w-2xl mx-auto`}>
+            <section className={`${bgCard} space-y-6 max-w-2xl mx-auto`}>
               <form onSubmit={agregarHabito} className="flex gap-2 bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800/80 items-center shadow-inner">
                 <input 
                   type="text" 
                   placeholder="Ej: Meditar 10 min, Leer 20 págs..." 
                   value={nuevoHabito} 
                   onChange={(e) => setNuevoHabito(e.target.value)} 
-                  className={`${INPUT_CLS} flex-1`} 
+                  className={`${bgInput} flex-1`} 
                 />
                 <input 
                   type="time" 
@@ -1101,7 +1228,7 @@ export default function Home() {
 
           {/* NUTRICIÓN Y ENTRENAMIENTO */}
           {seccionActiva === 'nutricion' && (
-            <section className={`${CARD_CLS} max-w-3xl mx-auto space-y-6`}>
+            <section className={`${bgCard} max-w-3xl mx-auto space-y-6`}>
               <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
                 <button onClick={() => setSubSeccionNutricion('nutricion')} className={`text-xs font-bold pb-2 transition ${subSeccionNutricion === 'nutricion' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400 hover:text-slate-200'}`}>🥗 Nutrición</button>
                 <button onClick={() => setSubSeccionNutricion('entrenamiento')} className={`text-xs font-bold pb-2 transition ${subSeccionNutricion === 'entrenamiento' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🏋️ Actividad Física</button>
@@ -1114,14 +1241,14 @@ export default function Home() {
                   <div className="bg-slate-950/90 border border-amber-500/30 p-3.5 rounded-2xl flex justify-between items-center mb-4 shadow-lg shadow-amber-500/5">
                     <span className="text-xs text-amber-300 font-bold flex items-center gap-1.5">
                       <span>🔥</span>
-                      <span>Total Calorías Ingeridas Hoy:</span>
+                      <span>{T.totalIngeridasHoy}</span>
                     </span>
                     <span className="text-base font-black text-amber-400 font-mono">{totalIngresoCalorias} <span className="text-xs text-slate-400">kcal</span></span>
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">🥗 Comidas del Día</h3>
-                    <button onClick={agregarComida} className="text-xs text-amber-400 font-bold hover:underline transition">+ Agregar Comida</button>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">{T.comidasDelDia}</h3>
+                    <button onClick={agregarComida} className="text-xs text-amber-400 font-bold hover:underline transition">{T.agregarComida}</button>
                   </div>
                   
                   {comidas.map((item, index) => (
@@ -1131,11 +1258,11 @@ export default function Home() {
                         <button onClick={() => moverComida(index, 'abajo')} disabled={index === comidas.length - 1} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▼</button>
                       </div>
 
-                      <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={INPUT_CLS} />
+                      <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={bgInput} />
                       
                       <div className="w-24 shrink-0 text-center">
                         <label className="text-[10px] text-slate-400 block mb-0.5 font-medium">kcal</label>
-                        <CleanNumberInput value={item.calorias} onChange={(v: number) => actualizarComida(item.id, 'calorias', v)} className={`${INPUT_CLS} text-center font-bold`} />
+                        <CleanNumberInput value={item.calorias} onChange={(v: number) => actualizarComida(item.id, 'calorias', v)} className={`${bgInput} text-center font-bold`} />
                       </div>
 
                       <button onClick={() => eliminarComida(item.id)} className="text-rose-400 hover:text-rose-300 text-xs p-1 shrink-0 transition hover:scale-110">🗑️</button>
@@ -1145,27 +1272,27 @@ export default function Home() {
               ) : (
                 <div className="space-y-3">
                   
-                  {/* CONTADOR DESTACADO DE CALORÍAS QUEMADAS */}
+                  {/* CONTADOR DE CALORÍAS QUEMADAS (GASTO BASAL + EJERCICIOS) */}
                   <div className="bg-slate-950/90 border border-indigo-500/30 p-3.5 rounded-2xl flex justify-between items-center mb-4 shadow-lg shadow-indigo-500/5">
                     <span className="text-xs text-indigo-300 font-bold flex items-center gap-1.5">
                       <span>🏃</span>
-                      <span>Total Calorías Quemadas en Ejercicio:</span>
+                      <span>{T.totalQuemadasHoy}</span>
                     </span>
-                    <span className="text-base font-black text-indigo-400 font-mono">{totalGastoEjercicios} <span className="text-xs text-slate-400">kcal</span></span>
+                    <span className="text-base font-black text-indigo-400 font-mono">{bmrCalculado + totalGastoEjercicios} <span className="text-xs text-slate-400">kcal</span></span>
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">🏋️ Actividades Registradas</h3>
-                    <button onClick={agregarEjercicio} className="text-xs text-indigo-400 font-bold hover:underline transition">+ Agregar Ejercicio</button>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">{T.actividadesRegistradas}</h3>
+                    <button onClick={agregarEjercicio} className="text-xs text-indigo-400 font-bold hover:underline transition">{T.agregarEjercicio}</button>
                   </div>
 
-                  {/* PRIMERA ACTIVIDAD ANCLADA: GASTO BASE DEL USUARIO */}
+                  {/* ACTIVIDAD ANCLADA: GASTO BASE */}
                   <div className="bg-gradient-to-r from-violet-900/60 via-purple-900/60 to-indigo-900/60 p-3.5 rounded-2xl border border-violet-500/40 flex items-center justify-between gap-3 shadow-lg shadow-purple-500/10">
                     <div className="flex items-center gap-2.5">
                       <span className="text-xl">⚡</span>
                       <div>
-                        <span className="text-xs font-bold text-violet-200 block">Gasto Calórico Base (TMB / BMR)</span>
-                        <span className="text-[10px] text-violet-300/80">Gasto metabólico diario estimado de tu cuerpo</span>
+                        <span className="text-xs font-bold text-violet-200 block">{T.gastoBase}</span>
+                        <span className="text-[10px] text-violet-300/80">{T.gastoBaseDesc}</span>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
@@ -1184,7 +1311,7 @@ export default function Home() {
 
                       <div className="flex-1 min-w-0">
                         <label className="text-[10px] text-slate-400 block text-center mb-1 font-medium">Tipo de Actividad</label>
-                        <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${INPUT_CLS} w-full text-center truncate font-semibold`}>
+                        <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${bgInput} w-full text-center truncate font-semibold`}>
                           <option value="">Seleccionar tipo...</option>
                           <option value="fuerza">🏋️ Fuerza / Gimnasio</option>
                           <option value="running">🏃 Running / Carrera</option>
@@ -1200,7 +1327,7 @@ export default function Home() {
 
                       <div className="w-20 shrink-0 text-center">
                         <label className="text-[10px] text-amber-400 block text-center mb-1 font-bold">Kcal</label>
-                        <CleanNumberInput value={item.calorias} onChange={(v: number) => actualizarEjercicio(item.id, 'calorias', v)} className={`${INPUT_CLS} text-center font-bold px-1`} />
+                        <CleanNumberInput value={item.calorias} onChange={(v: number) => actualizarEjercicio(item.id, 'calorias', v)} className={`${bgInput} text-center font-bold px-1`} />
                       </div>
 
                       <button onClick={() => eliminarEjercicio(item.id)} className="text-rose-400 hover:text-rose-300 text-xs p-1 shrink-0 mt-4 transition hover:scale-110">🗑️</button>
@@ -1213,7 +1340,7 @@ export default function Home() {
 
           {/* HIDRATACIÓN Y SUEÑO */}
           {seccionActiva === 'extra' && (
-            <section className={`${CARD_CLS} max-w-md mx-auto space-y-6`}>
+            <section className={`${bgCard} max-w-md mx-auto space-y-6`}>
               <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
                 <button onClick={() => setSubSeccionExtra('agua')} className={`text-xs font-bold pb-2 transition ${subSeccionExtra === 'agua' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}>💧 Hidratación</button>
                 <button onClick={() => setSubSeccionExtra('sueno')} className={`text-xs font-bold pb-2 transition ${subSeccionExtra === 'sueno' ? 'text-violet-400 border-b-2 border-violet-400' : 'text-slate-400 hover:text-slate-200'}`}>😴 Descanso</button>
@@ -1264,7 +1391,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <button onClick={guardarSueno} className={BTN_PRIMARY}>💾 Guardar Sueño</button>
+                  <button onClick={guardarSueno} className={btnPrimary}>💾 Guardar Sueño</button>
                 </div>
               )}
             </section>
@@ -1272,7 +1399,7 @@ export default function Home() {
 
           {/* NOVEDADES Y SOPORTE */}
           {seccionActiva === 'actualizaciones' && (
-            <section className={`${CARD_CLS} max-w-lg mx-auto space-y-6`}>
+            <section className={`${bgCard} max-w-lg mx-auto space-y-6`}>
               <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
                 <button onClick={() => setSubSeccionActualizaciones('novedades')} className={`text-xs font-bold pb-2 transition ${subSeccionActualizaciones === 'novedades' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🚀 Novedades</button>
                 <button onClick={() => setSubSeccionActualizaciones('soporte')} className={`text-xs font-bold pb-2 transition ${subSeccionActualizaciones === 'soporte' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>💬 Soporte</button>
@@ -1281,21 +1408,22 @@ export default function Home() {
               {subSeccionActualizaciones === 'novedades' ? (
                 <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 text-xs text-slate-300 space-y-2.5">
                   <p className="font-bold text-slate-100 text-sm">Versión de la app: {ULTIMA_ACTUALIZACION_APP}</p>
-                  <p>• Corrección del autoguardado para evitar reseteos involuntarios al cargar o actualizar la app.</p>
-                  <p>• Flechas de navegación interactivas en el encabezado con transición animada entre pestañas.</p>
-                  <p>• Nombre y Fecha de Nacimiento alineados perfectamente en el perfil.</p>
-                  <p>• Cuadro de referencias ubicado en la parte superior del Resumen General.</p>
+                  <p>• Pestaña de referencias de colores corregida: se muestra directamente arriba sin desplazamiento ni fondo negro.</p>
+                  <p>• Formato de Fecha de Nacimiento uniformado con placeholder `DD/MM/AAAA` y tamaño exacto al resto de casillas.</p>
+                  <p>• Contador de "Total calorías quemadas hoy" actualizado para sumar el gasto metabólico basal más los ejercicios realizados.</p>
+                  <p>• Mensaje de error al fallar credenciales configurado explícitamente en español.</p>
+                  <p>• Selector de Modo Oscuro / Modo Claro e Idioma (Español, Inglés y Portugués) agregado al menú lateral.</p>
                 </div>
               ) : (
                 <form onSubmit={enviarSoporte} className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 space-y-4">
-                  <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value)} className={`${INPUT_CLS} font-semibold`}>
+                  <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value)} className={`${bgInput} font-semibold`}>
                     <option value="" disabled>-- Tipo de mensaje --</option>
                     <option value="Sugerencia">💡 Sugerencia</option>
                     <option value="Duda">❓ Duda</option>
                     <option value="Error">⚠️ Reporte de error</option>
                   </select>
-                  <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Escribe tu mensaje..." className={INPUT_CLS} required />
-                  <button type="submit" className={BTN_PRIMARY}>✉️ Enviar Comentario</button>
+                  <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Escribe tu mensaje..." className={bgInput} required />
+                  <button type="submit" className={btnPrimary}>✉️ Enviar Comentario</button>
                 </form>
               )}
             </section>
