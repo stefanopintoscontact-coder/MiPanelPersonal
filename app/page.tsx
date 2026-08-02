@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
 // FECHA Y HORA FIJA DE LA ÚLTIMA ACTUALIZACIÓN
-const ULTIMA_ACTUALIZACION_APP = '1/8/2026';
+const ULTIMA_ACTUALIZACION_APP = '2/8/2026';
 
 // ESTILOS REUTILIZABLES PREMIUM
 const INPUT_CLS = "w-full min-w-0 box-border bg-slate-950/80 border border-slate-800/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 transition-all duration-200 placeholder:text-slate-600 outline-none hover:border-slate-700 font-medium [color-scheme:dark]";
@@ -123,12 +123,13 @@ export default function Home() {
   const [cargandoAuth, setCargandoAuth] = useState(false);
   const [errorAuth, setErrorAuth] = useState('');
 
-  // NAVEGACIÓN Y APPS
+  // NAVEGACIÓN Y MODAL
   const [seccionActiva, setSeccionActiva] = useState<'general' | 'perfil' | 'habitos' | 'nutricion' | 'extra' | 'actualizaciones'>('general');
   const [subSeccionPerfil, setSubSeccionPerfil] = useState<'perfil' | 'objetivo'>('perfil');
   const [subSeccionNutricion, setSubSeccionNutricion] = useState<'nutricion' | 'entrenamiento'>('nutricion');
   const [subSeccionExtra, setSubSeccionExtra] = useState<'agua' | 'sueno'>('agua');
   const [subSeccionActualizaciones, setSubSeccionActualizaciones] = useState<'novedades' | 'soporte'>('novedades');
+  const [mostrarReferencias, setMostrarReferencias] = useState(false);
 
   // SOPORTE
   const [tipoSoporte, setTipoSoporte] = useState('');
@@ -174,12 +175,10 @@ export default function Home() {
     calidad: 3,
   });
 
-  // HELPER PARA ORDENAR HÁBITOS POR HORA OBJETIVO
   const ordenarHabitosPorHora = (lista: Habito[]): Habito[] => {
     return [...lista].sort((a, b) => (a.hora_objetivo || '00:00').localeCompare(b.hora_objetivo || '00:00'));
   };
 
-  // CONTROL DE SESIÓN
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -207,7 +206,6 @@ export default function Home() {
     if (session?.user) cargarDatos();
   }, [fechaSeleccionada, session?.user?.id]);
 
-  // AUTENTICACIÓN
   const manejarAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorAuth('');
@@ -230,7 +228,7 @@ export default function Home() {
       }
     } catch (err: any) {
       setErrorAuth(err.message || 'Error al autenticar');
-    } finally {
+    } fontally {
       setCargandoAuth(false);
     }
   };
@@ -301,7 +299,6 @@ export default function Home() {
     return Math.round(perfil.sexo === 'masculino' ? bmr + 5 : bmr - 161);
   }, [perfil]);
 
-  // FUNCIÓN CENTRAL DE GUARDADO AUTOMÁTICO EN SUPABASE
   const guardarCaloriasDB = async (nuevosEjercicios = ejercicios, nuevasComidas = comidas, nuevaAgua = aguaMl) => {
     if (!session?.user) return;
     await supabase.from('registro_calorias').upsert({
@@ -314,14 +311,12 @@ export default function Home() {
     }, { onConflict: 'user_id,fecha' });
   };
 
-  // AUTO-SAVE DE RESPALDO PARA NUTRICIÓN, ACTIVIDADES Y AGUA
   useEffect(() => {
     if (!session?.user) return;
     const timer = setTimeout(() => guardarCaloriasDB(), 600);
     return () => clearTimeout(timer);
   }, [comidas, ejercicios, aguaMl, fechaSeleccionada, session]);
 
-  // AUTO-SAVE DEBOUNCED PARA PERFIL
   useEffect(() => {
     if (!session?.user) return;
     const timer = setTimeout(() => {
@@ -330,7 +325,6 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [perfil, session]);
 
-  // AUTO-SAVE DEBOUNCED PARA SUEÑO
   useEffect(() => {
     if (!session?.user) return;
     const timer = setTimeout(() => {
@@ -360,7 +354,6 @@ export default function Home() {
     }
   };
 
-  // HÁBITOS CON AUTO-ORDEN
   const agregarHabito = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nuevoHabito.trim() || !session?.user) return;
@@ -390,7 +383,6 @@ export default function Home() {
     if (!error) setHabitos(habitos.filter(h => h.id !== id));
   };
 
-  // NUTRICIÓN (CON GUARDADO AUTOMÁTICO INMEDIATO)
   const agregarComida = () => {
     const nuevas = [...comidas, { id: Date.now().toString(), nombre: 'Nueva Comida', calorias: 0 }];
     setComidas(nuevas);
@@ -419,7 +411,6 @@ export default function Home() {
     guardarCaloriasDB(ejercicios, copia, aguaMl);
   };
 
-  // EJERCICIOS (CON GUARDADO AUTOMÁTICO INMEDIATO)
   const agregarEjercicio = () => {
     const nuevos = [...ejercicios, { id: Date.now().toString(), tipo: '' as TipoEjercicio, calorias: 0 }];
     setEjercicios(nuevos);
@@ -441,14 +432,13 @@ export default function Home() {
   const moverEjercicio = (index: number, direccion: 'arriba' | 'abajo') => {
     const destino = direccion === 'arriba' ? index - 1 : index + 1;
     if (destino < 0 || destino >= ejercicios.length) return;
-    const copia = [...ejercicios];
+    const copia = [...comidas];
     const [removido] = copia.splice(index, 1);
     copia.splice(destino, 0, removido);
     setEjercicios(copia);
     guardarCaloriasDB(copia, comidas, aguaMl);
   };
 
-  // HIDRATACIÓN Y SUEÑO (CON GUARDADO AUTOMÁTICO INMEDIATO)
   const modificarAgua = (deltaMl: number) => {
     setAguaMl(prev => {
       const nuevo = Math.max(0, prev + deltaMl);
@@ -484,7 +474,7 @@ export default function Home() {
   const totalIngresoCalorias = comidas.reduce((acc, item) => acc + Number(item.calorias || 0), 0);
   const balanceCalorico = totalIngresoCalorias - (bmrCalculado + totalGastoEjercicios);
 
-  // EVALUACIÓN DE BARRA DE BALANCE CALÓRICO
+  // EVALUACIÓN DE BARRA DE BALANCE CALÓRICO CORREGIDA
   const evaluarEstadoCalorias = () => {
     let pct = 0;
     let colorBarra = "bg-rose-500 shadow-rose-500/50";
@@ -492,13 +482,14 @@ export default function Home() {
     let mensaje = "Atención requerida";
 
     if (perfil.objetivo === 'subir') {
-      if (balanceCalorico < 0) {
-        pct = Math.max(5, Math.min(100, Math.round((totalIngresoCalorias / (bmrCalculado + totalGastoEjercicios)) * 100)));
+      if (balanceCalorico <= 0) {
+        // En déficit teniendo meta de subir: Barra en 0% (vaciada en rojo)
+        pct = 0;
         colorBarra = "bg-rose-500 shadow-rose-500/50";
         colorTexto = "text-rose-400";
-        mensaje = "Déficit no deseado";
+        mensaje = "Déficit (Lejos del objetivo)";
       } else if (balanceCalorico < 300) {
-        pct = 50;
+        pct = Math.round((balanceCalorico / 300) * 100);
         colorBarra = "bg-amber-500 shadow-amber-500/50";
         colorTexto = "text-amber-400";
         mensaje = "Superávit bajo";
@@ -510,7 +501,7 @@ export default function Home() {
       }
     } else if (perfil.objetivo === 'bajar') {
       if (balanceCalorico > 0) {
-        pct = 100;
+        pct = 0;
         colorBarra = "bg-rose-500 shadow-rose-500/50";
         colorTexto = "text-rose-400";
         mensaje = "Exceso calórico";
@@ -538,7 +529,7 @@ export default function Home() {
         colorTexto = "text-amber-400";
         mensaje = "Desviación moderada";
       } else {
-        pct = 20;
+        pct = 0;
         colorBarra = "bg-rose-500 shadow-rose-500/50";
         colorTexto = "text-rose-400";
         mensaje = "Desviación alta";
@@ -549,7 +540,30 @@ export default function Home() {
 
   const estadoCalorico = evaluarEstadoCalorias();
 
-  // COLORES DINÁMICOS
+  // PROBABILIDAD DE CUMPLIR OBJETIVO EN MESES
+  const calcularProbabilidadObjetivo = (kilos: number, meses: number, objetivo: string) => {
+    if (!meses || meses <= 0 || !kilos || kilos <= 0) return 100;
+    if (objetivo === 'mantener') return 100;
+
+    const kgPorMes = kilos / meses;
+    let pct = 100;
+
+    if (objetivo === 'subir') {
+      if (kgPorMes <= 1.5) pct = 95;
+      else if (kgPorMes <= 2.5) pct = 75;
+      else if (kgPorMes <= 4.0) pct = 40;
+      else if (kgPorMes <= 6.0) pct = 20;
+      else pct = 5;
+    } else if (objetivo === 'bajar') {
+      if (kgPorMes <= 3.0) pct = 95;
+      else if (kgPorMes <= 4.5) pct = 70;
+      else if (kgPorMes <= 6.0) pct = 40;
+      else if (kgPorMes <= 8.0) pct = 20;
+      else pct = 5;
+    }
+    return pct;
+  };
+
   const getDynamicColor = (porcentaje: number) => {
     if (porcentaje >= 80) return { bar: "bg-emerald-500 shadow-emerald-500/50", text: "text-emerald-400" };
     if (porcentaje >= 40) return { bar: "bg-amber-500 shadow-amber-500/50", text: "text-amber-400" };
@@ -558,7 +572,6 @@ export default function Home() {
 
   if (cargandoSesion) return <div className="min-h-screen bg-slate-950 text-indigo-400 flex items-center justify-center font-sans animate-pulse text-sm">⚡ Cargando tu centro de entrenamiento...</div>;
 
-  // SESIÓN NO INICIADA
   if (!session) {
     return (
       <div className="min-h-screen bg-[#0b0f17] text-white flex items-center justify-center p-4 font-sans relative overflow-hidden">
@@ -614,12 +627,18 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#0b0f17] text-slate-100 flex flex-col md:flex-row font-sans selection:bg-indigo-500 selection:text-white">
       
-      {/* MENÚ LATERAL Y NAVEGACIÓN */}
+      {/* MENÚ LATERAL Y NAVEGACIÓN (BOTÓN AGRANDADO) */}
       <aside className={`bg-slate-900/90 backdrop-blur-xl border-b md:border-b-0 md:border-r border-slate-800/80 transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:w-64' : 'w-full md:w-20'}`}>
         <div>
-          <div className="p-4 flex items-center justify-between border-b border-slate-800/80">
-            <button onClick={() => setSidebarAbierto(!sidebarAbierto)} className="p-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 transition active:scale-95">
-              <span className="text-xs font-bold">{sidebarAbierto ? '✕' : '☰'}</span>
+          <div className="p-4 flex items-center justify-between border-b border-slate-800/80 gap-2">
+            
+            {/* BOTÓN AGRANDADO CON BARRA Y TEXTO "MENÚ" */}
+            <button 
+              onClick={() => setSidebarAbierto(!sidebarAbierto)} 
+              className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white transition active:scale-95 flex items-center gap-2.5 shadow-lg shadow-indigo-600/30 cursor-pointer"
+            >
+              <span className="text-base sm:text-lg font-black tracking-tighter leading-none">{sidebarAbierto ? '✕' : '☰'}</span>
+              <span className="text-xs font-black uppercase tracking-wider">Menú</span>
             </button>
             
             <div className="text-xs font-bold text-slate-200 bg-slate-950/80 px-3.5 py-2 rounded-xl border border-slate-800/80 truncate max-w-[170px] shadow-inner">
@@ -670,7 +689,7 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
         
-        {/* ENCABEZADO CENTRADO DE LA SECCIÓN (EMOJIS SEPARADOS DE GRADIENTES) */}
+        {/* ENCABEZADO CENTRADO */}
         <header className="flex justify-center items-center mb-8 bg-slate-900/60 backdrop-blur-xl p-5 rounded-3xl border border-slate-800/80 text-center shadow-xl">
           <h2 className="text-xl sm:text-2xl font-black text-center w-full flex items-center justify-center gap-2.5">
             {seccionActiva === 'general' && (
@@ -718,88 +737,148 @@ export default function Home() {
           </h2>
         </header>
 
-        {/* RESUMEN GENERAL */}
+        {/* RESUMEN GENERAL CON PESTAÑA / MODAL DE REFERENCIAS */}
         {seccionActiva === 'general' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            
-            {/* BALANCE CALÓRICO */}
-            <div onClick={() => setSeccionActiva('nutricion')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Balance Calórico 🔥</span>
-              <p className={`text-3xl font-black my-2 text-center transition-colors ${estadoCalorico.colorTexto}`}>
-                {balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs text-slate-500 font-medium">kcal</span>
-              </p>
-              <div className="w-full space-y-1.5 mt-2">
-                <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
-                  <div className={`h-full rounded-full transition-all duration-500 ${estadoCalorico.colorBarra}`} style={{ width: `${estadoCalorico.pct}%` }}></div>
-                </div>
-                <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold px-1">
-                  <span>{estadoCalorico.mensaje}</span>
-                  <span>{estadoCalorico.pct}%</span>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              
+              {/* BALANCE CALÓRICO */}
+              <div onClick={() => setSeccionActiva('nutricion')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Balance Calórico 🔥</span>
+                <p className={`text-3xl font-black my-2 text-center transition-colors ${estadoCalorico.colorTexto}`}>
+                  {balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs text-slate-500 font-medium">kcal</span>
+                </p>
+                <div className="w-full space-y-1.5 mt-2">
+                  <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                    <div className={`h-full rounded-full transition-all duration-500 ${estadoCalorico.colorBarra}`} style={{ width: `${estadoCalorico.pct}%` }}></div>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold px-1">
+                    <span>{estadoCalorico.mensaje}</span>
+                    <span>{estadoCalorico.pct}%</span>
+                  </div>
                 </div>
               </div>
+
+              {/* AGUA */}
+              {(() => {
+                const pctAgua = Math.min(100, Math.round((aguaMl / metaAguaMl) * 100));
+                const colors = getDynamicColor(pctAgua);
+                return (
+                  <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Agua Diaria 💧</span>
+                    <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
+                      {(aguaMl / 1000).toFixed(2)}L <span className="text-xs text-slate-500 font-medium">/ 2.5L</span>
+                    </p>
+                    <div className="w-full space-y-1.5 mt-2">
+                      <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                        <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${pctAgua}%` }}></div>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-semibold">{pctAgua}% completado</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* HÁBITOS */}
+              {(() => {
+                const colors = getDynamicColor(porcentajeHabitos);
+                return (
+                  <div onClick={() => setSeccionActiva('habitos')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Hábitos ⚡</span>
+                    <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>{porcentajeHabitos}%</p>
+                    <div className="w-full space-y-1.5 mt-2">
+                      <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                        <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${porcentajeHabitos}%` }}></div>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-semibold">{totalCompletados} de {habitos.length} listos</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* SUEÑO */}
+              {(() => {
+                const pctSueno = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
+                const colors = getDynamicColor(pctSueno);
+                return (
+                  <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Sueño 😴</span>
+                    <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
+                      {suenoHoy.horas_totales} <span className="text-xs text-slate-500 font-medium">hrs</span>
+                    </p>
+                    <div className="w-full space-y-1.5 mt-2">
+                      <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                        <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${pctSueno}%` }}></div>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-semibold">{pctSueno}% meta (8 hrs)</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
             </div>
 
-            {/* AGUA */}
-            {(() => {
-              const pctAgua = Math.min(100, Math.round((aguaMl / metaAguaMl) * 100));
-              const colors = getDynamicColor(pctAgua);
-              return (
-                <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                  <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Agua Diaria 💧</span>
-                  <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
-                    {(aguaMl / 1000).toFixed(2)}L <span className="text-xs text-slate-500 font-medium">/ 2.5L</span>
-                  </p>
-                  <div className="w-full space-y-1.5 mt-2">
-                    <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
-                      <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${pctAgua}%` }}></div>
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-semibold">{pctAgua}% completado</span>
-                  </div>
-                </div>
-              );
-            })()}
+            {/* BOTÓN PARA ABRIR REFERENCIAS */}
+            <div className="text-center pt-2">
+              <button 
+                onClick={() => setMostrarReferencias(true)} 
+                className="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium cursor-pointer transition flex items-center justify-center gap-1.5 mx-auto bg-slate-900/40 hover:bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-800/80"
+              >
+                <span>🔍</span>
+                <span>Toca aquí para ver las referencias de los colores e indicadores</span>
+              </button>
+            </div>
 
-            {/* HÁBITOS */}
-            {(() => {
-              const colors = getDynamicColor(porcentajeHabitos);
-              return (
-                <div onClick={() => setSeccionActiva('habitos')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                  <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Hábitos ⚡</span>
-                  <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>{porcentajeHabitos}%</p>
-                  <div className="w-full space-y-1.5 mt-2">
-                    <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
-                      <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${porcentajeHabitos}%` }}></div>
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-semibold">{totalCompletados} de {habitos.length} listos</span>
+            {/* PESTAÑA / MODAL DE REFERENCIAS */}
+            {mostrarReferencias && (
+              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full relative shadow-2xl space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                      <span>📖</span>
+                      <span>Referencias de Indicadores</span>
+                    </h3>
+                    <button 
+                      onClick={() => setMostrarReferencias(false)}
+                      className="text-slate-400 hover:text-white font-bold text-lg px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 transition"
+                    >
+                      ✕
+                    </button>
                   </div>
-                </div>
-              );
-            })()}
 
-            {/* SUEÑO */}
-            {(() => {
-              const pctSueno = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
-              const colors = getDynamicColor(pctSueno);
-              return (
-                <div onClick={() => setSeccionActiva('extra')} className={`${CARD_CLS} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                  <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center">Sueño 😴</span>
-                  <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
-                    {suenoHoy.horas_totales} <span className="text-xs text-slate-500 font-medium">hrs</span>
-                  </p>
-                  <div className="w-full space-y-1.5 mt-2">
-                    <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
-                      <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${pctSueno}%` }}></div>
+                  <div className="space-y-3.5 text-xs text-slate-300">
+                    <div className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+                      <div className="w-3.5 h-3.5 rounded-full bg-rose-500 shrink-0 mt-0.5 shadow-md shadow-rose-500/50"></div>
+                      <div>
+                        <span className="font-bold text-rose-400 block mb-0.5">Rojo y Vacío (0%):</span>
+                        Estás lejos de tu objetivo o en dirección opuesta (ej. estar en déficit calórico cuando buscas subir de peso, o no haber registrado agua/hábitos).
+                      </div>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-semibold">{pctSueno}% meta (8 hrs)</span>
+
+                    <div className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+                      <div className="w-3.5 h-3.5 rounded-full bg-amber-500 shrink-0 mt-0.5 shadow-md shadow-amber-500/50"></div>
+                      <div>
+                        <span className="font-bold text-amber-400 block mb-0.5">Amarillo a la Mitad (50%):</span>
+                        Progreso intermedio o superávit/déficit leve. Vas por buen camino pero aún te falta para la meta óptima del día.
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+                      <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shrink-0 mt-0.5 shadow-md shadow-emerald-500/50"></div>
+                      <div>
+                        <span className="font-bold text-emerald-400 block mb-0.5">Verde Lleno (100%):</span>
+                        ¡Meta diaria alcanzada con éxito! Has conseguido el rango ideal para tu balance calórico, hidratación o rutina.
+                      </div>
+                    </div>
                   </div>
                 </div>
-              );
-            })()}
+              </div>
+            )}
 
           </div>
         )}
 
-        {/* MI PERFIL Y OBJETIVOS */}
+        {/* MI PERFIL Y OBJETIVOS (CON BARRA DE PROBABILIDAD Y FECHA DE NACIMIENTO ALINEADA) */}
         {seccionActiva === 'perfil' && (
           <section className={`${CARD_CLS} max-w-xl mx-auto space-y-6`}>
             <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
@@ -809,7 +888,7 @@ export default function Home() {
 
             {subSeccionPerfil === 'perfil' ? (
               <div className="space-y-4 max-w-md mx-auto text-center">
-                <div className="grid grid-cols-2 gap-3 items-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
                   <div>
                     <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Nombre</label>
                     <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={`${INPUT_CLS} text-center`} />
@@ -820,7 +899,7 @@ export default function Home() {
                       type="date" 
                       value={perfil.fecha_nacimiento} 
                       onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} 
-                      className={`${INPUT_CLS} text-center font-mono`} 
+                      className={`${INPUT_CLS} text-center font-mono w-full`} 
                     />
                   </div>
                 </div>
@@ -857,6 +936,37 @@ export default function Home() {
                     <CleanNumberInput value={perfil.tiempo_objetivo_meses} onChange={(v: number) => setPerfil({...perfil, tiempo_objetivo_meses: v})} className={`${INPUT_CLS} text-center font-bold`} />
                   </div>
                 </div>
+
+                {/* BARRA DE PROBABILIDAD DE CUMPLIR EL OBJETIVO */}
+                {(() => {
+                  const prob = calcularProbabilidadObjetivo(perfil.kilos_objetivo, perfil.tiempo_objetivo_meses, perfil.objetivo);
+                  let colorBar = "bg-emerald-500 shadow-emerald-500/50";
+                  let colorTxt = "text-emerald-400";
+                  let msg = "Muy probable y saludable";
+
+                  if (prob < 30) {
+                    colorBar = "bg-rose-500 shadow-rose-500/50";
+                    colorTxt = "text-rose-400";
+                    msg = "Poco probable / Poco saludable";
+                  } else if (prob < 75) {
+                    colorBar = "bg-amber-500 shadow-amber-500/50";
+                    colorTxt = "text-amber-400";
+                    msg = "Exigente, requiere alta disciplina";
+                  }
+
+                  return (
+                    <div className="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800/80 space-y-2 mt-4 text-center">
+                      <div className="flex justify-between items-center text-xs font-semibold px-1">
+                        <span className="text-slate-400">Probabilidad de cumplirse:</span>
+                        <span className={`font-bold ${colorTxt}`}>{prob}% ({msg})</span>
+                      </div>
+                      <div className="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                        <div className={`h-full rounded-full transition-all duration-500 ${colorBar}`} style={{ width: `${prob}%` }}></div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
               </div>
             )}
 
@@ -866,7 +976,7 @@ export default function Home() {
           </section>
         )}
 
-        {/* HÁBITOS CON REORDENAMIENTO Y ALINEACIÓN DE HORAS/RACHAS */}
+        {/* HÁBITOS DIARIOS (NOMBRE COMPLETO Y CONTADORES EN ESQUINA SUPERIOR DERECHA) */}
         {seccionActiva === 'habitos' && (
           <section className={`${CARD_CLS} space-y-6 max-w-2xl mx-auto`}>
             <form onSubmit={agregarHabito} className="flex gap-2 bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800/80 items-center shadow-inner">
@@ -888,29 +998,42 @@ export default function Home() {
               </button>
             </form>
 
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {habitos.map((h) => {
                 const completado = !!registrosHoy[h.id]?.completado;
                 const racha = rachasHabitos[h.id] || 0;
                 return (
-                  <div key={h.id} className="p-3.5 rounded-2xl border border-slate-800/80 bg-slate-950/60 flex items-center justify-between transition hover:border-slate-700 gap-2">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div key={h.id} className="p-3.5 rounded-2xl border border-slate-800/80 bg-slate-950/60 flex flex-col gap-2 transition hover:border-slate-700">
+                    
+                    {/* ESQUINA SUPERIOR DERECHA CON RACHAS Y HORA */}
+                    <div className="flex items-center justify-between border-b border-slate-800/50 pb-2">
+                      <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Hábito Diario</span>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] bg-amber-950/60 text-amber-400 border border-amber-800/80 px-2 py-0.5 rounded-full font-bold shadow-sm flex items-center gap-1">
+                          <span>🔥</span>
+                          <span>{racha}d</span>
+                        </span>
+                        <span className="text-indigo-400 font-mono text-[10px] font-bold bg-indigo-950/50 border border-indigo-800/50 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                          <span>⏰</span>
+                          <span>{h.hora_objetivo}</span>
+                        </span>
+                        <button onClick={() => eliminarHabito(h.id)} className="text-rose-400 hover:text-rose-300 text-xs p-0.5 transition hover:scale-110 ml-1">
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* CUERPO DEL HÁBITO CON ESPACIO COMPLETO PARA EL NOMBRE */}
+                    <div className="flex items-center gap-3 pt-1">
                       <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-all ${completado ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-md shadow-indigo-600/40' : 'border-slate-700 hover:border-indigo-500'}`}>
                         {completado && '✓'}
                       </button>
-                      <span className={`text-xs font-bold truncate ${completado ? 'line-through text-slate-500' : 'text-slate-100'}`}>{h.texto}</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] bg-amber-950/60 text-amber-400 border border-amber-800/80 px-2.5 py-1 rounded-full font-bold shadow-sm whitespace-nowrap flex items-center gap-1">
-                        <span>🔥</span>
-                        <span>{racha}d</span>
+                      <span className={`text-xs font-bold break-words flex-1 leading-normal ${completado ? 'line-through text-slate-500' : 'text-slate-100'}`}>
+                        {h.texto}
                       </span>
-                      <span className="text-indigo-400 font-mono text-xs font-bold bg-indigo-950/50 border border-indigo-800/50 px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1">
-                        <span>⏰</span>
-                        <span>{h.hora_objetivo}</span>
-                      </span>
-                      <button onClick={() => eliminarHabito(h.id)} className="text-rose-400 hover:text-rose-300 text-xs p-1 transition hover:scale-110 shrink-0">🗑️</button>
                     </div>
+
                   </div>
                 );
               })}
@@ -918,7 +1041,7 @@ export default function Home() {
           </section>
         )}
 
-        {/* NUTRICIÓN Y ENTRENAMIENTO */}
+        {/* NUTRICIÓN Y ENTRENAMIENTO (CON CONTADORES DE CALORÍAS Y GASTO BASE DESTACADO ANCLADO) */}
         {seccionActiva === 'nutricion' && (
           <section className={`${CARD_CLS} max-w-3xl mx-auto space-y-6`}>
             <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
@@ -928,6 +1051,16 @@ export default function Home() {
 
             {subSeccionNutricion === 'nutricion' ? (
               <div className="space-y-3">
+                
+                {/* CONTADOR DESTACADO DE CALORÍAS INGERIDAS */}
+                <div className="bg-slate-950/90 border border-amber-500/30 p-3.5 rounded-2xl flex justify-between items-center mb-4 shadow-lg shadow-amber-500/5">
+                  <span className="text-xs text-amber-300 font-bold flex items-center gap-1.5">
+                    <span>🔥</span>
+                    <span>Total Calorías Ingeridas Hoy:</span>
+                  </span>
+                  <span className="text-base font-black text-amber-400 font-mono">{totalIngresoCalorias} <span className="text-xs text-slate-400">kcal</span></span>
+                </div>
+
                 <div className="flex justify-between items-center">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">🥗 Comidas del Día</h3>
                   <button onClick={agregarComida} className="text-xs text-amber-400 font-bold hover:underline transition">+ Agregar Comida</button>
@@ -953,11 +1086,37 @@ export default function Home() {
               </div>
             ) : (
               <div className="space-y-3">
+                
+                {/* CONTADOR DESTACADO DE CALORÍAS QUEMADAS */}
+                <div className="bg-slate-950/90 border border-indigo-500/30 p-3.5 rounded-2xl flex justify-between items-center mb-4 shadow-lg shadow-indigo-500/5">
+                  <span className="text-xs text-indigo-300 font-bold flex items-center gap-1.5">
+                    <span>🏃</span>
+                    <span>Total Calorías Quemadas en Ejercicio:</span>
+                  </span>
+                  <span className="text-base font-black text-indigo-400 font-mono">{totalGastoEjercicios} <span className="text-xs text-slate-400">kcal</span></span>
+                </div>
+
                 <div className="flex justify-between items-center">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">🏋️ Actividades Registradas</h3>
                   <button onClick={agregarEjercicio} className="text-xs text-indigo-400 font-bold hover:underline transition">+ Agregar Ejercicio</button>
                 </div>
 
+                {/* PRIMERA ACTIVIDAD ANCLADA: GASTO BASE DEL USUARIO */}
+                <div className="bg-gradient-to-r from-violet-900/60 via-purple-900/60 to-indigo-900/60 p-3.5 rounded-2xl border border-violet-500/40 flex items-center justify-between gap-3 shadow-lg shadow-purple-500/10">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl">⚡</span>
+                    <div>
+                      <span className="text-xs font-bold text-violet-200 block">Gasto Calórico Base (TMB / BMR)</span>
+                      <span className="text-[10px] text-violet-300/80">Gasto metabólico diario estimado de tu cuerpo</span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-sm font-black text-violet-200 font-mono">{bmrCalculado}</span>
+                    <span className="text-[10px] text-violet-300 block">kcal</span>
+                  </div>
+                </div>
+
+                {/* LISTA DE EJERCICIOS REGISTRADOS */}
                 {ejercicios.map((item, index) => (
                   <div key={item.id} className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 flex items-center justify-between gap-2 sm:gap-3 transition hover:border-slate-700">
                     <div className="flex flex-col gap-0.5 shrink-0 mt-3">
@@ -1064,10 +1223,12 @@ export default function Home() {
             {subSeccionActualizaciones === 'novedades' ? (
               <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 text-xs text-slate-300 space-y-2.5">
                 <p className="font-bold text-slate-100 text-sm">Versión de la app: {ULTIMA_ACTUALIZACION_APP}</p>
-                <p>• Corrección total de renderizado de emojis en títulos y encabezados.</p>
-                <p>• Guardado automático instantáneo activado en Nutrición, Ejercicios e Hidratación.</p>
-                <p>• Cuadro de fecha de nacimiento redimensionado a tamaño idéntico al resto de inputs.</p>
-                <p>• Campo de entrada de hábitos ampliado con hora compacta y badges alineados.</p>
+                <p>• Botón de menú rediseñado y más visible con la leyenda "Menú".</p>
+                <p>• Corrección de lógica de balance calórico: si estás en déficit buscando subir de peso, la barra se muestra roja y en 0%.</p>
+                <p>• Nueva pestaña modal con la guía de referencias para todos los indicadores visuales.</p>
+                <p>• Nueva barra dinamica de probabilidad de objetivo según kilos deseados y plazo de meses.</p>
+                <p>• Reorganización de hábitos: nombre con espacio 100% visible y rachas/horas en la parte superior derecha.</p>
+                <p>• Contadores de calorías ingeridas y quemadas destacados + gasto metabólico basal anclado al inicio de actividades.</p>
               </div>
             ) : (
               <form onSubmit={enviarSoporte} className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 space-y-4">
