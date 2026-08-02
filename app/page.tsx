@@ -123,9 +123,8 @@ const TEXTOS = {
     novedadesItem4: '• Nueva pestaña de Alertas para recordatorios inteligentes de comidas, agua, entrenamientos y hábitos.',
     configAlertas: 'Configuración de Alertas',
     activarNotificaciones: '🔔 Activar Notificaciones Navegador',
-    alertaLevantarse: '⏰ Hora de Levantarse (+5m recordatorio de registro)',
-    alertaEntrenar: '🏋️ Hora de Entrenar (+5m recordatorio de completar números)',
-    alertaAgua: '💧 Recordatorio de Agua (cada cuántas horas)',
+    alertaEntrenar: '🏋️ Hora de Entrenar',
+    alertaAgua: '💧 Recordatorio de Agua',
     alertaDesayuno: '🍳 Horario Desayuno',
     alertaAlmuerzo: '🥗 Horario Almuerzo',
     alertaMerienda: '🍎 Horario Merienda',
@@ -221,11 +220,11 @@ const TEXTOS = {
     enviarComentario: '✉️ Send Feedback',
     alertaSoporte: '⚠️ Please complete the form',
     refRojoTitulo: 'Red & Empty (0%):',
-    refRojoDesc: 'You are far from your goal or moving in the opposite direction (e.g., calorie deficit when trying to gain weight).',
+    refRojoDesc: 'You are far from your goal or moving in the opposite direction.',
     refAmarilloTitulo: 'Yellow at Half (50%):',
-    refAmarilloDesc: 'Intermediate progress or slight surplus/deficit. You\'re on track but short of today\'s optimal target.',
+    refAmarilloDesc: 'Intermediate progress or slight surplus/deficit.',
     refVerdeTitulo: 'Full Green (100%):',
-    refVerdeDesc: 'Daily goal successfully reached! You achieved the ideal range for calories, hydration, or routine.',
+    refVerdeDesc: 'Daily goal successfully reached!',
     msgDeficitLejos: 'Deficit (Far from target)',
     msgSuperavitBajo: 'Low surplus',
     msgSuperavitOptimo: 'Optimal surplus!',
@@ -245,9 +244,8 @@ const TEXTOS = {
     novedadesItem4: '• New Alerts tab with smart reminders for meals, water, workouts, and habits.',
     configAlertas: 'Alerts Configuration',
     activarNotificaciones: '🔔 Enable Browser Notifications',
-    alertaLevantarse: '⏰ Wake-up Time (+5m log reminder)',
-    alertaEntrenar: '🏋️ Workout Time (+5m log metrics reminder)',
-    alertaAgua: '💧 Water Reminder Interval (hours)',
+    alertaEntrenar: '🏋️ Workout Time',
+    alertaAgua: '💧 Water Reminder Interval',
     alertaDesayuno: '🍳 Breakfast Time',
     alertaAlmuerzo: '🥗 Lunch Time',
     alertaMerienda: '🍎 Snack Time',
@@ -343,11 +341,11 @@ const TEXTOS = {
     enviarComentario: '✉️ Enviar Comentário',
     alertaSoporte: '⚠️ Preencha o formulário',
     refRojoTitulo: 'Vermelho e Vazio (0%):',
-    refRojoDesc: 'Você está longe do seu objetivo ou na direção oposta (ex: déficit calórico ao tentar ganhar peso).',
+    refRojoDesc: 'Você está longe do seu objetivo ou na direção oposta.',
     refAmarilloTitulo: 'Amarelo na Metade (50%):',
-    refAmarilloDesc: 'Progreso intermediário ou leve superávit/déficit. Você está no caminho certo, mas ainda falta para a meta.',
+    refAmarilloDesc: 'Progresso intermediário ou leve superávit/déficit.',
     refVerdeTitulo: 'Verde Cheio (100%):',
-    refVerdeDesc: 'Meta diária atingida com sucesso! Você alcançou a faixa ideal para calorias, hidratação ou rotina.',
+    refVerdeDesc: 'Meta diária atingida com sucesso!',
     msgDeficitLejos: 'Déficit (Longe do objetivo)',
     msgSuperavitBajo: 'Superávit baixo',
     msgSuperavitOptimo: 'Superávit ótimo!',
@@ -367,9 +365,8 @@ const TEXTOS = {
     novedadesItem4: '• Nova aba de Alertas com lembretes inteligentes para refeições, água, treinos e hábitos.',
     configAlertas: 'Configuração de Alertas',
     activarNotificaciones: '🔔 Ativar Notificações do Navegador',
-    alertaLevantarse: '⏰ Hora de Acordar (+5m lembrete de registro)',
-    alertaEntrenar: '🏋️ Hora de Treinar (+5m lembrete de registrar números)',
-    alertaAgua: '💧 Lembrete de Água (intervalo em horas)',
+    alertaEntrenar: '🏋️ Hora de Treinar',
+    alertaAgua: '💧 Lembrete de Água',
     alertaDesayuno: '🍳 Horário Café da Manhã',
     alertaAlmuerzo: '🥗 Horário Almoço',
     alertaMerienda: '🍎 Horário Lanche',
@@ -439,7 +436,6 @@ interface RegistroSueno {
 }
 
 interface ConfigAlertas {
-  horaLevantarse: string;
   horaEntrenar: string;
   horaDesayuno: string;
   horaAlmuerzo: string;
@@ -484,6 +480,28 @@ const calcularEdad = (fechaStr: string): number => {
     edad--;
   }
   return edad > 0 ? edad : 25;
+};
+
+// COMPONENTE LOGO CON FALLBACK INTELIGENTE (EVITA MUESTRA DE IMAGEN ROTA)
+const LogoImage = ({ className = "w-20 h-20" }: { className?: string }) => {
+  const [errorCarga, setErrorCarga] = useState(false);
+
+  if (errorCarga) {
+    return (
+      <div className={`${className} bg-linear-to-tr from-indigo-600 via-purple-600 to-pink-500 rounded-3xl flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-indigo-500/30 border border-white/20 select-none animar-logo`}>
+        FC
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src="/logo.png"
+      alt="FitCero Logo"
+      onError={() => setErrorCarga(true)}
+      className={`${className} object-contain rounded-3xl shadow-xl transition-transform duration-300 hover:scale-105 animar-logo`}
+    />
+  );
 };
 
 const CleanNumberInput = ({ value, onChange, className, placeholder, min, step }: any) => {
@@ -550,7 +568,6 @@ export default function Home() {
 
   // ALERTAS Y NOTIFICACIONES
   const [configAlertas, setConfigAlertas] = useState<ConfigAlertas>({
-    horaLevantarse: '07:00',
     horaEntrenar: '18:00',
     horaDesayuno: '08:00',
     horaAlmuerzo: '13:00',
@@ -604,20 +621,21 @@ export default function Home() {
     calidad: 3,
   });
 
-  // ESTILOS DINÁMICOS
+  // ESTILOS DINÁMICOS Y DE SIMETRÍA
   const bgApp = modoOscuro ? "bg-[#0b0f17] text-slate-100" : "bg-slate-100 text-slate-900";
-  const bgCard = modoOscuro ? "bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-2xl transition-all duration-300" : "bg-white/90 backdrop-blur-xl border border-slate-200 rounded-3xl p-5 shadow-xl text-slate-800 transition-all duration-300";
+  const bgCard = modoOscuro ? "bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-2xl transition-all duration-300 card-hover" : "bg-white/90 backdrop-blur-xl border border-slate-200 rounded-3xl p-5 shadow-xl text-slate-800 transition-all duration-300 card-hover";
   const bgInnerCard = modoOscuro ? "bg-slate-950/80 border-slate-800/80 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-900 shadow-sm";
   const bgInnerCardSubtle = modoOscuro ? "bg-slate-950/60 border-slate-800/80 text-slate-100" : "bg-slate-100/80 border-slate-200 text-slate-900 shadow-sm";
   const bgTrack = modoOscuro ? "bg-slate-950 border-slate-800/80" : "bg-slate-200 border-slate-300";
   const textMuted = modoOscuro ? "text-slate-400" : "text-slate-500";
   const timeInputStyle = modoOscuro ? "bg-slate-900 border-slate-800 text-indigo-300 [color-scheme:dark]" : "bg-white border-slate-300 text-indigo-600 [color-scheme:light]";
 
+  // FIX DE SIMETRÍA PARA INPUTS (SIN DESBORDARSE)
   const bgInput = modoOscuro 
-    ? "w-full min-w-0 box-border bg-slate-950/80 border border-slate-800/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 transition-all duration-200 placeholder:text-slate-600 outline-none hover:border-slate-700 font-medium [color-scheme:dark]" 
-    : "w-full min-w-0 box-border bg-white border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 transition-all duration-200 placeholder:text-slate-400 outline-none hover:border-slate-400 font-medium [color-scheme:light]";
+    ? "w-full max-w-full box-border bg-slate-950/80 border border-slate-800/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 transition-all duration-200 placeholder:text-slate-600 outline-none hover:border-slate-700 font-medium [color-scheme:dark]" 
+    : "w-full max-w-full box-border bg-white border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 transition-all duration-200 placeholder:text-slate-400 outline-none hover:border-slate-400 font-medium [color-scheme:light]";
   
-  const btnPrimary = "w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-500 hover:via-violet-500 hover:to-purple-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all duration-200 shadow-lg shadow-indigo-600/20 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2";
+  const btnPrimary = "w-full bg-linear-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-500 hover:via-violet-500 hover:to-purple-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all duration-200 shadow-lg shadow-indigo-600/20 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2";
 
   const manejarFechaNacimientoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/\D/g, '');
@@ -1054,33 +1072,34 @@ export default function Home() {
     }
   };
 
-  // 1. SPLASH SCREEN (LOGO AL ABRIR LA APP)
+  // 1. SPLASH SCREEN CON ANIMACIONES Y LOGO MEJORADO
   if (mostrarSplash) {
     return (
       <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center ${modoOscuro ? 'bg-[#0b0f17] text-white' : 'bg-slate-900 text-white'} transition-all duration-500 p-4 text-center`}>
-        <img src="/logo.png" alt="FitCero Logo" className="w-48 h-48 sm:w-64 sm:h-64 object-contain rounded-3xl shadow-2xl mb-6 animate-pulse" />
-        <h1 className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">FitCero</h1>
-        <p className="text-sm font-medium text-slate-400 mt-2 tracking-wide">Tu cambio, desde cero</p>
+        <LogoImage className="w-40 h-40 sm:w-52 sm:h-52 mb-6" />
+        <h1 className="text-4xl sm:text-5xl font-black bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent tracking-tight">
+          FitCero
+        </h1>
+        <p className="text-sm font-medium text-slate-400 mt-2 tracking-wide animate-pulse">Tu cambio, desde cero</p>
       </div>
     );
   }
 
   if (cargandoSesion) return <div className="min-h-screen bg-slate-950 text-indigo-400 flex items-center justify-center font-sans animate-pulse text-sm">⚡ Cargando FitCero...</div>;
 
-  // 2. MENÚ DE INICIAR SESIÓN CON LOGO, FITCERO, MODO CLARO/OSCURO E IDIOMAS
+  // 2. MENÚ DE INICIAR SESIÓN CON SIMETRÍA Y ANIMACIONES
   if (!session) {
     return (
       <div className={`min-h-screen ${bgApp} flex items-center justify-center p-4 font-sans relative overflow-hidden transition-colors duration-300`}>
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
 
-        <div className={`${bgCard} p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl relative z-10`}>
+        <div className={`${bgCard} p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl relative z-10 border`}>
           
-          {/* OPCIONES DE TEMA E IDIOMA EN EL INICIO DE SESIÓN */}
           <div className="flex justify-between items-center w-full pb-2">
             <button
               onClick={() => setModoOscuro(!modoOscuro)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition active:scale-95 ${
                 modoOscuro ? 'bg-slate-950/80 border-slate-800 text-slate-200' : 'bg-slate-100 border-slate-300 text-slate-800'
               }`}
             >
@@ -1100,9 +1119,9 @@ export default function Home() {
             </select>
           </div>
 
-          <div className="text-center space-y-2">
-            <img src="/logo.png" alt="FitCero Logo" className="w-24 h-24 mx-auto rounded-2xl shadow-xl object-contain mb-2" />
-            <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">FitCero</h1>
+          <div className="text-center space-y-2 flex flex-col items-center">
+            <LogoImage className="w-24 h-24 mb-1" />
+            <h1 className="text-3xl font-black bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">FitCero</h1>
             <p className={`text-xs ${textMuted} font-medium`}>Tu cambio, desde cero</p>
           </div>
 
@@ -1115,10 +1134,12 @@ export default function Home() {
               <button type="button" onClick={() => setPasoOTP(false)} className={`w-full text-xs ${textMuted} hover:text-indigo-400 transition`}>← Volver al formulario</button>
             </form>
           ) : (
-            <form onSubmit={manejarAuth} className="space-y-4">
-              <input type="email" required value={emailAuth} onChange={(e) => setEmailAuth(e.target.value)} placeholder="tu@email.com" className={bgInput} />
+            <form onSubmit={manejarAuth} className="space-y-4 w-full">
+              <div className="w-full">
+                <input type="email" required value={emailAuth} onChange={(e) => setEmailAuth(e.target.value)} placeholder="tu@email.com" className={bgInput} />
+              </div>
               
-              <div className="relative">
+              <div className="relative w-full">
                 <input type={mostrarPassword ? "text" : "password"} required value={passwordAuth} onChange={(e) => setPasswordAuth(e.target.value)} placeholder="Contraseña" className={bgInput} />
                 <button type="button" onClick={() => setMostrarPassword(!mostrarPassword)} className={`absolute right-3.5 top-3 text-xs ${textMuted} transition`}>
                   {mostrarPassword ? '🙈' : '👁️'}
@@ -1126,7 +1147,9 @@ export default function Home() {
               </div>
 
               {esRegistro && (
-                <input type={mostrarPassword ? "text" : "password"} required value={confirmPasswordAuth} onChange={(e) => setConfirmPasswordAuth(e.target.value)} placeholder="Confirmar contraseña" className={bgInput} />
+                <div className="w-full">
+                  <input type={mostrarPassword ? "text" : "password"} required value={confirmPasswordAuth} onChange={(e) => setConfirmPasswordAuth(e.target.value)} placeholder="Confirmar contraseña" className={bgInput} />
+                </div>
               )}
 
               <button type="submit" disabled={cargandoAuth} className={btnPrimary}>
@@ -1148,37 +1171,48 @@ export default function Home() {
   return (
     <div className={`min-h-screen ${bgApp} flex flex-col md:flex-row font-sans transition-colors duration-300 selection:bg-indigo-500 selection:text-white`}>
       
+      {/* ANIMACIONES GLOBALES OPTIMIZADAS */}
       <style jsx global>{`
         @keyframes fadeInTab {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(8px) scale(0.99); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes pulseGlow {
+          0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.3)); }
+          50% { transform: scale(1.02); filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.5)); }
         }
         .animar-pestana {
-          animation: fadeInTab 0.25s ease-out forwards;
+          animation: fadeInTab 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .animar-logo {
+          animation: pulseGlow 3s infinite ease-in-out;
+        }
+        .card-hover {
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .card-hover:hover {
+          transform: translateY(-2px);
         }
       `}</style>
 
-      {/* MENÚ LATERAL Y CABECERA CON "FITCERO" ENTRE MENÚ Y USUARIO */}
+      {/* MENÚ LATERAL Y CABECERA CON LOGO Y NOMBRE */}
       <aside className={`${modoOscuro ? 'bg-slate-900/90 border-slate-800/80 text-slate-100' : 'bg-white/95 border-slate-200 text-slate-900 shadow-xl'} backdrop-blur-xl border-b md:border-b-0 md:border-r transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:w-64' : 'w-full md:w-20'}`}>
         <div>
           <div className={`p-4 flex items-center justify-between border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} gap-2`}>
             
-            {/* BOTÓN MENÚ */}
             <button 
               onClick={() => setSidebarAbierto(!sidebarAbierto)} 
-              className="px-3 py-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white transition active:scale-95 flex items-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer"
+              className="px-3 py-2 rounded-2xl bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white transition active:scale-95 flex items-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer"
             >
               <span className="text-base font-black tracking-tighter leading-none">{sidebarAbierto ? '✕' : '☰'}</span>
               <span className="text-xs font-black uppercase tracking-wider">{T.menu}</span>
             </button>
             
-            {/* FITCERO ENTRE EL MENÚ Y EL NOMBRE DEL USUARIO */}
-            <div className="flex items-center gap-1.5 font-black text-indigo-500 text-sm sm:text-base tracking-tight">
-              <img src="/logo.png" alt="FitCero" className="w-6 h-6 rounded-lg object-contain" />
+            <div className="flex items-center gap-2 font-black text-indigo-500 text-sm sm:text-base tracking-tight">
+              <LogoImage className="w-7 h-7" />
               <span>FitCero</span>
             </div>
 
-            {/* NOMBRE DE USUARIO */}
             <div className={`text-xs font-bold ${modoOscuro ? 'text-slate-200 bg-slate-950/80 border-slate-800/80' : 'text-slate-800 bg-slate-100 border-slate-300'} px-3 py-2 rounded-xl border truncate max-w-[120px] sm:max-w-[150px] shadow-inner`}>
               👤 {perfil.nombre.trim() || session?.user?.email?.split('@')[0] || 'Usuario'}
             </div>
@@ -1191,9 +1225,9 @@ export default function Home() {
                   <button
                     key={item.id}
                     onClick={() => { setSeccionActiva(item.id as any); setSidebarAbierto(false); }}
-                    className={`flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-200 w-full justify-start ${
+                    className={`flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-200 w-full justify-start active:scale-95 ${
                       seccionActiva === item.id 
-                        ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-600/30' 
+                        ? 'bg-linear-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-600/30' 
                         : modoOscuro 
                           ? 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200' 
                           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -1234,7 +1268,7 @@ export default function Home() {
             ) : (
               <button
                 onClick={() => setSidebarAbierto(true)}
-                className="flex items-center justify-center p-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition hover:scale-105 cursor-pointer my-2 shadow-lg shadow-indigo-600/30"
+                className="flex items-center justify-center p-3 rounded-2xl bg-linear-to-r from-indigo-600 to-violet-600 text-white transition hover:scale-105 active:scale-95 cursor-pointer my-2 shadow-lg shadow-indigo-600/30"
                 title="Abrir menú de navegación"
               >
                 <span className="text-xl">
@@ -1270,7 +1304,7 @@ export default function Home() {
 
           <h2 className="text-lg sm:text-2xl font-black text-center flex-1 flex items-center justify-center gap-2.5 px-2">
             <span>{SECCIONES.find(s => s.id === seccionActiva)?.icon}</span>
-            <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
               {T[seccionActiva as keyof typeof T]}
             </span>
             <span>{SECCIONES.find(s => s.id === seccionActiva)?.icon}</span>
@@ -1297,7 +1331,7 @@ export default function Home() {
               <div className="text-center pb-2">
                 <button 
                   onClick={() => setMostrarReferencias(!mostrarReferencias)} 
-                  className={`text-xs ${modoOscuro ? 'bg-slate-900/60 text-indigo-400 border-slate-800/80' : 'bg-white text-indigo-600 border-slate-200'} hover:underline font-medium cursor-pointer transition flex items-center justify-center gap-1.5 mx-auto px-4 py-2.5 rounded-xl border shadow-md`}
+                  className={`text-xs ${modoOscuro ? 'bg-slate-900/60 text-indigo-400 border-slate-800/80' : 'bg-white text-indigo-600 border-slate-200'} hover:underline font-medium cursor-pointer transition flex items-center justify-center gap-1.5 mx-auto px-4 py-2.5 rounded-xl border shadow-md active:scale-95`}
                 >
                   <span>🔍</span>
                   <span>{mostrarReferencias ? T.ocultarReferencias : T.verReferencias}</span>
@@ -1313,7 +1347,7 @@ export default function Home() {
                     </h3>
                     <button 
                       onClick={() => setMostrarReferencias(false)}
-                      className="text-xs font-bold px-3 py-1 rounded-xl bg-rose-500/20 text-rose-500 hover:bg-rose-500/30 transition"
+                      className="text-xs font-bold px-3 py-1 rounded-xl bg-rose-500/20 text-rose-500 hover:bg-rose-500/30 transition active:scale-95"
                     >
                       ✕ {T.cerrar}
                     </button>
@@ -1349,14 +1383,14 @@ export default function Home() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 
-                <div onClick={() => setSeccionActiva('nutricion')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                <div onClick={() => setSeccionActiva('nutricion')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02] transition-all duration-300`}>
                   <span className="text-xs font-bold uppercase tracking-wider text-center w-full">{T.balanceCalorico} 🔥</span>
                   <p className={`text-3xl font-black my-2 text-center w-full transition-colors ${estadoCalorico.colorTexto}`}>
                     {balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className={`text-xs ${textMuted} font-medium`}>kcal</span>
                   </p>
                   <div className="w-full space-y-1.5 mt-2 text-center">
                     <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
-                      <div className={`h-full rounded-full transition-all duration-500 ${estadoCalorico.colorBarra}`} style={{ width: `${estadoCalorico.pct}%` }}></div>
+                      <div className={`h-full rounded-full transition-all duration-700 ease-out ${estadoCalorico.colorBarra}`} style={{ width: `${estadoCalorico.pct}%` }}></div>
                     </div>
                     <div className={`flex justify-between items-center text-[10px] ${textMuted} font-semibold px-1 text-center w-full`}>
                       <span className="w-full text-center">{estadoCalorico.mensaje} ({estadoCalorico.pct}%)</span>
@@ -1368,14 +1402,14 @@ export default function Home() {
                   const pctAgua = Math.min(100, Math.round((aguaMl / metaAguaMl) * 100));
                   const colors = getDynamicColor(pctAgua);
                   return (
-                    <div onClick={() => setSeccionActiva('extra')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                    <div onClick={() => setSeccionActiva('extra')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02] transition-all duration-300`}>
                       <span className="text-xs font-bold uppercase tracking-wider text-center">{T.aguaDiaria} 💧</span>
                       <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
                         {(aguaMl / 1000).toFixed(2)}L <span className={`text-xs ${textMuted} font-medium`}>/ 2.5L</span>
                       </p>
                       <div className="w-full space-y-1.5 mt-2">
                         <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
-                          <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${pctAgua}%` }}></div>
+                          <div className={`h-full rounded-full transition-all duration-700 ease-out ${colors.bar}`} style={{ width: `${pctAgua}%` }}></div>
                         </div>
                         <span className={`text-[10px] ${textMuted} font-semibold`}>{pctAgua}% {T.completado}</span>
                       </div>
@@ -1386,12 +1420,12 @@ export default function Home() {
                 {(() => {
                   const colors = getDynamicColor(porcentajeHabitos);
                   return (
-                    <div onClick={() => setSeccionActiva('habitos')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                    <div onClick={() => setSeccionActiva('habitos')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02] transition-all duration-300`}>
                       <span className="text-xs font-bold uppercase tracking-wider text-center">{T.habitos} ⚡</span>
                       <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>{porcentajeHabitos}%</p>
                       <div className="w-full space-y-1.5 mt-2">
                         <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
-                          <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${porcentajeHabitos}%` }}></div>
+                          <div className={`h-full rounded-full transition-all duration-700 ease-out ${colors.bar}`} style={{ width: `${porcentajeHabitos}%` }}></div>
                         </div>
                         <span className={`text-[10px] ${textMuted} font-semibold`}>{totalCompletados} {T.de} {habitos.length} {T.listos}</span>
                       </div>
@@ -1403,14 +1437,14 @@ export default function Home() {
                   const pctSueno = Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100));
                   const colors = getDynamicColor(pctSueno);
                   return (
-                    <div onClick={() => setSeccionActiva('extra')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
+                    <div onClick={() => setSeccionActiva('extra')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02] transition-all duration-300`}>
                       <span className="text-xs font-bold uppercase tracking-wider text-center">{T.sueno} 😴</span>
                       <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
                         {suenoHoy.horas_totales} <span className={`text-xs ${textMuted} font-medium`}>{T.hrs}</span>
                       </p>
                       <div className="w-full space-y-1.5 mt-2">
                         <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
-                          <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${pctSueno}%` }}></div>
+                          <div className={`h-full rounded-full transition-all duration-700 ease-out ${colors.bar}`} style={{ width: `${pctSueno}%` }}></div>
                         </div>
                         <span className={`text-[10px] ${textMuted} font-semibold`}>{pctSueno}% {T.meta} (8 {T.hrs})</span>
                       </div>
@@ -1423,7 +1457,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* PERFIL */}
+          {/* PERFIL (SIMETRÍA MEJORADA) */}
           {seccionActiva === 'perfil' && (
             <section className={`${bgCard} max-w-xl mx-auto space-y-6`}>
               <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
@@ -1432,38 +1466,38 @@ export default function Home() {
               </div>
 
               {subSeccionPerfil === 'perfil' ? (
-                <div className="space-y-4 max-w-md mx-auto text-center">
-                  <div className="grid grid-cols-2 gap-3 items-center">
-                    <div>
+                <div className="space-y-4 max-w-md mx-auto text-center w-full">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center w-full">
+                    <div className="w-full">
                       <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.nombre}</label>
                       <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={`${bgInput} text-center`} />
                     </div>
-                    <div>
+                    <div className="w-full">
                       <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.fechaNacimiento}</label>
                       <input 
                         type="text" 
                         placeholder="DD/MM/AAAA"
                         value={perfil.fecha_nacimiento} 
                         onChange={manejarFechaNacimientoChange} 
-                        className={`${bgInput} text-center font-mono w-full`} 
+                        className={`${bgInput} text-center font-mono`} 
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 items-center">
-                    <div>
+                  <div className="grid grid-cols-2 gap-3 items-center w-full">
+                    <div className="w-full">
                       <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.peso}</label>
                       <CleanNumberInput step="0.1" value={perfil.peso} onChange={(v: number) => setPerfil({...perfil, peso: v})} className={`${bgInput} text-center font-bold`} />
                     </div>
-                    <div>
+                    <div className="w-full">
                       <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.altura}</label>
                       <CleanNumberInput value={perfil.altura} onChange={(v: number) => setPerfil({...perfil, altura: v})} className={`${bgInput} text-center font-bold`} />
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4 max-w-md mx-auto text-center">
-                  <div className="max-w-[220px] mx-auto text-center">
+                <div className="space-y-4 max-w-md mx-auto text-center w-full">
+                  <div className="max-w-[240px] mx-auto text-center w-full">
                     <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.objetivoPrincipal}</label>
                     <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={`${bgInput} text-center font-bold`}>
                       <option value="bajar">{T.bajarPeso}</option>
@@ -1472,12 +1506,12 @@ export default function Home() {
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 items-center">
-                    <div>
+                  <div className="grid grid-cols-2 gap-3 items-center w-full">
+                    <div className="w-full">
                       <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.kilosObjetivo}</label>
                       <CleanNumberInput value={perfil.kilos_objetivo} onChange={(v: number) => setPerfil({...perfil, kilos_objetivo: v})} className={`${bgInput} text-center font-bold`} />
                     </div>
-                    <div>
+                    <div className="w-full">
                       <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.plazoMeses}</label>
                       <CleanNumberInput value={perfil.tiempo_objetivo_meses} onChange={(v: number) => setPerfil({...perfil, tiempo_objetivo_meses: v})} className={`${bgInput} text-center font-bold`} />
                     </div>
@@ -1500,7 +1534,7 @@ export default function Home() {
                     }
 
                     return (
-                      <div className={`p-3.5 ${bgInnerCard} rounded-2xl border space-y-2 mt-4 text-center`}>
+                      <div className={`p-3.5 ${bgInnerCard} rounded-2xl border space-y-2 mt-4 text-center w-full`}>
                         <div className="flex justify-between items-center text-xs font-semibold px-1">
                           <span className={textMuted}>{T.probabilidadCumplirse}</span>
                           <span className={`font-bold ${colorTxt}`}>{prob}% ({msg})</span>
@@ -1524,23 +1558,27 @@ export default function Home() {
           {/* HÁBITOS */}
           {seccionActiva === 'habitos' && (
             <section className={`${bgCard} space-y-6 max-w-2xl mx-auto`}>
-              <form onSubmit={agregarHabito} className={`flex gap-2 ${bgInnerCard} p-2.5 rounded-2xl border items-center shadow-inner`}>
-                <input 
-                  type="text" 
-                  placeholder={T.habitoPlaceholder} 
-                  value={nuevoHabito} 
-                  onChange={(e) => setNuevoHabito(e.target.value)} 
-                  className={`${bgInput} flex-1`} 
-                />
-                <input 
-                  type="time" 
-                  value={horaObjetivo} 
-                  onChange={(e) => setHoraObjetivo(e.target.value)} 
-                  className={`${timeInputStyle} rounded-xl px-2 py-2.5 text-xs font-mono w-20 text-center shrink-0 outline-none focus:border-indigo-500 font-bold`} 
-                />
-                <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shrink-0 transition active:scale-95 shadow-lg shadow-indigo-600/30">
-                  {T.anadir}
-                </button>
+              <form onSubmit={agregarHabito} className={`flex flex-col sm:flex-row gap-2 ${bgInnerCard} p-2.5 rounded-2xl border items-center shadow-inner w-full`}>
+                <div className="flex-1 w-full min-w-0">
+                  <input 
+                    type="text" 
+                    placeholder={T.habitoPlaceholder} 
+                    value={nuevoHabito} 
+                    onChange={(e) => setNuevoHabito(e.target.value)} 
+                    className={`${bgInput}`} 
+                  />
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto shrink-0">
+                  <input 
+                    type="time" 
+                    value={horaObjetivo} 
+                    onChange={(e) => setHoraObjetivo(e.target.value)} 
+                    className={`${timeInputStyle} rounded-xl px-2 py-2.5 text-xs font-mono w-full sm:w-20 text-center shrink-0 outline-none focus:border-indigo-500 font-bold`} 
+                  />
+                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shrink-0 transition active:scale-95 shadow-lg shadow-indigo-600/30 w-full sm:w-auto">
+                    {T.anadir}
+                  </button>
+                </div>
               </form>
 
               <div className="space-y-3">
@@ -1548,7 +1586,7 @@ export default function Home() {
                   const completado = !!registrosHoy[h.id]?.completado;
                   const racha = rachasHabitos[h.id] || 0;
                   return (
-                    <div key={h.id} className={`p-3.5 rounded-2xl border ${bgInnerCardSubtle} flex flex-col gap-2 transition hover:border-slate-400`}>
+                    <div key={h.id} className={`p-3.5 rounded-2xl border ${bgInnerCardSubtle} flex flex-col gap-2 transition hover:border-slate-400 card-hover`}>
                       <div className={`flex items-center justify-between border-b ${modoOscuro ? 'border-slate-800/50' : 'border-slate-200'} pb-2`}>
                         <span className={`text-[10px] ${textMuted} font-semibold uppercase tracking-wider`}>{T.habitoDiario}</span>
                         <div className="flex items-center gap-2">
@@ -1567,7 +1605,7 @@ export default function Home() {
                       </div>
 
                       <div className="flex items-center gap-3 pt-1">
-                        <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-all ${completado ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-md shadow-indigo-600/40' : 'border-slate-400 hover:border-indigo-500'}`}>
+                        <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-all ${completado ? 'bg-linear-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-md shadow-indigo-600/40' : 'border-slate-400 hover:border-indigo-500'}`}>
                           {completado && '✓'}
                         </button>
                         <span className={`text-xs font-bold break-words flex-1 leading-normal ${completado ? 'line-through text-slate-400' : modoOscuro ? 'text-slate-100' : 'text-slate-800'}`}>
@@ -1581,7 +1619,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* NUTRICIÓN */}
+          {/* NUTRICIÓN (CUADROS SIMÉTRICOS) */}
           {seccionActiva === 'nutricion' && (
             <section className={`${bgCard} max-w-3xl mx-auto space-y-6`}>
               <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
@@ -1601,20 +1639,21 @@ export default function Home() {
 
                   <div className="flex justify-between items-center">
                     <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted}`}>{T.comidasDelDia}</h3>
-                    <button onClick={agregarComida} className="text-xs text-amber-500 font-bold hover:underline transition">{T.agregarComida}</button>
+                    <button onClick={agregarComida} className="text-xs text-amber-500 font-bold hover:underline transition active:scale-95">{T.agregarComida}</button>
                   </div>
                   
                   {comidas.map((item, index) => (
-                    <div key={item.id} className={`${bgInnerCardSubtle} p-3 rounded-2xl border flex items-center gap-2 sm:gap-3 transition hover:border-slate-400`}>
+                    <div key={item.id} className={`${bgInnerCardSubtle} p-3 rounded-2xl border flex items-center gap-2 sm:gap-3 transition hover:border-slate-400 w-full`}>
                       <div className="flex flex-col gap-0.5 shrink-0">
                         <button onClick={() => moverComida(index, 'arriba')} disabled={index === 0} className={`text-[10px] ${modoOscuro ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'} hover:opacity-80 disabled:opacity-30 px-1.5 py-0.5 rounded transition`}>▲</button>
                         <button onClick={() => moverComida(index, 'abajo')} disabled={index === comidas.length - 1} className={`text-[10px] ${modoOscuro ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'} hover:opacity-80 disabled:opacity-30 px-1.5 py-0.5 rounded transition`}>▼</button>
                       </div>
 
-                      <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={bgInput} />
+                      <div className="flex-1 min-w-0">
+                        <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={bgInput} />
+                      </div>
                       
-                      <div className="w-24 shrink-0 text-center">
-                        <label className={`text-[10px] ${textMuted} block mb-0.5 font-medium`}>kcal</label>
+                      <div className="w-20 sm:w-24 shrink-0 text-center">
                         <CleanNumberInput value={item.calorias} onChange={(v: number) => actualizarComida(item.id, 'calorias', v)} className={`${bgInput} text-center font-bold`} />
                       </div>
 
@@ -1634,10 +1673,10 @@ export default function Home() {
 
                   <div className="flex justify-between items-center">
                     <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted}`}>{T.actividadesRegistradas}</h3>
-                    <button onClick={agregarEjercicio} className="text-xs text-indigo-500 font-bold hover:underline transition">{T.agregarEjercicio}</button>
+                    <button onClick={agregarEjercicio} className="text-xs text-indigo-500 font-bold hover:underline transition active:scale-95">{T.agregarEjercicio}</button>
                   </div>
 
-                  <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white p-3.5 rounded-2xl flex items-center justify-between gap-3 shadow-lg">
+                  <div className="bg-linear-to-r from-violet-600 via-purple-600 to-indigo-600 text-white p-3.5 rounded-2xl flex items-center justify-between gap-3 shadow-lg">
                     <div className="flex items-center gap-2.5">
                       <span className="text-xl">⚡</span>
                       <div>
@@ -1652,15 +1691,14 @@ export default function Home() {
                   </div>
 
                   {ejercicios.map((item, index) => (
-                    <div key={item.id} className={`${bgInnerCardSubtle} p-3 rounded-2xl border flex items-center justify-between gap-2 sm:gap-3 transition hover:border-slate-400`}>
-                      <div className="flex flex-col gap-0.5 shrink-0 mt-3">
+                    <div key={item.id} className={`${bgInnerCardSubtle} p-3 rounded-2xl border flex items-center justify-between gap-2 sm:gap-3 transition hover:border-slate-400 w-full`}>
+                      <div className="flex flex-col gap-0.5 shrink-0">
                         <button onClick={() => moverEjercicio(index, 'arriba')} disabled={index === 0} className={`text-[10px] ${modoOscuro ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'} hover:opacity-80 disabled:opacity-30 px-1.5 py-0.5 rounded transition`}>▲</button>
                         <button onClick={() => moverEjercicio(index, 'abajo')} disabled={index === ejercicios.length - 1} className={`text-[10px] ${modoOscuro ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'} hover:opacity-80 disabled:opacity-30 px-1.5 py-0.5 rounded transition`}>▼</button>
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <label className={`text-[10px] ${textMuted} block text-center mb-1 font-medium`}>{T.tipoActividad}</label>
-                        <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${bgInput} w-full text-center truncate font-semibold`}>
+                        <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${bgInput} text-center truncate font-semibold`}>
                           <option value="">{T.seleccionarTipo}</option>
                           <option value="fuerza">{T.fuerza}</option>
                           <option value="running">{T.running}</option>
@@ -1675,11 +1713,10 @@ export default function Home() {
                       </div>
 
                       <div className="w-20 shrink-0 text-center">
-                        <label className="text-[10px] text-amber-500 block text-center mb-1 font-bold">Kcal</label>
                         <CleanNumberInput value={item.calorias} onChange={(v: number) => actualizarEjercicio(item.id, 'calorias', v)} className={`${bgInput} text-center font-bold px-1`} />
                       </div>
 
-                      <button onClick={() => eliminarEjercicio(item.id)} className="text-rose-500 hover:text-rose-400 text-xs p-1 shrink-0 mt-4 transition hover:scale-110">🗑️</button>
+                      <button onClick={() => eliminarEjercicio(item.id)} className="text-rose-500 hover:text-rose-400 text-xs p-1 shrink-0 transition hover:scale-110">🗑️</button>
                     </div>
                   ))}
                 </div>
@@ -1705,7 +1742,7 @@ export default function Home() {
                       <span>{Math.min(100, Math.round((aguaMl / metaAguaMl) * 100))}%</span>
                     </div>
                     <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
-                      <div className="bg-cyan-500 h-full rounded-full transition-all duration-300 shadow-cyan-500/50" style={{ width: `${Math.min(100, (aguaMl / metaAguaMl) * 100)}%` }}></div>
+                      <div className="bg-cyan-500 h-full rounded-full transition-all duration-500 ease-out shadow-cyan-500/50" style={{ width: `${Math.min(100, (aguaMl / metaAguaMl) * 100)}%` }}></div>
                     </div>
                   </div>
 
@@ -1725,7 +1762,7 @@ export default function Home() {
                       <span>{Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100))}%</span>
                     </div>
                     <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
-                      <div className="bg-violet-500 h-full rounded-full transition-all duration-300 shadow-violet-500/50" style={{ width: `${Math.min(100, (suenoHoy.horas_totales / 8) * 100)}%` }}></div>
+                      <div className="bg-violet-500 h-full rounded-full transition-all duration-500 ease-out shadow-violet-500/50" style={{ width: `${Math.min(100, (suenoHoy.horas_totales / 8) * 100)}%` }}></div>
                     </div>
                   </div>
 
@@ -1746,49 +1783,45 @@ export default function Home() {
             </section>
           )}
 
-          {/* 3. NUEVA PESTAÑA: ALERTAS Y NOTIFICACIONES */}
+          {/* ALERTAS ACTUALIZADAS */}
           {seccionActiva === 'alertas' && (
             <section className={`${bgCard} max-w-lg mx-auto space-y-5`}>
               <h3 className="text-sm font-bold text-center uppercase tracking-wider">{T.configAlertas}</h3>
               
-              <button onClick={solicitarPermisosNotificacion} className={`${btnPrimary} bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500`}>
+              <button onClick={solicitarPermisosNotificacion} className={`${btnPrimary} bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500`}>
                 {T.activarNotificaciones}
               </button>
 
               <div className="space-y-3.5 pt-2">
                 
-                <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
-                  <label className={`text-xs font-bold block ${textMuted}`}>{T.alertaLevantarse}</label>
-                  <input type="time" value={configAlertas.horaLevantarse} onChange={(e) => setConfigAlertas({...configAlertas, horaLevantarse: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
-                </div>
-
-                <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                <div className={`${bgInnerCardSubtle} p-3.5 rounded-2xl border space-y-1 w-full`}>
                   <label className={`text-xs font-bold block ${textMuted}`}>{T.alertaEntrenar}</label>
-                  <input type="time" value={configAlertas.horaEntrenar} onChange={(e) => setConfigAlertas({...configAlertas, horaEntrenar: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
+                  <input type="time" value={configAlertas.horaEntrenar} onChange={(e) => setConfigAlertas({...configAlertas, horaEntrenar: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2.5 text-xs font-mono text-center font-bold`} />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                <div className="grid grid-cols-2 gap-3 w-full">
+                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1 w-full`}>
                     <label className={`text-[10px] font-bold block ${textMuted}`}>{T.alertaDesayuno}</label>
                     <input type="time" value={configAlertas.horaDesayuno} onChange={(e) => setConfigAlertas({...configAlertas, horaDesayuno: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
                   </div>
-                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1 w-full`}>
                     <label className={`text-[10px] font-bold block ${textMuted}`}>{T.alertaAlmuerzo}</label>
                     <input type="time" value={configAlertas.horaAlmuerzo} onChange={(e) => setConfigAlertas({...configAlertas, horaAlmuerzo: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
                   </div>
-                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1 w-full`}>
                     <label className={`text-[10px] font-bold block ${textMuted}`}>{T.alertaMerienda}</label>
                     <input type="time" value={configAlertas.horaMerienda} onChange={(e) => setConfigAlertas({...configAlertas, horaMerienda: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
                   </div>
-                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1 w-full`}>
                     <label className={`text-[10px] font-bold block ${textMuted}`}>{T.alertaCena}</label>
                     <input type="time" value={configAlertas.horaCena} onChange={(e) => setConfigAlertas({...configAlertas, horaCena: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
                   </div>
                 </div>
 
-                <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1`}>
+                <div className={`${bgInnerCardSubtle} p-3.5 rounded-2xl border space-y-1 w-full`}>
                   <label className={`text-xs font-bold block ${textMuted}`}>{T.alertaAgua}</label>
                   <select value={configAlertas.intervaloAguaHoras} onChange={(e) => setConfigAlertas({...configAlertas, intervaloAguaHoras: Number(e.target.value)})} className={`${bgInput} font-bold text-center`}>
+                    <option value={0.5}>Cada 30 minutos</option>
                     <option value={1}>Cada 1 hora</option>
                     <option value={2}>Cada 2 horas</option>
                     <option value={3}>Cada 3 horas</option>
@@ -1803,7 +1836,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* NOVEDADES Y SOPORTE CON TRADUCCIONES COMPLETAS */}
+          {/* NOVEDADES Y SOPORTE */}
           {seccionActiva === 'actualizaciones' && (
             <section className={`${bgCard} max-w-lg mx-auto space-y-6`}>
               <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
@@ -1820,7 +1853,7 @@ export default function Home() {
                   <p>{T.novedadesItem4}</p>
                 </div>
               ) : (
-                <form onSubmit={enviarSoporte} className={`${bgInnerCard} p-5 rounded-2xl border space-y-4`}>
+                <form onSubmit={enviarSoporte} className={`${bgInnerCard} p-5 rounded-2xl border space-y-4 w-full`}>
                   <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value)} className={`${bgInput} font-semibold`}>
                     <option value="" disabled>{T.tipoMensajePlaceholder}</option>
                     <option value="Sugerencia">{T.sugerencia}</option>
