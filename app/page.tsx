@@ -21,6 +21,8 @@ const TEXTOS = {
     modoOscuro: 'Modo Oscuro',
     modoClaro: 'Modo Claro',
     idioma: 'Idioma',
+    tema: 'Tema',
+    cambiar: 'Cambiar',
     cerrarSesion: 'Cerrar Sesión',
     totalQuemadasHoy: 'Total calorías quemadas hoy:',
     totalIngeridasHoy: 'Total Calorías Ingeridas Hoy:',
@@ -42,6 +44,78 @@ const TEXTOS = {
     agregarEjercicio: '+ Agregar Ejercicio',
     gastoBase: 'Gasto Calórico Base (TMB / BMR)',
     gastoBaseDesc: 'Gasto metabólico diario estimado de tu cuerpo',
+    balanceCalorico: 'Balance Calórico',
+    aguaDiaria: 'Agua Diaria',
+    sueno: 'Sueño',
+    completado: 'completado',
+    listos: 'listos',
+    meta: 'meta',
+    de: 'de',
+    hrs: 'hrs',
+    diasAbrev: 'd',
+    objetivoPrincipal: 'Objetivo Principal',
+    kilosObjetivo: 'Kilos Objetivo',
+    plazoMeses: 'Plazo (Meses)',
+    probabilidadCumplirse: 'Probabilidad de cumplirse:',
+    bajarPeso: '🔥 Bajar de peso',
+    mantenerPeso: '⚖️ Mantener peso',
+    subirPeso: '💪 Subir de peso',
+    muyProbable: 'Muy probable y saludable',
+    pocoProbable: 'Poco probable / Poco saludable',
+    exigente: 'Exigente, requiere alta disciplina',
+    anadir: 'Añadir',
+    habitoPlaceholder: 'Ej: Meditar 10 min, Leer 20 págs...',
+    habitoDiario: 'Hábito Diario',
+    eliminarHabitoConfirm: '¿Eliminar hábito?',
+    tipoActividad: 'Tipo de Actividad',
+    seleccionarTipo: 'Seleccionar tipo...',
+    fuerza: '🏋️ Fuerza / Gimnasio',
+    running: '🏃 Running / Carrera',
+    ciclismo: '🚴 Ciclismo',
+    boxeo: '🥊 Boxeo',
+    futbol: '⚽ Fútbol',
+    natacion: '🏊 Natación',
+    caminata: '🚶 Caminata',
+    funcional: '🤸 Funcional / HIIT',
+    otro: '⚡ Otro',
+    hidratacion: 'Hidratación',
+    descanso: 'Descanso',
+    progreso: 'Progreso',
+    acostarse: 'Acostarse',
+    levantarse: 'Levantarse',
+    guardarSueno: '💾 Guardar Sueño',
+    suenoGuardado: '✅ Sueño guardado',
+    perfilGuardado: '✅ Perfil guardado correctamente',
+    errorGuardarPerfil: '❌ Error al guardar perfil: ',
+    novedades: 'Novedades',
+    soporte: 'Soporte',
+    versionApp: 'Versión de la app',
+    tipoMensajePlaceholder: '-- Tipo de mensaje --',
+    sugerencia: '💡 Sugerencia',
+    duda: '❓ Duda',
+    reporteError: '⚠️ Reporte de error',
+    escribeMensaje: 'Escribe tu mensaje...',
+    enviarComentario: '✉️ Enviar Comentario',
+    alertaSoporte: '⚠️ Completa el formulario',
+    refRojoTitulo: 'Rojo y Vacío (0%):',
+    refRojoDesc: 'Estás lejos de tu objetivo o en dirección opuesta (ej. estar en déficit calórico cuando buscas subir de peso, o no haber registrado agua/hábitos).',
+    refAmarilloTitulo: 'Amarillo a la Mitad (50%):',
+    refAmarilloDesc: 'Progreso intermedio o superávit/déficit leve. Vas por buen camino pero aún te falta para la meta óptima del día.',
+    refVerdeTitulo: 'Verde Lleno (100%):',
+    refVerdeDesc: '¡Meta diaria alcanzada con éxito! Has conseguido el rango ideal para tu balance calórico, hidratación o rutina.',
+    msgDeficitLejos: 'Déficit (Lejos del objetivo)',
+    msgSuperavitBajo: 'Superávit bajo',
+    msgSuperavitOptimo: '¡Superávit óptimo!',
+    msgExcesoCalorico: 'Exceso calórico',
+    msgDeficitLeve: 'Déficit leve',
+    msgDeficitLogrado: '¡Déficit logrado!',
+    msgBalancePerfecto: 'Balance perfecto',
+    msgDesviacionModerada: 'Desviación moderada',
+    msgDesviacionAlta: 'Desviación alta',
+    msgAtencion: 'Atención requerida',
+    subSeccionNutricion: '🥗 Nutrición',
+    subSeccionEntrenamiento: '🏋️ Actividad Física',
+    nuevaComida: 'Nueva Comida',
   },
   en: {
     menu: 'Menu',
@@ -54,13 +128,15 @@ const TEXTOS = {
     modoOscuro: 'Dark Mode',
     modoClaro: 'Light Mode',
     idioma: 'Language',
+    tema: 'Theme',
+    cambiar: 'Change',
     cerrarSesion: 'Log Out',
     totalQuemadasHoy: 'Total calories burned today:',
     totalIngeridasHoy: 'Total Calories Consumed Today:',
     verReferencias: 'Tap here to view color and indicator references',
     ocultarReferencias: 'Hide references',
     tituloReferencias: 'Indicator References',
-    errorAuth: 'Correo y/o contraseña incorrectas',
+    errorAuth: 'Incorrect email and/or password',
     cerrar: 'Close',
     datosPersonales: 'Personal Data',
     miObjetivo: 'My Goal',
@@ -75,6 +151,78 @@ const TEXTOS = {
     agregarEjercicio: '+ Add Exercise',
     gastoBase: 'Base Metabolic Rate (BMR)',
     gastoBaseDesc: 'Estimated daily metabolic expenditure of your body',
+    balanceCalorico: 'Caloric Balance',
+    aguaDiaria: 'Daily Water',
+    sueno: 'Sleep',
+    completado: 'completed',
+    listos: 'ready',
+    meta: 'target',
+    de: 'of',
+    hrs: 'hrs',
+    diasAbrev: 'd',
+    objetivoPrincipal: 'Main Goal',
+    kilosObjetivo: 'Target Weight (kg)',
+    plazoMeses: 'Timeframe (Months)',
+    probabilidadCumplirse: 'Probability of success:',
+    bajarPeso: '🔥 Lose weight',
+    mantenerPeso: '⚖️ Maintain weight',
+    subirPeso: '💪 Gain weight',
+    muyProbable: 'Very likely and healthy',
+    pocoProbable: 'Unlikely / Unhealthy',
+    exigente: 'Challenging, requires high discipline',
+    anadir: 'Add',
+    habitoPlaceholder: 'e.g., Meditate 10 min, Read 20 pages...',
+    habitoDiario: 'Daily Habit',
+    eliminarHabitoConfirm: 'Delete habit?',
+    tipoActividad: 'Activity Type',
+    seleccionarTipo: 'Select type...',
+    fuerza: '🏋️ Strength / Gym',
+    running: '🏃 Running / Jogging',
+    ciclismo: '🚴 Cycling',
+    boxeo: '🥊 Boxing',
+    futbol: '⚽ Soccer / Football',
+    natacion: '🏊 Swimming',
+    caminata: '🚶 Walking',
+    funcional: '🤸 Functional / HIIT',
+    otro: '⚡ Other',
+    hidratacion: 'Hydration',
+    descanso: 'Rest',
+    progreso: 'Progress',
+    acostarse: 'Bedtime',
+    levantarse: 'Wake up',
+    guardarSueno: '💾 Save Sleep',
+    suenoGuardado: '✅ Sleep saved',
+    perfilGuardado: '✅ Profile saved successfully',
+    errorGuardarPerfil: '❌ Error saving profile: ',
+    novedades: 'What\'s New',
+    soporte: 'Support',
+    versionApp: 'App version',
+    tipoMensajePlaceholder: '-- Message type --',
+    sugerencia: '💡 Suggestion',
+    duda: '❓ Question',
+    reporteError: '⚠️ Bug report',
+    escribeMensaje: 'Type your message...',
+    enviarComentario: '✉️ Send Feedback',
+    alertaSoporte: '⚠️ Please complete the form',
+    refRojoTitulo: 'Red & Empty (0%):',
+    refRojoDesc: 'You are far from your goal or moving in the opposite direction (e.g., calorie deficit when trying to gain weight).',
+    refAmarilloTitulo: 'Yellow at Half (50%):',
+    refAmarilloDesc: 'Intermediate progress or slight surplus/deficit. You\'re on track but short of today\'s optimal target.',
+    refVerdeTitulo: 'Full Green (100%):',
+    refVerdeDesc: 'Daily goal successfully reached! You achieved the ideal range for calories, hydration, or routine.',
+    msgDeficitLejos: 'Deficit (Far from target)',
+    msgSuperavitBajo: 'Low surplus',
+    msgSuperavitOptimo: 'Optimal surplus!',
+    msgExcesoCalorico: 'Calorie excess',
+    msgDeficitLeve: 'Slight deficit',
+    msgDeficitLogrado: 'Deficit achieved!',
+    msgBalancePerfecto: 'Perfect balance',
+    msgDesviacionModerada: 'Moderate deviation',
+    msgDesviacionAlta: 'High deviation',
+    msgAtencion: 'Attention required',
+    subSeccionNutricion: '🥗 Nutrition',
+    subSeccionEntrenamiento: '🏋️ Physical Activity',
+    nuevaComida: 'New Meal',
   },
   pt: {
     menu: 'Menu',
@@ -87,13 +235,15 @@ const TEXTOS = {
     modoOscuro: 'Modo Escuro',
     modoClaro: 'Modo Claro',
     idioma: 'Idioma',
+    tema: 'Tema',
+    cambiar: 'Alterar',
     cerrarSesion: 'Sair',
     totalQuemadasHoy: 'Total de calorias queimadas hoje:',
     totalIngeridasHoy: 'Total de Calorias Ingeridas Hoje:',
     verReferencias: 'Toque aqui para ver as referências de cores e indicadores',
     ocultarReferencias: 'Ocultar referências',
     tituloReferencias: 'Referências dos Indicadores',
-    errorAuth: 'Correo y/o contraseña incorrectas',
+    errorAuth: 'E-mail e/ou senha incorretos',
     cerrar: 'Fechar',
     datosPersonales: 'Dados Pessoais',
     miObjetivo: 'Meu Objetivo',
@@ -108,6 +258,78 @@ const TEXTOS = {
     agregarEjercicio: '+ Adicionar Exercício',
     gastoBase: 'Gasto Calórico Base (TMB / BMR)',
     gastoBaseDesc: 'Gasto metabólico diário estimado do seu corpo',
+    balanceCalorico: 'Balanço Calórico',
+    aguaDiaria: 'Água Diária',
+    sueno: 'Sono',
+    completado: 'concluído',
+    listos: 'prontos',
+    meta: 'meta',
+    de: 'de',
+    hrs: 'hrs',
+    diasAbrev: 'd',
+    objetivoPrincipal: 'Objetivo Principal',
+    kilosObjetivo: 'Quilos Meta',
+    plazoMeses: 'Prazo (Meses)',
+    probabilidadCumplirse: 'Probabilidade de sucesso:',
+    bajarPeso: '🔥 Perder peso',
+    mantenerPeso: '⚖️ Manter peso',
+    subirPeso: '💪 Ganhar peso',
+    muyProbable: 'Muito provável e saudável',
+    pocoProbable: 'Pouco provável / Pouco saudável',
+    exigente: 'Exigente, requer alta disciplina',
+    anadir: 'Adicionar',
+    habitoPlaceholder: 'Ex: Meditar 10 min, Ler 20 pág...',
+    habitoDiario: 'Hábito Diário',
+    eliminarHabitoConfirm: 'Excluir hábito?',
+    tipoActividad: 'Tipo de Atividade',
+    seleccionarTipo: 'Selecionar tipo...',
+    fuerza: '🏋️ Força / Academia',
+    running: '🏃 Corrida',
+    ciclismo: '🚴 Ciclismo',
+    boxeo: '🥊 Boxe',
+    futbol: '⚽ Futebol',
+    natacion: '🏊 Natação',
+    caminata: '🚶 Caminhada',
+    funcional: '🤸 Funcional / HIIT',
+    otro: '⚡ Outro',
+    hidratacion: 'Hidratação',
+    descanso: 'Descanso',
+    progreso: 'Progresso',
+    acostarse: 'Deitar',
+    levantarse: 'Levantar',
+    guardarSueno: '💾 Salvar Sono',
+    suenoGuardado: '✅ Sono salvo',
+    perfilGuardado: '✅ Perfil salvo com sucesso',
+    errorGuardarPerfil: '❌ Erro ao salvar perfil: ',
+    novedades: 'Novidades',
+    soporte: 'Suporte',
+    versionApp: 'Versão do app',
+    tipoMensajePlaceholder: '-- Tipo de mensagem --',
+    sugerencia: '💡 Sugestão',
+    duda: '❓ Dúvida',
+    reporteError: '⚠️ Relatório de erro',
+    escribeMensaje: 'Escreva sua mensagem...',
+    enviarComentario: '✉️ Enviar Comentário',
+    alertaSoporte: '⚠️ Preencha o formulário',
+    refRojoTitulo: 'Vermelho e Vazio (0%):',
+    refRojoDesc: 'Você está longe do seu objetivo ou na direção oposta (ex: déficit calórico ao tentar ganhar peso).',
+    refAmarilloTitulo: 'Amarelo na Metade (50%):',
+    refAmarilloDesc: 'Progreso intermediário ou leve superávit/déficit. Você está no caminho certo, mas ainda falta para a meta.',
+    refVerdeTitulo: 'Verde Cheio (100%):',
+    refVerdeDesc: 'Meta diária atingida com sucesso! Você alcançou a faixa ideal para calorias, hidratação ou rotina.',
+    msgDeficitLejos: 'Déficit (Longe do objetivo)',
+    msgSuperavitBajo: 'Superávit baixo',
+    msgSuperavitOptimo: 'Superávit ótimo!',
+    msgExcesoCalorico: 'Excesso calórico',
+    msgDeficitLeve: 'Déficit leve',
+    msgDeficitLogrado: 'Déficit alcançado!',
+    msgBalancePerfecto: 'Balanço perfeito',
+    msgDesviacionModerada: 'Desvio moderado',
+    msgDesviacionAlta: 'Desvio alto',
+    msgAtencion: 'Atenção necessária',
+    subSeccionNutricion: '🥗 Nutrição',
+    subSeccionEntrenamiento: '🏋️ Atividade Física',
+    nuevaComida: 'Nova Refeição',
   }
 };
 
@@ -308,8 +530,32 @@ export default function Home() {
   // ESTILOS DINÁMICOS SEGÚN MODO OSCURO / CLARO
   const bgApp = modoOscuro ? "bg-[#0b0f17] text-slate-100" : "bg-slate-100 text-slate-900";
   const bgCard = modoOscuro ? "bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-2xl transition-all duration-300" : "bg-white/90 backdrop-blur-xl border border-slate-200 rounded-3xl p-5 shadow-xl text-slate-800 transition-all duration-300";
-  const bgInput = modoOscuro ? "w-full min-w-0 box-border bg-slate-950/80 border border-slate-800/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 transition-all duration-200 placeholder:text-slate-600 outline-none hover:border-slate-700 font-medium [color-scheme:dark]" : "w-full min-w-0 box-border bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 transition-all duration-200 placeholder:text-slate-400 outline-none hover:border-slate-400 font-medium";
+  const bgInnerCard = modoOscuro ? "bg-slate-950/80 border-slate-800/80 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-900 shadow-sm";
+  const bgInnerCardSubtle = modoOscuro ? "bg-slate-950/60 border-slate-800/80 text-slate-100" : "bg-slate-100/80 border-slate-200 text-slate-900 shadow-sm";
+  const bgTrack = modoOscuro ? "bg-slate-950 border-slate-800/80" : "bg-slate-200 border-slate-300";
+  const textMuted = modoOscuro ? "text-slate-400" : "text-slate-500";
+  const timeInputStyle = modoOscuro ? "bg-slate-900 border-slate-800 text-indigo-300 [color-scheme:dark]" : "bg-white border-slate-300 text-indigo-600 [color-scheme:light]";
+
+  const bgInput = modoOscuro 
+    ? "w-full min-w-0 box-border bg-slate-950/80 border border-slate-800/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 transition-all duration-200 placeholder:text-slate-600 outline-none hover:border-slate-700 font-medium [color-scheme:dark]" 
+    : "w-full min-w-0 box-border bg-white border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 transition-all duration-200 placeholder:text-slate-400 outline-none hover:border-slate-400 font-medium [color-scheme:light]";
+  
   const btnPrimary = "w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-500 hover:via-violet-500 hover:to-purple-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all duration-200 shadow-lg shadow-indigo-600/20 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2";
+
+  // FORMATEADOR AUTOMÁTICO DE FECHA DE NACIMIENTO (DD/MM/AAAA)
+  const manejarFechaNacimientoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, '');
+    if (val.length > 8) val = val.slice(0, 8);
+
+    let formatted = val;
+    if (val.length > 2 && val.length <= 4) {
+      formatted = `${val.slice(0, 2)}/${val.slice(2)}`;
+    } else if (val.length > 4) {
+      formatted = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
+    }
+
+    setPerfil(prev => ({ ...prev, fecha_nacimiento: formatted }));
+  };
 
   const ordenarHabitosPorHora = (lista: Habito[]): Habito[] => {
     return [...lista].sort((a, b) => (a.hora_objetivo || '00:00').localeCompare(b.hora_objetivo || '00:00'));
@@ -342,7 +588,6 @@ export default function Home() {
     if (session?.user) cargarDatos();
   }, [fechaSeleccionada, session?.user?.id]);
 
-  // MANEJO DE INICIO DE SESIÓN CON ERROR FORZADO EN ESPAÑOL
   const manejarAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorAuth('');
@@ -364,8 +609,7 @@ export default function Home() {
         if (error) throw error;
       }
     } catch (err: any) {
-      // Error personalizado siempre en español según requerimiento
-      setErrorAuth('Correo y/o contraseña incorrectas');
+      setErrorAuth(T.errorAuth);
     } finally {
       setCargandoAuth(false);
     }
@@ -485,9 +729,9 @@ export default function Home() {
     try {
       const { error } = await supabase.from('perfil_usuario').upsert({ user_id: session.user.id, ...perfil }, { onConflict: 'user_id' });
       if (error) throw error;
-      alert('✅ Perfil guardado correctamente');
+      alert(T.perfilGuardado);
     } catch (err: any) {
-      alert('❌ Error al guardar perfil: ' + err.message);
+      alert(T.errorGuardarPerfil + err.message);
     } finally {
       setGuardandoPerfil(false);
     }
@@ -517,13 +761,13 @@ export default function Home() {
   };
 
   const eliminarHabito = async (id: number) => {
-    if (!session?.user || !window.confirm('¿Eliminar hábito?')) return;
+    if (!session?.user || !window.confirm(T.eliminarHabitoConfirm)) return;
     const { error } = await supabase.from('habitos').delete().eq('user_id', session.user.id).eq('id', id);
     if (!error) setHabitos(habitos.filter(h => h.id !== id));
   };
 
   const agregarComida = () => {
-    const nuevas = [...comidas, { id: Date.now().toString(), nombre: 'Nueva Comida', calorias: 0 }];
+    const nuevas = [...comidas, { id: Date.now().toString(), nombre: T.nuevaComida, calorias: 0 }];
     setComidas(nuevas);
     guardarCaloriasDB(ejercicios, nuevas, aguaMl);
   };
@@ -569,14 +813,14 @@ export default function Home() {
   };
 
   const moverEjercicio = (index: number, direccion: 'arriba' | 'abajo') => {
-  const destino = direccion === 'arriba' ? index - 1 : index + 1;
-  if (destino < 0 || destino >= ejercicios.length) return;
-  const copia = [...ejercicios];
-  const [removido] = copia.splice(index, 1);
-  copia.splice(destino, 0, removido);
-  setEjercicios(copia);
-  guardarCaloriasDB(copia, comidas, aguaMl); // 👈 Se cambió 'ejercicios' por 'comidas'
-};
+    const destino = direccion === 'arriba' ? index - 1 : index + 1;
+    if (destino < 0 || destino >= ejercicios.length) return;
+    const copia = [...ejercicios];
+    const [removido] = copia.splice(index, 1);
+    copia.splice(destino, 0, removido);
+    setEjercicios(copia);
+    guardarCaloriasDB(copia, comidas, aguaMl);
+  };
 
   const modificarAgua = (deltaMl: number) => {
     setAguaMl(prev => {
@@ -596,12 +840,12 @@ export default function Home() {
 
     const datos = { ...suenoHoy, user_id: session.user.id, fecha: fechaSeleccionada, horas_totales: duracion };
     const { error } = await supabase.from('registro_sueno').upsert(datos, { onConflict: 'user_id,fecha' });
-    if (!error) { setSuenoHoy(datos); alert('✅ Sueño guardado'); }
+    if (!error) { setSuenoHoy(datos); alert(T.suenoGuardado); }
   };
 
   const enviarSoporte = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tipoSoporte || !mensajeSoporte.trim()) return alert('⚠️ Completa el formulario');
+    if (!tipoSoporte || !mensajeSoporte.trim()) return alert(T.alertaSoporte);
     window.location.href = `mailto:stefanopintos.contact@gmail.com?subject=${encodeURIComponent(`[Fitness App] ${tipoSoporte}`)}&body=${encodeURIComponent(mensajeSoporte)}`;
     setMensajeSoporte('');
   };
@@ -618,41 +862,41 @@ export default function Home() {
     let pct = 0;
     let colorBarra = "bg-rose-500 shadow-rose-500/50";
     let colorTexto = "text-rose-400";
-    let mensaje = "Atención requerida";
+    let mensaje = T.msgAtencion;
 
     if (perfil.objetivo === 'subir') {
       if (balanceCalorico <= 0) {
         pct = 0;
         colorBarra = "bg-rose-500 shadow-rose-500/50";
         colorTexto = "text-rose-400";
-        mensaje = "Déficit (Lejos del objetivo)";
+        mensaje = T.msgDeficitLejos;
       } else if (balanceCalorico < 300) {
         pct = Math.round((balanceCalorico / 300) * 100);
         colorBarra = "bg-amber-500 shadow-amber-500/50";
         colorTexto = "text-amber-400";
-        mensaje = "Superávit bajo";
+        mensaje = T.msgSuperavitBajo;
       } else {
         pct = 100;
         colorBarra = "bg-emerald-500 shadow-emerald-500/50";
         colorTexto = "text-emerald-400";
-        mensaje = "¡Superávit óptimo!";
+        mensaje = T.msgSuperavitOptimo;
       }
     } else if (perfil.objetivo === 'bajar') {
       if (balanceCalorico > 0) {
         pct = 0;
         colorBarra = "bg-rose-500 shadow-rose-500/50";
         colorTexto = "text-rose-400";
-        mensaje = "Exceso calórico";
+        mensaje = T.msgExcesoCalorico;
       } else if (balanceCalorico > -200) {
         pct = 50;
         colorBarra = "bg-amber-500 shadow-amber-500/50";
         colorTexto = "text-amber-400";
-        mensaje = "Déficit leve";
+        mensaje = T.msgDeficitLeve;
       } else {
         pct = 100;
         colorBarra = "bg-emerald-500 shadow-emerald-500/50";
         colorTexto = "text-emerald-400";
-        mensaje = "¡Déficit logrado!";
+        mensaje = T.msgDeficitLogrado;
       }
     } else {
       const diff = Math.abs(balanceCalorico);
@@ -660,17 +904,17 @@ export default function Home() {
         pct = 100;
         colorBarra = "bg-emerald-500 shadow-emerald-500/50";
         colorTexto = "text-emerald-400";
-        mensaje = "Balance perfecto";
+        mensaje = T.msgBalancePerfecto;
       } else if (diff < 350) {
         pct = 50;
         colorBarra = "bg-amber-500 shadow-amber-500/50";
         colorTexto = "text-amber-400";
-        mensaje = "Desviación moderada";
+        mensaje = T.msgDesviacionModerada;
       } else {
         pct = 0;
         colorBarra = "bg-rose-500 shadow-rose-500/50";
         colorTexto = "text-rose-400";
-        mensaje = "Desviación alta";
+        mensaje = T.msgDesviacionAlta;
       }
     }
     return { pct, colorBarra, colorTexto, mensaje };
@@ -735,7 +979,7 @@ export default function Home() {
           <div className="text-center space-y-2">
             <span className="text-5xl inline-block drop-shadow-lg">💪</span>
             <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Personal Fitness App</h1>
-            <p className="text-xs text-slate-400 font-medium">{pasoOTP ? 'Ingresa el código que enviamos a tu email' : esRegistro ? 'Crea tu cuenta profesional' : 'Bienvenido de nuevo'}</p>
+            <p className={`text-xs ${textMuted} font-medium`}>{pasoOTP ? 'Ingresa el código que enviamos a tu email' : esRegistro ? 'Crea tu cuenta profesional' : 'Bienvenido de nuevo'}</p>
           </div>
 
           {errorAuth && <div className="bg-rose-950/60 text-rose-300 text-xs p-3.5 rounded-2xl border border-rose-800/80 text-center font-medium">⚠️ {errorAuth}</div>}
@@ -744,7 +988,7 @@ export default function Home() {
             <form onSubmit={verificarCodigoOTP} className="space-y-4">
               <input type="text" required value={codigoOTP} onChange={(e) => setCodigoOTP(e.target.value)} placeholder="Código de 6 dígitos" className={`${bgInput} text-center font-mono text-base tracking-widest`} />
               <button type="submit" disabled={cargandoAuth} className={btnPrimary}>{cargandoAuth ? 'Verificando...' : 'Confirmar Código'}</button>
-              <button type="button" onClick={() => setPasoOTP(false)} className="w-full text-xs text-slate-400 hover:text-indigo-400 transition">← Volver al formulario</button>
+              <button type="button" onClick={() => setPasoOTP(false)} className={`w-full text-xs ${textMuted} hover:text-indigo-400 transition`}>← Volver al formulario</button>
             </form>
           ) : (
             <form onSubmit={manejarAuth} className="space-y-4">
@@ -752,7 +996,7 @@ export default function Home() {
               
               <div className="relative">
                 <input type={mostrarPassword ? "text" : "password"} required value={passwordAuth} onChange={(e) => setPasswordAuth(e.target.value)} placeholder="Contraseña" className={bgInput} />
-                <button type="button" onClick={() => setMostrarPassword(!mostrarPassword)} className="absolute right-3.5 top-3 text-xs text-slate-400 hover:text-slate-200 transition">
+                <button type="button" onClick={() => setMostrarPassword(!mostrarPassword)} className={`absolute right-3.5 top-3 text-xs ${textMuted} transition`}>
                   {mostrarPassword ? '🙈' : '👁️'}
                 </button>
               </div>
@@ -768,7 +1012,7 @@ export default function Home() {
           )}
 
           {!pasoOTP && (
-            <button onClick={() => alternarModoAuth(!esRegistro)} className="w-full text-center text-xs text-slate-400 hover:text-indigo-400 transition font-medium">
+            <button onClick={() => alternarModoAuth(!esRegistro)} className={`w-full text-center text-xs ${textMuted} hover:text-indigo-400 transition font-medium`}>
               {esRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate gratis'}
             </button>
           )}
@@ -791,10 +1035,10 @@ export default function Home() {
         }
       `}</style>
 
-      {/* MENÚ LATERAL CON CONTROLES DE IDIOMA Y MODO CLARO/OSCURO */}
-      <aside className={`bg-slate-900/90 backdrop-blur-xl border-b md:border-b-0 md:border-r border-slate-800/80 transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:w-64' : 'w-full md:w-20'}`}>
+      {/* MENÚ LATERAL CON MODO OSCURO Y MODO CLARO TOTALMENTE ADAPTABLE */}
+      <aside className={`${modoOscuro ? 'bg-slate-900/90 border-slate-800/80 text-slate-100' : 'bg-white/95 border-slate-200 text-slate-900 shadow-xl'} backdrop-blur-xl border-b md:border-b-0 md:border-r transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:w-64' : 'w-full md:w-20'}`}>
         <div>
-          <div className="p-4 flex items-center justify-between border-b border-slate-800/80 gap-2">
+          <div className={`p-4 flex items-center justify-between border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} gap-2`}>
             
             {/* BOTÓN "MENÚ" */}
             <button 
@@ -805,7 +1049,7 @@ export default function Home() {
               <span className="text-xs font-black uppercase tracking-wider">{T.menu}</span>
             </button>
             
-            <div className="text-xs font-bold text-slate-200 bg-slate-950/80 px-3.5 py-2 rounded-xl border border-slate-800/80 truncate max-w-[170px] shadow-inner">
+            <div className={`text-xs font-bold ${modoOscuro ? 'text-slate-200 bg-slate-950/80 border-slate-800/80' : 'text-slate-800 bg-slate-100 border-slate-300'} px-3.5 py-2 rounded-xl border truncate max-w-[170px] shadow-inner`}>
               👤 {perfil.nombre.trim() || session?.user?.email?.split('@')[0] || 'Usuario'}
             </div>
           </div>
@@ -820,7 +1064,9 @@ export default function Home() {
                     className={`flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-200 w-full justify-start ${
                       seccionActiva === item.id 
                         ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-600/30' 
-                        : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                        : modoOscuro 
+                          ? 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200' 
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     <span className="text-xl">{item.icon}</span>
@@ -829,26 +1075,26 @@ export default function Home() {
                 ))}
 
                 {/* CONTROLES DE MODO CLARO/OSCURO E IDIOMA EN EL MENÚ */}
-                <div className="pt-4 mt-2 border-t border-slate-800/80 space-y-3 text-left">
+                <div className={`pt-4 mt-2 border-t ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} space-y-3 text-left`}>
                   {/* ALTERNAR MODO OSCURO / CLARO */}
                   <div className="px-2">
-                    <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1.5">Tema</label>
+                    <label className={`text-[10px] ${textMuted} font-bold uppercase block mb-1.5`}>{T.tema}</label>
                     <button
                       onClick={() => setModoOscuro(!modoOscuro)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-indigo-500 text-xs font-semibold transition"
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border ${modoOscuro ? 'bg-slate-950/80 border-slate-800 text-slate-200 hover:border-indigo-500' : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500'} text-xs font-semibold transition`}
                     >
                       <span>{modoOscuro ? '🌙 ' + T.modoOscuro : '☀️ ' + T.modoClaro}</span>
-                      <span className="text-[10px] bg-indigo-600/30 text-indigo-300 px-2 py-0.5 rounded-md">Cambiar</span>
+                      <span className="text-[10px] bg-indigo-600/30 text-indigo-500 px-2 py-0.5 rounded-md font-bold">{T.cambiar}</span>
                     </button>
                   </div>
 
                   {/* SELECCIÓN DE IDIOMA */}
                   <div className="px-2">
-                    <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1.5">{T.idioma}</label>
+                    <label className={`text-[10px] ${textMuted} font-bold uppercase block mb-1.5`}>{T.idioma}</label>
                     <select
                       value={idioma}
                       onChange={(e) => setIdioma(e.target.value as Idioma)}
-                      className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 outline-none focus:border-indigo-500"
+                      className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${modoOscuro ? 'bg-slate-950/80 border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-800'} outline-none focus:border-indigo-500`}
                     >
                       <option value="es">🇪🇸 Español</option>
                       <option value="en">🇺🇸 English</option>
@@ -873,9 +1119,9 @@ export default function Home() {
         </div>
 
         {sidebarAbierto && (
-          <div className="p-4 border-t border-slate-800/80 bg-slate-950/50 space-y-3 mt-auto text-center">
-            <button onClick={cerrarSesion} className="w-full bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/80 text-rose-300 font-bold py-2.5 rounded-xl text-xs transition active:scale-95">🚪 {T.cerrarSesion}</button>
-            <div className="text-[10px] text-slate-500 font-mono">🚀 v{ULTIMA_ACTUALIZACION_APP}</div>
+          <div className={`p-4 border-t ${modoOscuro ? 'border-slate-800/80 bg-slate-950/50' : 'border-slate-200 bg-slate-50'} space-y-3 mt-auto text-center`}>
+            <button onClick={cerrarSesion} className="w-full bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-500 font-bold py-2.5 rounded-xl text-xs transition active:scale-95">🚪 {T.cerrarSesion}</button>
+            <div className={`text-[10px] ${textMuted} font-mono`}>🚀 v{ULTIMA_ACTUALIZACION_APP}</div>
           </div>
         )}
       </aside>
@@ -883,12 +1129,12 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
         
-        {/* ENCABEZADO CON FLECHAS */}
+        {/* ENCABEZADO CON FLECHAS ADAPTABLES A MODO CLARO Y OSCURO */}
         <header className={`${bgCard} flex justify-between items-center mb-8 p-4 sm:p-5 text-center shadow-xl`}>
           {indiceSeccionActual > 0 ? (
             <button 
               onClick={irSeccionAnterior} 
-              className="p-2 sm:p-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 transition active:scale-90 font-bold text-sm sm:text-base border border-slate-700/60 cursor-pointer shrink-0"
+              className={`p-2 sm:p-2.5 rounded-2xl ${modoOscuro ? 'bg-slate-800/80 hover:bg-slate-700 text-indigo-400 border-slate-700/60' : 'bg-slate-100 hover:bg-slate-200 text-indigo-600 border-slate-300'} transition active:scale-90 font-bold text-sm sm:text-base border cursor-pointer shrink-0 shadow-sm`}
               title="Sección anterior"
             >
               ◀
@@ -899,7 +1145,7 @@ export default function Home() {
 
           <h2 className="text-lg sm:text-2xl font-black text-center flex-1 flex items-center justify-center gap-2.5 px-2">
             <span>{SECCIONES.find(s => s.id === seccionActiva)?.icon}</span>
-            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
               {T[seccionActiva as keyof typeof T]}
             </span>
             <span>{SECCIONES.find(s => s.id === seccionActiva)?.icon}</span>
@@ -908,7 +1154,7 @@ export default function Home() {
           {indiceSeccionActual < SECCIONES.length - 1 ? (
             <button 
               onClick={irSeccionSiguiente} 
-              className="p-2 sm:p-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 transition active:scale-90 font-bold text-sm sm:text-base border border-slate-700/60 cursor-pointer shrink-0"
+              className={`p-2 sm:p-2.5 rounded-2xl ${modoOscuro ? 'bg-slate-800/80 hover:bg-slate-700 text-indigo-400 border-slate-700/60' : 'bg-slate-100 hover:bg-slate-200 text-indigo-600 border-slate-300'} transition active:scale-90 font-bold text-sm sm:text-base border cursor-pointer shrink-0 shadow-sm`}
               title="Siguiente sección"
             >
               ▶
@@ -925,7 +1171,7 @@ export default function Home() {
           {seccionActiva === 'general' && (
             <div className="space-y-6">
               
-              {/* BOTÓN Y SECCIÓN DE REFERENCIAS (UBICADO ARRIBA DEL TODO Y SIN FONDO NEGRO) */}
+              {/* BOTÓN Y SECCIÓN DE REFERENCIAS */}
               <div className="text-center pb-2">
                 <button 
                   onClick={() => setMostrarReferencias(!mostrarReferencias)} 
@@ -936,44 +1182,43 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* PESTAÑA DE AYUDA DESPLEGABLE DIRECTAMENTE ARRIBA SIN FONDO NEGRO OVERLAY */}
               {mostrarReferencias && (
                 <div className={`${bgCard} p-5 rounded-3xl border space-y-4 animar-pestana shadow-xl`}>
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                  <div className={`flex justify-between items-center border-b ${modoOscuro ? 'border-slate-800' : 'border-slate-200'} pb-3`}>
                     <h3 className="text-xs font-bold flex items-center gap-2 uppercase tracking-wider">
                       <span>📖</span>
                       <span>{T.tituloReferencias}</span>
                     </h3>
                     <button 
                       onClick={() => setMostrarReferencias(false)}
-                      className="text-xs font-bold px-3 py-1 rounded-xl bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition"
+                      className="text-xs font-bold px-3 py-1 rounded-xl bg-rose-500/20 text-rose-500 hover:bg-rose-500/30 transition"
                     >
                       ✕ {T.cerrar}
                     </button>
                   </div>
 
                   <div className="space-y-3 text-xs">
-                    <div className="flex items-start gap-3 bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60">
+                    <div className={`flex items-start gap-3 ${bgInnerCardSubtle} p-3 rounded-2xl border`}>
                       <div className="w-3.5 h-3.5 rounded-full bg-rose-500 shrink-0 mt-0.5 shadow-md shadow-rose-500/50"></div>
                       <div>
-                        <span className="font-bold text-rose-400 block mb-0.5">Rojo y Vacío (0%):</span>
-                        Estás lejos de tu objetivo o en dirección opuesta (ej. estar en déficit calórico cuando buscas subir de peso, o no haber registrado agua/hábitos).
+                        <span className="font-bold text-rose-500 block mb-0.5">{T.refRojoTitulo}</span>
+                        {T.refRojoDesc}
                       </div>
                     </div>
 
-                    <div className="flex items-start gap-3 bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60">
+                    <div className={`flex items-start gap-3 ${bgInnerCardSubtle} p-3 rounded-2xl border`}>
                       <div className="w-3.5 h-3.5 rounded-full bg-amber-500 shrink-0 mt-0.5 shadow-md shadow-amber-500/50"></div>
                       <div>
-                        <span className="font-bold text-amber-400 block mb-0.5">Amarillo a la Mitad (50%):</span>
-                        Progreso intermedio o superávit/déficit leve. Vas por buen camino pero aún te falta para la meta óptima del día.
+                        <span className="font-bold text-amber-500 block mb-0.5">{T.refAmarilloTitulo}</span>
+                        {T.refAmarilloDesc}
                       </div>
                     </div>
 
-                    <div className="flex items-start gap-3 bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60">
+                    <div className={`flex items-start gap-3 ${bgInnerCardSubtle} p-3 rounded-2xl border`}>
                       <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shrink-0 mt-0.5 shadow-md shadow-emerald-500/50"></div>
                       <div>
-                        <span className="font-bold text-emerald-400 block mb-0.5">Verde Lleno (100%):</span>
-                        ¡Meta diaria alcanzada con éxito! Has conseguido el rango ideal para tu balance calórico, hidratación o rutina.
+                        <span className="font-bold text-emerald-500 block mb-0.5">{T.refVerdeTitulo}</span>
+                        {T.refVerdeDesc}
                       </div>
                     </div>
                   </div>
@@ -984,15 +1229,15 @@ export default function Home() {
                 
                 {/* BALANCE CALÓRICO */}
                 <div onClick={() => setSeccionActiva('nutricion')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                  <span className="text-xs font-bold uppercase tracking-wider text-center w-full">Balance Calórico 🔥</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-center w-full">{T.balanceCalorico} 🔥</span>
                   <p className={`text-3xl font-black my-2 text-center w-full transition-colors ${estadoCalorico.colorTexto}`}>
-                    {balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className="text-xs text-slate-500 font-medium">kcal</span>
+                    {balanceCalorico > 0 ? `+${balanceCalorico}` : balanceCalorico} <span className={`text-xs ${textMuted} font-medium`}>kcal</span>
                   </p>
                   <div className="w-full space-y-1.5 mt-2 text-center">
-                    <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                    <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
                       <div className={`h-full rounded-full transition-all duration-500 ${estadoCalorico.colorBarra}`} style={{ width: `${estadoCalorico.pct}%` }}></div>
                     </div>
-                    <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold px-1 text-center w-full">
+                    <div className={`flex justify-between items-center text-[10px] ${textMuted} font-semibold px-1 text-center w-full`}>
                       <span className="w-full text-center">{estadoCalorico.mensaje} ({estadoCalorico.pct}%)</span>
                     </div>
                   </div>
@@ -1004,15 +1249,15 @@ export default function Home() {
                   const colors = getDynamicColor(pctAgua);
                   return (
                     <div onClick={() => setSeccionActiva('extra')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                      <span className="text-xs font-bold uppercase tracking-wider text-center">Agua Diaria 💧</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-center">{T.aguaDiaria} 💧</span>
                       <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
-                        {(aguaMl / 1000).toFixed(2)}L <span className="text-xs text-slate-500 font-medium">/ 2.5L</span>
+                        {(aguaMl / 1000).toFixed(2)}L <span className={`text-xs ${textMuted} font-medium`}>/ 2.5L</span>
                       </p>
                       <div className="w-full space-y-1.5 mt-2">
-                        <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                        <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
                           <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${pctAgua}%` }}></div>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-semibold">{pctAgua}% completado</span>
+                        <span className={`text-[10px] ${textMuted} font-semibold`}>{pctAgua}% {T.completado}</span>
                       </div>
                     </div>
                   );
@@ -1023,13 +1268,13 @@ export default function Home() {
                   const colors = getDynamicColor(porcentajeHabitos);
                   return (
                     <div onClick={() => setSeccionActiva('habitos')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                      <span className="text-xs font-bold uppercase tracking-wider text-center">Hábitos ⚡</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-center">{T.habitos} ⚡</span>
                       <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>{porcentajeHabitos}%</p>
                       <div className="w-full space-y-1.5 mt-2">
-                        <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                        <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
                           <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${porcentajeHabitos}%` }}></div>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-semibold">{totalCompletados} de {habitos.length} listos</span>
+                        <span className={`text-[10px] ${textMuted} font-semibold`}>{totalCompletados} {T.de} {habitos.length} {T.listos}</span>
                       </div>
                     </div>
                   );
@@ -1041,15 +1286,15 @@ export default function Home() {
                   const colors = getDynamicColor(pctSueno);
                   return (
                     <div onClick={() => setSeccionActiva('extra')} className={`${bgCard} cursor-pointer text-center flex flex-col justify-between items-center group hover:scale-[1.02]`}>
-                      <span className="text-xs font-bold uppercase tracking-wider text-center">Sueño 😴</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-center">{T.sueno} 😴</span>
                       <p className={`text-3xl font-black my-2 text-center transition-colors ${colors.text}`}>
-                        {suenoHoy.horas_totales} <span className="text-xs text-slate-500 font-medium">hrs</span>
+                        {suenoHoy.horas_totales} <span className={`text-xs ${textMuted} font-medium`}>{T.hrs}</span>
                       </p>
                       <div className="w-full space-y-1.5 mt-2">
-                        <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                        <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
                           <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${pctSueno}%` }}></div>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-semibold">{pctSueno}% meta (8 hrs)</span>
+                        <span className={`text-[10px] ${textMuted} font-semibold`}>{pctSueno}% {T.meta} (8 {T.hrs})</span>
                       </div>
                     </div>
                   );
@@ -1063,27 +1308,27 @@ export default function Home() {
           {/* MI PERFIL Y OBJETIVOS */}
           {seccionActiva === 'perfil' && (
             <section className={`${bgCard} max-w-xl mx-auto space-y-6`}>
-              <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
-                <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-xs font-bold pb-2 transition ${subSeccionPerfil === 'perfil' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>👤 {T.datosPersonales}</button>
-                <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-xs font-bold pb-2 transition ${subSeccionPerfil === 'objetivo' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🎯 {T.miObjetivo}</button>
+              <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
+                <button onClick={() => setSubSeccionPerfil('perfil')} className={`text-xs font-bold pb-2 transition ${subSeccionPerfil === 'perfil' ? 'text-indigo-500 border-b-2 border-indigo-500' : `${textMuted} hover:text-slate-800`}`}>👤 {T.datosPersonales}</button>
+                <button onClick={() => setSubSeccionPerfil('objetivo')} className={`text-xs font-bold pb-2 transition ${subSeccionPerfil === 'objetivo' ? 'text-indigo-500 border-b-2 border-indigo-500' : `${textMuted} hover:text-slate-800`}`}>🎯 {T.miObjetivo}</button>
               </div>
 
               {subSeccionPerfil === 'perfil' ? (
                 <div className="space-y-4 max-w-md mx-auto text-center">
                   
-                  {/* NOMBRE Y FECHA DE NACIMIENTO MANTENIENDO EL MISMO TAMAÑO Y FORMATO DD/MM/AAAA */}
+                  {/* NOMBRE Y FECHA DE NACIMIENTO MANTENIENDO FORMATEO AUTOMÁTICO DD/MM/AAAA */}
                   <div className="grid grid-cols-2 gap-3 items-center">
                     <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">{T.nombre}</label>
+                      <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.nombre}</label>
                       <input type="text" value={perfil.nombre} onChange={(e) => setPerfil({...perfil, nombre: e.target.value})} className={`${bgInput} text-center`} />
                     </div>
                     <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">{T.fechaNacimiento}</label>
+                      <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.fechaNacimiento}</label>
                       <input 
                         type="text" 
                         placeholder="DD/MM/AAAA"
                         value={perfil.fecha_nacimiento} 
-                        onChange={(e) => setPerfil({...perfil, fecha_nacimiento: e.target.value})} 
+                        onChange={manejarFechaNacimientoChange} 
                         className={`${bgInput} text-center font-mono w-full`} 
                       />
                     </div>
@@ -1091,11 +1336,11 @@ export default function Home() {
 
                   <div className="grid grid-cols-2 gap-3 items-center">
                     <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">{T.peso}</label>
+                      <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.peso}</label>
                       <CleanNumberInput step="0.1" value={perfil.peso} onChange={(v: number) => setPerfil({...perfil, peso: v})} className={`${bgInput} text-center font-bold`} />
                     </div>
                     <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">{T.altura}</label>
+                      <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.altura}</label>
                       <CleanNumberInput value={perfil.altura} onChange={(v: number) => setPerfil({...perfil, altura: v})} className={`${bgInput} text-center font-bold`} />
                     </div>
                   </div>
@@ -1103,49 +1348,49 @@ export default function Home() {
               ) : (
                 <div className="space-y-4 max-w-md mx-auto text-center">
                   <div className="max-w-[220px] mx-auto text-center">
-                    <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Objetivo Principal</label>
+                    <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.objetivoPrincipal}</label>
                     <select value={perfil.objetivo} onChange={(e) => setPerfil({...perfil, objetivo: e.target.value as any})} className={`${bgInput} text-center font-bold`}>
-                      <option value="bajar">🔥 Bajar de peso</option>
-                      <option value="mantener">⚖️ Mantener peso</option>
-                      <option value="subir">💪 Subir de peso</option>
+                      <option value="bajar">{T.bajarPeso}</option>
+                      <option value="mantener">{T.mantenerPeso}</option>
+                      <option value="subir">{T.subirPeso}</option>
                     </select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 items-center">
                     <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Kilos Objetivo</label>
+                      <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.kilosObjetivo}</label>
                       <CleanNumberInput value={perfil.kilos_objetivo} onChange={(v: number) => setPerfil({...perfil, kilos_objetivo: v})} className={`${bgInput} text-center font-bold`} />
                     </div>
                     <div>
-                      <label className="text-xs text-slate-400 font-medium block mb-1 text-center">Plazo (Meses)</label>
+                      <label className={`text-xs ${textMuted} font-medium block mb-1 text-center`}>{T.plazoMeses}</label>
                       <CleanNumberInput value={perfil.tiempo_objetivo_meses} onChange={(v: number) => setPerfil({...perfil, tiempo_objetivo_meses: v})} className={`${bgInput} text-center font-bold`} />
                     </div>
                   </div>
 
-                  {/* BARRA DE PROBABILIDAD DE CUMPLIR EL OBJETIVO */}
+                  {/* PROBABILIDAD DE CUMPLIR EL OBJETIVO ADAPTABLE EN MODO CLARO */}
                   {(() => {
                     const prob = calcularProbabilidadObjetivo(perfil.kilos_objetivo, perfil.tiempo_objetivo_meses, perfil.objetivo);
                     let colorBar = "bg-emerald-500 shadow-emerald-500/50";
-                    let colorTxt = "text-emerald-400";
-                    let msg = "Muy probable y saludable";
+                    let colorTxt = "text-emerald-500";
+                    let msg = T.muyProbable;
 
                     if (prob < 30) {
                       colorBar = "bg-rose-500 shadow-rose-500/50";
-                      colorTxt = "text-rose-400";
-                      msg = "Poco probable / Poco saludable";
+                      colorTxt = "text-rose-500";
+                      msg = T.pocoProbable;
                     } else if (prob < 75) {
                       colorBar = "bg-amber-500 shadow-amber-500/50";
-                      colorTxt = "text-amber-400";
-                      msg = "Exigente, requiere alta disciplina";
+                      colorTxt = "text-amber-500";
+                      msg = T.exigente;
                     }
 
                     return (
-                      <div className="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800/80 space-y-2 mt-4 text-center">
+                      <div className={`p-3.5 ${bgInnerCard} rounded-2xl border space-y-2 mt-4 text-center`}>
                         <div className="flex justify-between items-center text-xs font-semibold px-1">
-                          <span className="text-slate-400">Probabilidad de cumplirse:</span>
+                          <span className={textMuted}>{T.probabilidadCumplirse}</span>
                           <span className={`font-bold ${colorTxt}`}>{prob}% ({msg})</span>
                         </div>
-                        <div className="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                        <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
                           <div className={`h-full rounded-full transition-all duration-500 ${colorBar}`} style={{ width: `${prob}%` }}></div>
                         </div>
                       </div>
@@ -1156,7 +1401,7 @@ export default function Home() {
               )}
 
               <button onClick={guardarPerfil} disabled={guardandoPerfil} className={`${btnPrimary} max-w-xs mx-auto block`}>
-                {guardandoPerfil ? 'Guardando...' : T.guardarPerfil}
+                {guardandoPerfil ? '...' : T.guardarPerfil}
               </button>
             </section>
           )}
@@ -1164,10 +1409,10 @@ export default function Home() {
           {/* HÁBITOS DIARIOS */}
           {seccionActiva === 'habitos' && (
             <section className={`${bgCard} space-y-6 max-w-2xl mx-auto`}>
-              <form onSubmit={agregarHabito} className="flex gap-2 bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800/80 items-center shadow-inner">
+              <form onSubmit={agregarHabito} className={`flex gap-2 ${bgInnerCard} p-2.5 rounded-2xl border items-center shadow-inner`}>
                 <input 
                   type="text" 
-                  placeholder="Ej: Meditar 10 min, Leer 20 págs..." 
+                  placeholder={T.habitoPlaceholder} 
                   value={nuevoHabito} 
                   onChange={(e) => setNuevoHabito(e.target.value)} 
                   className={`${bgInput} flex-1`} 
@@ -1176,10 +1421,10 @@ export default function Home() {
                   type="time" 
                   value={horaObjetivo} 
                   onChange={(e) => setHoraObjetivo(e.target.value)} 
-                  className="bg-slate-900 border border-slate-800 rounded-xl px-2 py-2.5 text-xs text-indigo-300 font-mono w-20 text-center shrink-0 outline-none focus:border-indigo-500 font-bold [color-scheme:dark]" 
+                  className={`${timeInputStyle} rounded-xl px-2 py-2.5 text-xs font-mono w-20 text-center shrink-0 outline-none focus:border-indigo-500 font-bold`} 
                 />
                 <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shrink-0 transition active:scale-95 shadow-lg shadow-indigo-600/30">
-                  Añadir
+                  {T.anadir}
                 </button>
               </form>
 
@@ -1188,33 +1433,31 @@ export default function Home() {
                   const completado = !!registrosHoy[h.id]?.completado;
                   const racha = rachasHabitos[h.id] || 0;
                   return (
-                    <div key={h.id} className="p-3.5 rounded-2xl border border-slate-800/80 bg-slate-950/60 flex flex-col gap-2 transition hover:border-slate-700">
+                    <div key={h.id} className={`p-3.5 rounded-2xl border ${bgInnerCardSubtle} flex flex-col gap-2 transition hover:border-slate-400`}>
                       
-                      {/* ESQUINA SUPERIOR DERECHA CON RACHAS Y HORA */}
-                      <div className="flex items-center justify-between border-b border-slate-800/50 pb-2">
-                        <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Hábito Diario</span>
+                      <div className={`flex items-center justify-between border-b ${modoOscuro ? 'border-slate-800/50' : 'border-slate-200'} pb-2`}>
+                        <span className={`text-[10px] ${textMuted} font-semibold uppercase tracking-wider`}>{T.habitoDiario}</span>
                         
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] bg-amber-950/60 text-amber-400 border border-amber-800/80 px-2 py-0.5 rounded-full font-bold shadow-sm flex items-center gap-1">
+                          <span className="text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold shadow-sm flex items-center gap-1">
                             <span>🔥</span>
-                            <span>{racha}d</span>
+                            <span>{racha}{T.diasAbrev}</span>
                           </span>
-                          <span className="text-indigo-400 font-mono text-[10px] font-bold bg-indigo-950/50 border border-indigo-800/50 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                          <span className="text-indigo-500 font-mono text-[10px] font-bold bg-indigo-500/10 border border-indigo-500/30 px-2 py-0.5 rounded-lg flex items-center gap-1">
                             <span>⏰</span>
                             <span>{h.hora_objetivo}</span>
                           </span>
-                          <button onClick={() => eliminarHabito(h.id)} className="text-rose-400 hover:text-rose-300 text-xs p-0.5 transition hover:scale-110 ml-1">
+                          <button onClick={() => eliminarHabito(h.id)} className="text-rose-500 hover:text-rose-400 text-xs p-0.5 transition hover:scale-110 ml-1">
                             🗑️
                           </button>
                         </div>
                       </div>
 
-                      {/* CUERPO DEL HÁBITO */}
                       <div className="flex items-center gap-3 pt-1">
-                        <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-all ${completado ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-md shadow-indigo-600/40' : 'border-slate-700 hover:border-indigo-500'}`}>
+                        <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-all ${completado ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-md shadow-indigo-600/40' : 'border-slate-400 hover:border-indigo-500'}`}>
                           {completado && '✓'}
                         </button>
-                        <span className={`text-xs font-bold break-words flex-1 leading-normal ${completado ? 'line-through text-slate-500' : 'text-slate-100'}`}>
+                        <span className={`text-xs font-bold break-words flex-1 leading-normal ${completado ? 'line-through text-slate-400' : modoOscuro ? 'text-slate-100' : 'text-slate-800'}`}>
                           {h.texto}
                         </span>
                       </div>
@@ -1229,108 +1472,104 @@ export default function Home() {
           {/* NUTRICIÓN Y ENTRENAMIENTO */}
           {seccionActiva === 'nutricion' && (
             <section className={`${bgCard} max-w-3xl mx-auto space-y-6`}>
-              <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
-                <button onClick={() => setSubSeccionNutricion('nutricion')} className={`text-xs font-bold pb-2 transition ${subSeccionNutricion === 'nutricion' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400 hover:text-slate-200'}`}>🥗 Nutrición</button>
-                <button onClick={() => setSubSeccionNutricion('entrenamiento')} className={`text-xs font-bold pb-2 transition ${subSeccionNutricion === 'entrenamiento' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🏋️ Actividad Física</button>
+              <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
+                <button onClick={() => setSubSeccionNutricion('nutricion')} className={`text-xs font-bold pb-2 transition ${subSeccionNutricion === 'nutricion' ? 'text-amber-500 border-b-2 border-amber-500' : `${textMuted} hover:text-slate-800`}`}>{T.subSeccionNutricion}</button>
+                <button onClick={() => setSubSeccionNutricion('entrenamiento')} className={`text-xs font-bold pb-2 transition ${subSeccionNutricion === 'entrenamiento' ? 'text-indigo-500 border-b-2 border-indigo-500' : `${textMuted} hover:text-slate-800`}`}>{T.subSeccionEntrenamiento}</button>
               </div>
 
               {subSeccionNutricion === 'nutricion' ? (
                 <div className="space-y-3">
                   
-                  {/* CONTADOR DESTACADO DE CALORÍAS INGERIDAS */}
-                  <div className="bg-slate-950/90 border border-amber-500/30 p-3.5 rounded-2xl flex justify-between items-center mb-4 shadow-lg shadow-amber-500/5">
-                    <span className="text-xs text-amber-300 font-bold flex items-center gap-1.5">
+                  <div className={`${modoOscuro ? 'bg-slate-950/90 border-amber-500/30' : 'bg-amber-50/90 border-amber-300/60 shadow-sm'} border p-3.5 rounded-2xl flex justify-between items-center mb-4`}>
+                    <span className="text-xs text-amber-500 font-bold flex items-center gap-1.5">
                       <span>🔥</span>
                       <span>{T.totalIngeridasHoy}</span>
                     </span>
-                    <span className="text-base font-black text-amber-400 font-mono">{totalIngresoCalorias} <span className="text-xs text-slate-400">kcal</span></span>
+                    <span className="text-base font-black text-amber-500 font-mono">{totalIngresoCalorias} <span className={`text-xs ${textMuted}`}>kcal</span></span>
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">{T.comidasDelDia}</h3>
-                    <button onClick={agregarComida} className="text-xs text-amber-400 font-bold hover:underline transition">{T.agregarComida}</button>
+                    <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted}`}>{T.comidasDelDia}</h3>
+                    <button onClick={agregarComida} className="text-xs text-amber-500 font-bold hover:underline transition">{T.agregarComida}</button>
                   </div>
                   
                   {comidas.map((item, index) => (
-                    <div key={item.id} className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 flex items-center gap-2 sm:gap-3 transition hover:border-slate-700">
+                    <div key={item.id} className={`${bgInnerCardSubtle} p-3 rounded-2xl border flex items-center gap-2 sm:gap-3 transition hover:border-slate-400`}>
                       <div className="flex flex-col gap-0.5 shrink-0">
-                        <button onClick={() => moverComida(index, 'arriba')} disabled={index === 0} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▲</button>
-                        <button onClick={() => moverComida(index, 'abajo')} disabled={index === comidas.length - 1} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▼</button>
+                        <button onClick={() => moverComida(index, 'arriba')} disabled={index === 0} className={`text-[10px] ${modoOscuro ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'} hover:opacity-80 disabled:opacity-30 px-1.5 py-0.5 rounded transition`}>▲</button>
+                        <button onClick={() => moverComida(index, 'abajo')} disabled={index === comidas.length - 1} className={`text-[10px] ${modoOscuro ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'} hover:opacity-80 disabled:opacity-30 px-1.5 py-0.5 rounded transition`}>▼</button>
                       </div>
 
                       <input type="text" value={item.nombre} onChange={(e) => actualizarComida(item.id, 'nombre', e.target.value)} className={bgInput} />
                       
                       <div className="w-24 shrink-0 text-center">
-                        <label className="text-[10px] text-slate-400 block mb-0.5 font-medium">kcal</label>
+                        <label className={`text-[10px] ${textMuted} block mb-0.5 font-medium`}>kcal</label>
                         <CleanNumberInput value={item.calorias} onChange={(v: number) => actualizarComida(item.id, 'calorias', v)} className={`${bgInput} text-center font-bold`} />
                       </div>
 
-                      <button onClick={() => eliminarComida(item.id)} className="text-rose-400 hover:text-rose-300 text-xs p-1 shrink-0 transition hover:scale-110">🗑️</button>
+                      <button onClick={() => eliminarComida(item.id)} className="text-rose-500 hover:text-rose-400 text-xs p-1 shrink-0 transition hover:scale-110">🗑️</button>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="space-y-3">
                   
-                  {/* CONTADOR DE CALORÍAS QUEMADAS (GASTO BASAL + EJERCICIOS) */}
-                  <div className="bg-slate-950/90 border border-indigo-500/30 p-3.5 rounded-2xl flex justify-between items-center mb-4 shadow-lg shadow-indigo-500/5">
-                    <span className="text-xs text-indigo-300 font-bold flex items-center gap-1.5">
+                  <div className={`${modoOscuro ? 'bg-slate-950/90 border-indigo-500/30' : 'bg-indigo-50/90 border-indigo-300/60 shadow-sm'} border p-3.5 rounded-2xl flex justify-between items-center mb-4`}>
+                    <span className="text-xs text-indigo-500 font-bold flex items-center gap-1.5">
                       <span>🏃</span>
                       <span>{T.totalQuemadasHoy}</span>
                     </span>
-                    <span className="text-base font-black text-indigo-400 font-mono">{bmrCalculado + totalGastoEjercicios} <span className="text-xs text-slate-400">kcal</span></span>
+                    <span className="text-base font-black text-indigo-500 font-mono">{bmrCalculado + totalGastoEjercicios} <span className={`text-xs ${textMuted}`}>kcal</span></span>
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">{T.actividadesRegistradas}</h3>
-                    <button onClick={agregarEjercicio} className="text-xs text-indigo-400 font-bold hover:underline transition">{T.agregarEjercicio}</button>
+                    <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted}`}>{T.actividadesRegistradas}</h3>
+                    <button onClick={agregarEjercicio} className="text-xs text-indigo-500 font-bold hover:underline transition">{T.agregarEjercicio}</button>
                   </div>
 
-                  {/* ACTIVIDAD ANCLADA: GASTO BASE */}
-                  <div className="bg-gradient-to-r from-violet-900/60 via-purple-900/60 to-indigo-900/60 p-3.5 rounded-2xl border border-violet-500/40 flex items-center justify-between gap-3 shadow-lg shadow-purple-500/10">
+                  <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white p-3.5 rounded-2xl flex items-center justify-between gap-3 shadow-lg">
                     <div className="flex items-center gap-2.5">
                       <span className="text-xl">⚡</span>
                       <div>
-                        <span className="text-xs font-bold text-violet-200 block">{T.gastoBase}</span>
-                        <span className="text-[10px] text-violet-300/80">{T.gastoBaseDesc}</span>
+                        <span className="text-xs font-bold block">{T.gastoBase}</span>
+                        <span className="text-[10px] text-violet-100">{T.gastoBaseDesc}</span>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className="text-sm font-black text-violet-200 font-mono">{bmrCalculado}</span>
-                      <span className="text-[10px] text-violet-300 block">kcal</span>
+                      <span className="text-sm font-black font-mono">{bmrCalculado}</span>
+                      <span className="text-[10px] block">kcal</span>
                     </div>
                   </div>
 
-                  {/* LISTA DE EJERCICIOS REGISTRADOS */}
                   {ejercicios.map((item, index) => (
-                    <div key={item.id} className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 flex items-center justify-between gap-2 sm:gap-3 transition hover:border-slate-700">
+                    <div key={item.id} className={`${bgInnerCardSubtle} p-3 rounded-2xl border flex items-center justify-between gap-2 sm:gap-3 transition hover:border-slate-400`}>
                       <div className="flex flex-col gap-0.5 shrink-0 mt-3">
-                        <button onClick={() => moverEjercicio(index, 'arriba')} disabled={index === 0} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▲</button>
-                        <button onClick={() => moverEjercicio(index, 'abajo')} disabled={index === ejercicios.length - 1} className="text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 px-1.5 py-0.5 rounded transition">▼</button>
+                        <button onClick={() => moverEjercicio(index, 'arriba')} disabled={index === 0} className={`text-[10px] ${modoOscuro ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'} hover:opacity-80 disabled:opacity-30 px-1.5 py-0.5 rounded transition`}>▲</button>
+                        <button onClick={() => moverEjercicio(index, 'abajo')} disabled={index === ejercicios.length - 1} className={`text-[10px] ${modoOscuro ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'} hover:opacity-80 disabled:opacity-30 px-1.5 py-0.5 rounded transition`}>▼</button>
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <label className="text-[10px] text-slate-400 block text-center mb-1 font-medium">Tipo de Actividad</label>
+                        <label className={`text-[10px] ${textMuted} block text-center mb-1 font-medium`}>{T.tipoActividad}</label>
                         <select value={item.tipo} onChange={(e) => actualizarEjercicio(item.id, 'tipo', e.target.value as TipoEjercicio)} className={`${bgInput} w-full text-center truncate font-semibold`}>
-                          <option value="">Seleccionar tipo...</option>
-                          <option value="fuerza">🏋️ Fuerza / Gimnasio</option>
-                          <option value="running">🏃 Running / Carrera</option>
-                          <option value="ciclismo">🚴 Ciclismo</option>
-                          <option value="boxeo">🥊 Boxeo</option>
-                          <option value="futbol">⚽ Fútbol</option>
-                          <option value="natacion">🏊 Natación</option>
-                          <option value="caminata">🚶 Caminata</option>
-                          <option value="funcional">🤸 Funcional / HIIT</option>
-                          <option value="otro">⚡ Otro</option>
+                          <option value="">{T.seleccionarTipo}</option>
+                          <option value="fuerza">{T.fuerza}</option>
+                          <option value="running">{T.running}</option>
+                          <option value="ciclismo">{T.ciclismo}</option>
+                          <option value="boxeo">{T.boxeo}</option>
+                          <option value="futbol">{T.futbol}</option>
+                          <option value="natacion">{T.natacion}</option>
+                          <option value="caminata">{T.caminata}</option>
+                          <option value="funcional">{T.funcional}</option>
+                          <option value="otro">{T.otro}</option>
                         </select>
                       </div>
 
                       <div className="w-20 shrink-0 text-center">
-                        <label className="text-[10px] text-amber-400 block text-center mb-1 font-bold">Kcal</label>
+                        <label className="text-[10px] text-amber-500 block text-center mb-1 font-bold">Kcal</label>
                         <CleanNumberInput value={item.calorias} onChange={(v: number) => actualizarEjercicio(item.id, 'calorias', v)} className={`${bgInput} text-center font-bold px-1`} />
                       </div>
 
-                      <button onClick={() => eliminarEjercicio(item.id)} className="text-rose-400 hover:text-rose-300 text-xs p-1 shrink-0 mt-4 transition hover:scale-110">🗑️</button>
+                      <button onClick={() => eliminarEjercicio(item.id)} className="text-rose-500 hover:text-rose-400 text-xs p-1 shrink-0 mt-4 transition hover:scale-110">🗑️</button>
                     </div>
                   ))}
                 </div>
@@ -1341,57 +1580,57 @@ export default function Home() {
           {/* HIDRATACIÓN Y SUEÑO */}
           {seccionActiva === 'extra' && (
             <section className={`${bgCard} max-w-md mx-auto space-y-6`}>
-              <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
-                <button onClick={() => setSubSeccionExtra('agua')} className={`text-xs font-bold pb-2 transition ${subSeccionExtra === 'agua' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}>💧 Hidratación</button>
-                <button onClick={() => setSubSeccionExtra('sueno')} className={`text-xs font-bold pb-2 transition ${subSeccionExtra === 'sueno' ? 'text-violet-400 border-b-2 border-violet-400' : 'text-slate-400 hover:text-slate-200'}`}>😴 Descanso</button>
+              <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
+                <button onClick={() => setSubSeccionExtra('agua')} className={`text-xs font-bold pb-2 transition ${subSeccionExtra === 'agua' ? 'text-cyan-500 border-b-2 border-cyan-500' : `${textMuted} hover:text-slate-800`}`}>💧 {T.hidratacion}</button>
+                <button onClick={() => setSubSeccionExtra('sueno')} className={`text-xs font-bold pb-2 transition ${subSeccionExtra === 'sueno' ? 'text-violet-500 border-b-2 border-violet-500' : `${textMuted} hover:text-slate-800`}`}>😴 {T.descanso}</button>
               </div>
 
               {subSeccionExtra === 'agua' ? (
                 <div className="space-y-5 text-center">
-                  <p className="text-4xl font-black text-cyan-400 drop-shadow-md">{(aguaMl / 1000).toFixed(2)} <span className="text-sm font-semibold text-slate-500">/ 2.50 L</span></p>
+                  <p className="text-4xl font-black text-cyan-500 drop-shadow-md">{(aguaMl / 1000).toFixed(2)} <span className={`text-sm font-semibold ${textMuted}`}>/ 2.50 L</span></p>
 
                   <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs text-slate-400 font-semibold px-1">
-                      <span>Progreso</span>
+                    <div className={`flex justify-between text-xs ${textMuted} font-semibold px-1`}>
+                      <span>{T.progreso}</span>
                       <span>{Math.min(100, Math.round((aguaMl / metaAguaMl) * 100))}%</span>
                     </div>
-                    <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                    <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
                       <div className="bg-cyan-500 h-full rounded-full transition-all duration-300 shadow-cyan-500/50" style={{ width: `${Math.min(100, (aguaMl / metaAguaMl) * 100)}%` }}></div>
                     </div>
                   </div>
 
                   <div className="flex justify-center gap-2.5 pt-2">
-                    <button onClick={() => modificarAgua(250)} className="bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-800/80 text-cyan-300 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95 shadow-md">+250 ml</button>
-                    <button onClick={() => modificarAgua(500)} className="bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-800/80 text-cyan-300 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95 shadow-md">+500 ml</button>
-                    <button onClick={() => modificarAgua(-250)} className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95">-250 ml</button>
+                    <button onClick={() => modificarAgua(250)} className="bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-500 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95 shadow-md">+250 ml</button>
+                    <button onClick={() => modificarAgua(500)} className="bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-500 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95 shadow-md">+500 ml</button>
+                    <button onClick={() => modificarAgua(-250)} className={`border ${modoOscuro ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-300 text-slate-600'} font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95`}>-250 ml</button>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-5 text-center">
-                  <p className="text-4xl font-black text-violet-400 drop-shadow-md">{suenoHoy.horas_totales} <span className="text-sm font-semibold text-slate-500">/ 8.0 hrs</span></p>
+                  <p className="text-4xl font-black text-violet-500 drop-shadow-md">{suenoHoy.horas_totales} <span className={`text-sm font-semibold ${textMuted}`}>/ 8.0 {T.hrs}</span></p>
 
                   <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs text-slate-400 font-semibold px-1">
-                      <span>Progreso</span>
+                    <div className={`flex justify-between text-xs ${textMuted} font-semibold px-1`}>
+                      <span>{T.progreso}</span>
                       <span>{Math.min(100, Math.round((suenoHoy.horas_totales / 8) * 100))}%</span>
                     </div>
-                    <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800/80 p-0.5">
+                    <div className={`w-full ${bgTrack} rounded-full h-3 overflow-hidden p-0.5`}>
                       <div className="bg-violet-500 h-full rounded-full transition-all duration-300 shadow-violet-500/50" style={{ width: `${Math.min(100, (suenoHoy.horas_totales / 8) * 100)}%` }}></div>
                     </div>
                   </div>
 
                   <div className="flex justify-center gap-4 items-center pt-2">
                     <div>
-                      <label className="text-[10px] text-slate-400 font-medium block mb-1">Acostarse</label>
-                      <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-indigo-300 outline-none w-28 text-center font-bold [color-scheme:dark]" />
+                      <label className={`text-[10px] ${textMuted} font-medium block mb-1`}>{T.acostarse}</label>
+                      <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className={`${timeInputStyle} rounded-xl px-3 py-2 text-xs font-mono outline-none w-28 text-center font-bold`} />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 font-medium block mb-1">Levantarse</label>
-                      <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-indigo-300 outline-none w-28 text-center font-bold [color-scheme:dark]" />
+                      <label className={`text-[10px] ${textMuted} font-medium block mb-1`}>{T.levantarse}</label>
+                      <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className={`${timeInputStyle} rounded-xl px-3 py-2 text-xs font-mono outline-none w-28 text-center font-bold`} />
                     </div>
                   </div>
 
-                  <button onClick={guardarSueno} className={btnPrimary}>💾 Guardar Sueño</button>
+                  <button onClick={guardarSueno} className={btnPrimary}>{T.guardarSueno}</button>
                 </div>
               )}
             </section>
@@ -1400,30 +1639,28 @@ export default function Home() {
           {/* NOVEDADES Y SOPORTE */}
           {seccionActiva === 'actualizaciones' && (
             <section className={`${bgCard} max-w-lg mx-auto space-y-6`}>
-              <div className="flex border-b border-slate-800/80 pb-3 gap-6 justify-center">
-                <button onClick={() => setSubSeccionActualizaciones('novedades')} className={`text-xs font-bold pb-2 transition ${subSeccionActualizaciones === 'novedades' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>🚀 Novedades</button>
-                <button onClick={() => setSubSeccionActualizaciones('soporte')} className={`text-xs font-bold pb-2 transition ${subSeccionActualizaciones === 'soporte' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}>💬 Soporte</button>
+              <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
+                <button onClick={() => setSubSeccionActualizaciones('novedades')} className={`text-xs font-bold pb-2 transition ${subSeccionActualizaciones === 'novedades' ? 'text-indigo-500 border-b-2 border-indigo-500' : `${textMuted} hover:text-slate-800`}`}>🚀 {T.novedades}</button>
+                <button onClick={() => setSubSeccionActualizaciones('soporte')} className={`text-xs font-bold pb-2 transition ${subSeccionActualizaciones === 'soporte' ? 'text-indigo-500 border-b-2 border-indigo-500' : `${textMuted} hover:text-slate-800`}`}>💬 {T.soporte}</button>
               </div>
 
               {subSeccionActualizaciones === 'novedades' ? (
-                <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 text-xs text-slate-300 space-y-2.5">
-                  <p className="font-bold text-slate-100 text-sm">Versión de la app: {ULTIMA_ACTUALIZACION_APP}</p>
-                  <p>• Pestaña de referencias de colores corregida: se muestra directamente arriba sin desplazamiento ni fondo negro.</p>
-                  <p>• Formato de Fecha de Nacimiento uniformado con placeholder `DD/MM/AAAA` y tamaño exacto al resto de casillas.</p>
-                  <p>• Contador de "Total calorías quemadas hoy" actualizado para sumar el gasto metabólico basal más los ejercicios realizados.</p>
-                  <p>• Mensaje de error al fallar credenciales configurado explícitamente en español.</p>
-                  <p>• Selector de Modo Oscuro / Modo Claro e Idioma (Español, Inglés y Portugués) agregado al menú lateral.</p>
+                <div className={`${bgInnerCard} p-5 rounded-2xl border text-xs space-y-2.5`}>
+                  <p className="font-bold text-sm">{T.versionApp}: {ULTIMA_ACTUALIZACION_APP}</p>
+                  <p>• Formato automático de fecha de nacimiento (`DD/MM/AAAA`) integrado.</p>
+                  <p>• Modo Claro mejorado con visibilidad optimizada en menú, flechas, tarjetas de hábitos y soporte.</p>
+                  <p>• Traducción completa de títulos, opciones y estados al Inglés y Portugués.</p>
                 </div>
               ) : (
-                <form onSubmit={enviarSoporte} className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 space-y-4">
+                <form onSubmit={enviarSoporte} className={`${bgInnerCard} p-5 rounded-2xl border space-y-4`}>
                   <select value={tipoSoporte} onChange={(e) => setTipoSoporte(e.target.value)} className={`${bgInput} font-semibold`}>
-                    <option value="" disabled>-- Tipo de mensaje --</option>
-                    <option value="Sugerencia">💡 Sugerencia</option>
-                    <option value="Duda">❓ Duda</option>
-                    <option value="Error">⚠️ Reporte de error</option>
+                    <option value="" disabled>{T.tipoMensajePlaceholder}</option>
+                    <option value="Sugerencia">{T.sugerencia}</option>
+                    <option value="Duda">{T.duda}</option>
+                    <option value="Error">{T.reporteError}</option>
                   </select>
-                  <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder="Escribe tu mensaje..." className={bgInput} required />
-                  <button type="submit" className={btnPrimary}>✉️ Enviar Comentario</button>
+                  <textarea rows={4} value={mensajeSoporte} onChange={(e) => setMensajeSoporte(e.target.value)} placeholder={T.escribeMensaje} className={bgInput} required />
+                  <button type="submit" className={btnPrimary}>{T.enviarComentario}</button>
                 </form>
               )}
             </section>
