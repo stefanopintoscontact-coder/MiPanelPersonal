@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
 // FECHA Y HORA FIJA DE LA ÚLTIMA ACTUALIZACIÓN
-const ULTIMA_ACTUALIZACION_APP = '2/8/2026';
+const ULTIMA_ACTUALIZACION_APP = '3/8/2026';
 
 // TRADUCCIONES Y SISTEMA MULTI-IDIOMA
 type Idioma = 'es' | 'en' | 'pt';
@@ -99,11 +99,11 @@ const TEXTOS = {
     enviarComentario: '✉️ Enviar Comentario',
     alertaSoporte: '⚠️ Completa el formulario',
     refRojoTitulo: 'Rojo y Vacío (0%):',
-    refRojoDesc: 'Estás lejos de tu objetivo o en dirección opuesta (ej. estar en déficit calórico cuando buscas subir de peso, o no haber registrado agua/hábitos).',
+    refRojoDesc: 'Estás lejos de tu objetivo o en dirección opuesta.',
     refAmarilloTitulo: 'Amarillo a la Mitad (50%):',
-    refAmarilloDesc: 'Progreso intermedio o superávit/déficit leve. Vas por buen camino pero aún te falta para la meta óptima del día.',
+    refAmarilloDesc: 'Progreso intermedio o superávit/déficit leve.',
     refVerdeTitulo: 'Verde Lleno (100%):',
-    refVerdeDesc: '¡Meta diaria alcanzada con éxito! Has conseguido el rango ideal para tu balance calórico, hidratación o rutina.',
+    refVerdeDesc: '¡Meta diaria alcanzada con éxito!',
     msgDeficitLejos: 'Déficit (Lejos del objetivo)',
     msgSuperavitBajo: 'Superávit bajo',
     msgSuperavitOptimo: '¡Superávit óptimo!',
@@ -117,14 +117,14 @@ const TEXTOS = {
     subSeccionNutricion: '🥗 Nutrición',
     subSeccionEntrenamiento: '🏋️ Actividad Física',
     nuevaComida: 'Nueva Comida',
-    novedadesItem1: '• Formato automático de fecha de nacimiento (DD/MM/AAAA) integrado.',
-    novedadesItem2: '• Modo Claro mejorado con visibilidad optimizada en toda la interfaz.',
-    novedadesItem3: '• Traducción completa multilenguaje (Español, Inglés y Portugués).',
-    novedadesItem4: '• Nueva pestaña de Alertas para recordatorios inteligentes de comidas, agua, entrenamientos y hábitos.',
+    novedadesItem1: '• Notificaciones reales en primer/segundo plano con sonidos y alertas programadas.',
+    novedadesItem2: '• Conservación de comidas al cambiar de día (solo resetea las calorías a 0).',
+    novedadesItem3: '• Horarios de alertas guardados permanentemente.',
+    novedadesItem4: '• Recordatorio de agua exclusivo durante tu horario despierto (entre desayuno y cena).',
     configAlertas: 'Configuración de Alertas',
     activarNotificaciones: '🔔 Activar Notificaciones Navegador',
     alertaEntrenar: '🏋️ Hora de Entrenar',
-    alertaAgua: '💧 Recordatorio de Agua',
+    alertaAgua: '💧 Recordatorio de Agua (Entre Desayuno y Cena)',
     alertaDesayuno: '🍳 Horario Desayuno',
     alertaAlmuerzo: '🥗 Horario Almuerzo',
     alertaMerienda: '🍎 Horario Merienda',
@@ -238,14 +238,14 @@ const TEXTOS = {
     subSeccionNutricion: '🥗 Nutrition',
     subSeccionEntrenamiento: '🏋️ Physical Activity',
     nuevaComida: 'New Meal',
-    novedadesItem1: '• Integrated automatic birth date formatting (DD/MM/YYYY).',
-    novedadesItem2: '• Improved Light Mode with optimized visibility across all screens.',
-    novedadesItem3: '• Full multilingual support (Spanish, English, and Portuguese).',
-    novedadesItem4: '• New Alerts tab with smart reminders for meals, water, workouts, and habits.',
+    novedadesItem1: '• Real browser background notifications with full alert engine.',
+    novedadesItem2: '• Preserved meal lists when changing days (only clears numbers).',
+    novedadesItem3: '• Persistent saved alert schedule.',
+    novedadesItem4: '• Water reminder active only between breakfast and dinner.',
     configAlertas: 'Alerts Configuration',
     activarNotificaciones: '🔔 Enable Browser Notifications',
     alertaEntrenar: '🏋️ Workout Time',
-    alertaAgua: '💧 Water Reminder Interval',
+    alertaAgua: '💧 Water Reminder (Between Breakfast and Dinner)',
     alertaDesayuno: '🍳 Breakfast Time',
     alertaAlmuerzo: '🥗 Lunch Time',
     alertaMerienda: '🍎 Snack Time',
@@ -320,7 +320,7 @@ const TEXTOS = {
     natacion: '🏊 Natação',
     caminata: '🚶 Caminhada',
     funcional: '🤸 Funcional / HIIT',
-    otro: '⚡ Outro',
+    otro: 'Outro',
     hidratacion: 'Hidratação',
     descanso: 'Descanso',
     progreso: 'Progresso',
@@ -359,14 +359,14 @@ const TEXTOS = {
     subSeccionNutricion: '🥗 Nutrição',
     subSeccionEntrenamiento: '🏋️ Atividade Física',
     nuevaComida: 'Nova Refeição',
-    novedadesItem1: '• Formatação automática de data de nascimento (DD/MM/AAAA) integrada.',
-    novedadesItem2: '• Modo Claro aprimorado com visibilidade otimizada em todas as telas.',
-    novedadesItem3: '• Tradução completa multilíngue (Espanhol, Inglês e Português).',
-    novedadesItem4: '• Nova aba de Alertas com lembretes inteligentes para refeições, água, treinos e hábitos.',
+    novedadesItem1: '• Notificações reais no navegador com motor completo de alertas.',
+    novedadesItem2: '• Refeições salvas ao mudar de dia (só zera os números).',
+    novedadesItem3: '• Horários de alertas salvos permanentemente.',
+    novedadesItem4: '• Lembrete de água ativo apenas entre o café da manhã e o jantar.',
     configAlertas: 'Configuração de Alertas',
     activarNotificaciones: '🔔 Ativar Notificações do Navegador',
     alertaEntrenar: '🏋️ Hora de Treinar',
-    alertaAgua: '💧 Lembrete de Água',
+    alertaAgua: '💧 Lembrete de Água (Entre Café e Jantar)',
     alertaDesayuno: '🍳 Horário Café da Manhã',
     alertaAlmuerzo: '🥗 Horário Almoço',
     alertaMerienda: '🍎 Horário Lanche',
@@ -397,6 +397,7 @@ interface PerfilUsuario {
   kilos_objetivo: number;
   tiempo_objetivo_meses: number;
   porcentaje_probabilidad: number;
+  config_alertas?: ConfigAlertas;
 }
 
 interface Habito {
@@ -453,6 +454,16 @@ const COMIDAS_POR_DEFECTO: ItemComida[] = [
   { id: '5', nombre: '🥑 Snacks / Extra', calorias: 0 },
 ];
 
+const CONFIG_ALERTAS_DEFECTO: ConfigAlertas = {
+  horaEntrenar: '18:00',
+  horaDesayuno: '08:00',
+  horaAlmuerzo: '13:00',
+  horaMerienda: '17:00',
+  horaCena: '21:00',
+  intervaloAguaHoras: 1,
+  notificacionesPermitidas: false,
+};
+
 const obtenerFechaLogica = () => {
   const ahora = new Date();
   const fechaAjustada = new Date(ahora.getTime() - 4 * 60 * 60 * 1000);
@@ -482,7 +493,7 @@ const calcularEdad = (fechaStr: string): number => {
   return edad > 0 ? edad : 25;
 };
 
-// COMPONENTE LOGO CON FALLBACK INTELIGENTE (EVITA MUESTRA DE IMAGEN ROTA)
+// COMPONENTE LOGO CON FALLBACK INTELIGENTE
 const LogoImage = ({ className = "w-20 h-20" }: { className?: string }) => {
   const [errorCarga, setErrorCarga] = useState(false);
 
@@ -535,7 +546,7 @@ export default function Home() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setMostrarSplash(false);
-    }, 2500);
+    }, 2200);
     return () => clearTimeout(timer);
   }, []);
 
@@ -566,16 +577,87 @@ export default function Home() {
   const [subSeccionActualizaciones, setSubSeccionActualizaciones] = useState<'novedades' | 'soporte'>('novedades');
   const [mostrarReferencias, setMostrarReferencias] = useState(false);
 
-  // ALERTAS Y NOTIFICACIONES
-  const [configAlertas, setConfigAlertas] = useState<ConfigAlertas>({
-    horaEntrenar: '18:00',
-    horaDesayuno: '08:00',
-    horaAlmuerzo: '13:00',
-    horaMerienda: '17:00',
-    horaCena: '21:00',
-    intervaloAguaHoras: 1,
-    notificacionesPermitidas: false,
-  });
+  // ALERTAS Y NOTIFICACIONES CON PERSISTENCIA
+  const [configAlertas, setConfigAlertas] = useState<ConfigAlertas>(CONFIG_ALERTAS_DEFECTO);
+
+  // CARGAR CONFIGURACIÓN DE ALERTAS AL INICIAR
+  useEffect(() => {
+    const guardadas = localStorage.getItem('fitcero_alertas');
+    if (guardadas) {
+      try {
+        setConfigAlertas(JSON.parse(guardadas));
+      } catch (e) {
+        console.error('Error al cargar alertas locales', e);
+      }
+    }
+  }, []);
+
+  const guardarAlertasConfig = (nuevaConfig: ConfigAlertas) => {
+    setConfigAlertas(nuevaConfig);
+    localStorage.setItem('fitcero_alertas', JSON.stringify(nuevaConfig));
+
+    if (session?.user) {
+      supabase.from('perfil_usuario').upsert(
+        { user_id: session.user.id, config_alertas: nuevaConfig },
+        { onConflict: 'user_id' }
+      );
+    }
+    alert('✅ Configuración de alertas guardada exitosamente.');
+  };
+
+  // MOTOR DE ALERTAS EN TIEMPO REAL (REVISIÓN CADA 30 SEGUNDOS)
+  useEffect(() => {
+    if (!configAlertas.notificacionesPermitidas) return;
+
+    let notificacionesLanzadas: Record<string, string> = {};
+
+    const timer = setInterval(() => {
+      const ahora = new Date();
+      const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
+      const fechaHoy = ahora.toISOString().split('T')[0];
+
+      const enviar = (clave: string, titulo: string, cuerpo: string) => {
+        const idUnico = `${fechaHoy}_${horaActual}_${clave}`;
+        if (notificacionesLanzadas[clave] !== idUnico) {
+          notificacionesLanzadas[clave] = idUnico;
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(titulo, { body: cuerpo, icon: '/logo.png' });
+          }
+        }
+      };
+
+      if (configAlertas.horaEntrenar === horaActual) {
+        enviar('entrenar', '🏋️ FitCero: ¡Hora de Entrenar!', 'Es momento de cumplir con tu actividad física del día.');
+      }
+      if (configAlertas.horaDesayuno === horaActual) {
+        enviar('desayuno', '🍳 FitCero: Horario de Desayuno', 'Registra tus alimentos para mantener tu balance calórico.');
+      }
+      if (configAlertas.horaAlmuerzo === horaActual) {
+        enviar('almuerzo', '🥗 FitCero: Horario de Almuerzo', 'Recuerda ingresar lo que comiste al almuerzo.');
+      }
+      if (configAlertas.horaMerienda === horaActual) {
+        enviar('merienda', '🍎 FitCero: Horario de Merienda', 'Momento ideal para recargar energías con un snack saludable.');
+      }
+      if (configAlertas.horaCena === horaActual) {
+        enviar('cena', '🍗 FitCero: Horario de Cena', 'Registra tu última comida del día.');
+      }
+
+      // Recordatorio de agua: estricto entre el horario del desayuno y la cena (para no sonar de noche)
+      if (configAlertas.horaDesayuno && configAlertas.horaCena) {
+        if (horaActual >= configAlertas.horaDesayuno && horaActual <= configAlertas.horaCena) {
+          const [hAct, mAct] = horaActual.split(':').map(Number);
+          const minTotales = hAct * 60 + mAct;
+          const intervaloMin = Math.max(30, configAlertas.intervaloAguaHoras * 60);
+
+          if (minTotales % intervaloMin === 0) {
+            enviar('agua', '💧 FitCero: Recordatorio de Agua', '¡No olvides beber un vaso de agua para mantener tu hidratación!');
+          }
+        }
+      }
+    }, 25000);
+
+    return () => clearInterval(timer);
+  }, [configAlertas]);
 
   // SOPORTE
   const [tipoSoporte, setTipoSoporte] = useState('');
@@ -628,9 +710,9 @@ export default function Home() {
   const bgInnerCardSubtle = modoOscuro ? "bg-slate-950/60 border-slate-800/80 text-slate-100" : "bg-slate-100/80 border-slate-200 text-slate-900 shadow-sm";
   const bgTrack = modoOscuro ? "bg-slate-950 border-slate-800/80" : "bg-slate-200 border-slate-300";
   const textMuted = modoOscuro ? "text-slate-400" : "text-slate-500";
-  const timeInputStyle = modoOscuro ? "bg-slate-900 border-slate-800 text-indigo-300 [color-scheme:dark]" : "bg-white border-slate-300 text-indigo-600 [color-scheme:light]";
+  const timeInputStyle = modoOscuro ? "bg-slate-950 border-slate-800 text-indigo-300 [color-scheme:dark]" : "bg-white border-slate-300 text-indigo-600 [color-scheme:light]";
 
-  // FIX DE SIMETRÍA PARA INPUTS (SIN DESBORDARSE)
+  // FIX DE SIMETRÍA Y TAMAÑOS
   const bgInput = modoOscuro 
     ? "w-full max-w-full box-border bg-slate-950/80 border border-slate-800/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 transition-all duration-200 placeholder:text-slate-600 outline-none hover:border-slate-700 font-medium [color-scheme:dark]" 
     : "w-full max-w-full box-border bg-white border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 transition-all duration-200 placeholder:text-slate-400 outline-none hover:border-slate-400 font-medium [color-scheme:light]";
@@ -686,7 +768,9 @@ export default function Home() {
     if ('Notification' in window) {
       const permiso = await Notification.requestPermission();
       if (permiso === 'granted') {
-        setConfigAlertas(prev => ({ ...prev, notificacionesPermitidas: true }));
+        const nueva = { ...configAlertas, notificacionesPermitidas: true };
+        setConfigAlertas(nueva);
+        localStorage.setItem('fitcero_alertas', JSON.stringify(nueva));
         new Notification('FitCero Alertas', { body: '¡Notificaciones activadas con éxito!' });
       } else {
         alert('Permiso de notificaciones denegado en el navegador.');
@@ -747,13 +831,20 @@ export default function Home() {
     await supabase.auth.signOut();
   };
 
+  // CORDENACIÓN Y RETENCIÓN DE COMIDAS / ACTIVIDADES AL CAMBIAR DE DÍA
   const cargarDatos = async () => {
     const user = session?.user;
     if (!user) return;
     setDatosCargados(false);
 
     const { data: datosPerfil } = await supabase.from('perfil_usuario').select('*').eq('user_id', user.id).maybeSingle();
-    if (datosPerfil) setPerfil(datosPerfil);
+    if (datosPerfil) {
+      setPerfil(datosPerfil);
+      if (datosPerfil.config_alertas) {
+        setConfigAlertas(datosPerfil.config_alertas);
+        localStorage.setItem('fitcero_alertas', JSON.stringify(datosPerfil.config_alertas));
+      }
+    }
 
     const { data: datosHabitos } = await supabase.from('habitos').select('*').eq('user_id', user.id);
     if (datosHabitos) {
@@ -769,12 +860,34 @@ export default function Home() {
     setRegistrosHoy(mapaRegistros);
 
     const { data: datosCalorias } = await supabase.from('registro_calorias').select('*').eq('user_id', user.id).eq('fecha', fechaSeleccionada).maybeSingle();
+    
     if (datosCalorias) {
       setAguaMl(datosCalorias.agua_ml ?? 0);
       setEjercicios(datosCalorias.ejercicios || []);
       setComidas(datosCalorias.comidas?.length ? datosCalorias.comidas : COMIDAS_POR_DEFECTO);
     } else {
-      setAguaMl(0); setEjercicios([]); setComidas(COMIDAS_POR_DEFECTO);
+      // SI ES UN NUEVO DÍA: Conservar las comidas que el usuario tenía creadas, PERO BORRAR SOLO LOS NÚMEROS (calorias = 0)
+      const { data: ultimoRegistro } = await supabase
+        .from('registro_calorias')
+        .select('comidas')
+        .eq('user_id', user.id)
+        .order('fecha', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let comidasAUsar = COMIDAS_POR_DEFECTO;
+      if (ultimoRegistro?.comidas?.length) {
+        comidasAUsar = ultimoRegistro.comidas.map((item: ItemComida) => ({
+          ...item,
+          calorias: 0 // Solo borrar números
+        }));
+      } else {
+        comidasAUsar = COMIDAS_POR_DEFECTO.map(item => ({ ...item, calorias: 0 }));
+      }
+
+      setAguaMl(0);
+      setEjercicios([]); // Resetear la lista de ejercicios diarios
+      setComidas(comidasAUsar);
     }
 
     const { data: datosSueno } = await supabase.from('registro_sueno').select('*').eq('user_id', user.id).eq('fecha', fechaSeleccionada).maybeSingle();
@@ -811,7 +924,7 @@ export default function Home() {
   useEffect(() => {
     if (!session?.user || !datosCargados) return;
     const timer = setTimeout(() => {
-      supabase.from('perfil_usuario').upsert({ user_id: session.user.id, ...perfil }, { onConflict: 'user_id' });
+      supabase.from('perfil_usuario').upsert({ user_id: session.user.id, ...perfil, config_alertas: configAlertas }, { onConflict: 'user_id' });
     }, 1000);
     return () => clearTimeout(timer);
   }, [perfil, session, datosCargados]);
@@ -835,7 +948,7 @@ export default function Home() {
     if (!session?.user) return;
     setGuardandoPerfil(true);
     try {
-      const { error } = await supabase.from('perfil_usuario').upsert({ user_id: session.user.id, ...perfil }, { onConflict: 'user_id' });
+      const { error } = await supabase.from('perfil_usuario').upsert({ user_id: session.user.id, ...perfil, config_alertas: configAlertas }, { onConflict: 'user_id' });
       if (error) throw error;
       alert(T.perfilGuardado);
     } catch (err: any) {
@@ -1072,7 +1185,7 @@ export default function Home() {
     }
   };
 
-  // 1. SPLASH SCREEN CON ANIMACIONES Y LOGO MEJORADO
+  // SPLASH SCREEN
   if (mostrarSplash) {
     return (
       <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center ${modoOscuro ? 'bg-[#0b0f17] text-white' : 'bg-slate-900 text-white'} transition-all duration-500 p-4 text-center`}>
@@ -1087,7 +1200,7 @@ export default function Home() {
 
   if (cargandoSesion) return <div className="min-h-screen bg-slate-950 text-indigo-400 flex items-center justify-center font-sans animate-pulse text-sm">⚡ Cargando FitCero...</div>;
 
-  // 2. MENÚ DE INICIAR SESIÓN CON SIMETRÍA Y ANIMACIONES
+  // LOGIN / REGISTRO
   if (!session) {
     return (
       <div className={`min-h-screen ${bgApp} flex items-center justify-center p-4 font-sans relative overflow-hidden transition-colors duration-300`}>
@@ -1171,7 +1284,7 @@ export default function Home() {
   return (
     <div className={`min-h-screen ${bgApp} flex flex-col md:flex-row font-sans transition-colors duration-300 selection:bg-indigo-500 selection:text-white`}>
       
-      {/* ANIMACIONES GLOBALES OPTIMIZADAS */}
+      {/* ANIMACIONES CSS */}
       <style jsx global>{`
         @keyframes fadeInTab {
           from { opacity: 0; transform: translateY(8px) scale(0.99); }
@@ -1181,11 +1294,19 @@ export default function Home() {
           0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.3)); }
           50% { transform: scale(1.02); filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.5)); }
         }
+        @keyframes checkBounce {
+          0% { transform: scale(0.8); }
+          50% { transform: scale(1.25); }
+          100% { transform: scale(1); }
+        }
         .animar-pestana {
           animation: fadeInTab 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .animar-logo {
           animation: pulseGlow 3s infinite ease-in-out;
+        }
+        .animar-check {
+          animation: checkBounce 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
         .card-hover {
           transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1195,7 +1316,7 @@ export default function Home() {
         }
       `}</style>
 
-      {/* MENÚ LATERAL Y CABECERA CON LOGO Y NOMBRE */}
+      {/* MENÚ LATERAL Y CABECERA (LOGO QUITADO DE AL LADO DEL MENÚ) */}
       <aside className={`${modoOscuro ? 'bg-slate-900/90 border-slate-800/80 text-slate-100' : 'bg-white/95 border-slate-200 text-slate-900 shadow-xl'} backdrop-blur-xl border-b md:border-b-0 md:border-r transition-all duration-300 flex flex-col justify-between shrink-0 ${sidebarAbierto ? 'fixed inset-0 z-50 w-full h-full md:relative md:w-64' : 'w-full md:w-20'}`}>
         <div>
           <div className={`p-4 flex items-center justify-between border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} gap-2`}>
@@ -1208,8 +1329,8 @@ export default function Home() {
               <span className="text-xs font-black uppercase tracking-wider">{T.menu}</span>
             </button>
             
-            <div className="flex items-center gap-2 font-black text-indigo-500 text-sm sm:text-base tracking-tight">
-              <LogoImage className="w-7 h-7" />
+            {/* SOLO EL TEXTO FITCERO (SIN LOGO AL LADO DEL MENÚ) */}
+            <div className="flex items-center gap-2 font-black text-indigo-500 text-base sm:text-lg tracking-tight">
               <span>FitCero</span>
             </div>
 
@@ -1457,7 +1578,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* PERFIL (SIMETRÍA MEJORADA) */}
+          {/* PERFIL */}
           {seccionActiva === 'perfil' && (
             <section className={`${bgCard} max-w-xl mx-auto space-y-6`}>
               <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
@@ -1555,27 +1676,27 @@ export default function Home() {
             </section>
           )}
 
-          {/* HÁBITOS */}
+          {/* HÁBITOS (REAJUSTADO EL TAMAÑO DE LA HORA Y BOTÓN AÑADIR) */}
           {seccionActiva === 'habitos' && (
             <section className={`${bgCard} space-y-6 max-w-2xl mx-auto`}>
-              <form onSubmit={agregarHabito} className={`flex flex-col sm:flex-row gap-2 ${bgInnerCard} p-2.5 rounded-2xl border items-center shadow-inner w-full`}>
-                <div className="flex-1 w-full min-w-0">
+              <form onSubmit={agregarHabito} className={`flex flex-wrap sm:flex-nowrap gap-2 ${bgInnerCard} p-3 rounded-2xl border items-center shadow-inner w-full`}>
+                <div className="flex-1 min-w-[180px] w-full">
                   <input 
                     type="text" 
                     placeholder={T.habitoPlaceholder} 
                     value={nuevoHabito} 
                     onChange={(e) => setNuevoHabito(e.target.value)} 
-                    className={`${bgInput}`} 
+                    className={bgInput} 
                   />
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto shrink-0">
+                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                   <input 
                     type="time" 
                     value={horaObjetivo} 
                     onChange={(e) => setHoraObjetivo(e.target.value)} 
-                    className={`${timeInputStyle} rounded-xl px-2 py-2.5 text-xs font-mono w-full sm:w-20 text-center shrink-0 outline-none focus:border-indigo-500 font-bold`} 
+                    className={`${timeInputStyle} rounded-xl px-2.5 py-2 text-xs font-mono font-bold text-center border outline-none focus:border-indigo-500 w-24 shrink-0`} 
                   />
-                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shrink-0 transition active:scale-95 shadow-lg shadow-indigo-600/30 w-full sm:w-auto">
+                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition active:scale-95 shadow-md shadow-indigo-600/30 whitespace-nowrap shrink-0">
                     {T.anadir}
                   </button>
                 </div>
@@ -1605,7 +1726,7 @@ export default function Home() {
                       </div>
 
                       <div className="flex items-center gap-3 pt-1">
-                        <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-all ${completado ? 'bg-linear-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-md shadow-indigo-600/40' : 'border-slate-400 hover:border-indigo-500'}`}>
+                        <button onClick={() => alternarHabito(h.id)} className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-all ${completado ? 'bg-linear-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-md shadow-indigo-600/40 animar-check' : 'border-slate-400 hover:border-indigo-500'}`}>
                           {completado && '✓'}
                         </button>
                         <span className={`text-xs font-bold break-words flex-1 leading-normal ${completado ? 'line-through text-slate-400' : modoOscuro ? 'text-slate-100' : 'text-slate-800'}`}>
@@ -1619,7 +1740,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* NUTRICIÓN (CUADROS SIMÉTRICOS) */}
+          {/* NUTRICIÓN Y ACTIVIDAD FÍSICA */}
           {seccionActiva === 'nutricion' && (
             <section className={`${bgCard} max-w-3xl mx-auto space-y-6`}>
               <div className={`flex border-b ${modoOscuro ? 'border-slate-800/80' : 'border-slate-200'} pb-3 gap-6 justify-center`}>
@@ -1769,11 +1890,11 @@ export default function Home() {
                   <div className="flex justify-center gap-4 items-center pt-2">
                     <div>
                       <label className={`text-[10px] ${textMuted} font-medium block mb-1`}>{T.acostarse}</label>
-                      <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className={`${timeInputStyle} rounded-xl px-3 py-2 text-xs font-mono outline-none w-28 text-center font-bold`} />
+                      <input type="time" value={suenoHoy.hora_acostarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_acostarse: e.target.value})} className={`${timeInputStyle} rounded-xl px-3 py-2 text-xs font-mono border outline-none w-28 text-center font-bold`} />
                     </div>
                     <div>
                       <label className={`text-[10px] ${textMuted} font-medium block mb-1`}>{T.levantarse}</label>
-                      <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className={`${timeInputStyle} rounded-xl px-3 py-2 text-xs font-mono outline-none w-28 text-center font-bold`} />
+                      <input type="time" value={suenoHoy.hora_levantarse} onChange={(e) => setSuenoHoy({...suenoHoy, hora_levantarse: e.target.value})} className={`${timeInputStyle} rounded-xl px-3 py-2 text-xs font-mono border outline-none w-28 text-center font-bold`} />
                     </div>
                   </div>
 
@@ -1783,7 +1904,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* ALERTAS ACTUALIZADAS */}
+          {/* ALERTAS (CUADROS ACHICADOS Y SIMÉTRICOS) */}
           {seccionActiva === 'alertas' && (
             <section className={`${bgCard} max-w-lg mx-auto space-y-5`}>
               <h3 className="text-sm font-bold text-center uppercase tracking-wider">{T.configAlertas}</h3>
@@ -1794,33 +1915,38 @@ export default function Home() {
 
               <div className="space-y-3.5 pt-2">
                 
-                <div className={`${bgInnerCardSubtle} p-3.5 rounded-2xl border space-y-1 w-full`}>
+                <div className={`${bgInnerCardSubtle} p-3.5 rounded-2xl border space-y-2 text-center w-full`}>
                   <label className={`text-xs font-bold block ${textMuted}`}>{T.alertaEntrenar}</label>
-                  <input type="time" value={configAlertas.horaEntrenar} onChange={(e) => setConfigAlertas({...configAlertas, horaEntrenar: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2.5 text-xs font-mono text-center font-bold`} />
+                  <input 
+                    type="time" 
+                    value={configAlertas.horaEntrenar} 
+                    onChange={(e) => setConfigAlertas({...configAlertas, horaEntrenar: e.target.value})} 
+                    className={`${timeInputStyle} w-28 mx-auto rounded-xl p-2 text-xs font-mono text-center font-bold border block`} 
+                  />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 w-full">
-                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1 w-full`}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1.5 text-center w-full`}>
                     <label className={`text-[10px] font-bold block ${textMuted}`}>{T.alertaDesayuno}</label>
-                    <input type="time" value={configAlertas.horaDesayuno} onChange={(e) => setConfigAlertas({...configAlertas, horaDesayuno: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
+                    <input type="time" value={configAlertas.horaDesayuno} onChange={(e) => setConfigAlertas({...configAlertas, horaDesayuno: e.target.value})} className={`${timeInputStyle} w-24 mx-auto rounded-xl p-2 text-xs font-mono text-center font-bold border block`} />
                   </div>
-                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1 w-full`}>
+                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1.5 text-center w-full`}>
                     <label className={`text-[10px] font-bold block ${textMuted}`}>{T.alertaAlmuerzo}</label>
-                    <input type="time" value={configAlertas.horaAlmuerzo} onChange={(e) => setConfigAlertas({...configAlertas, horaAlmuerzo: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
+                    <input type="time" value={configAlertas.horaAlmuerzo} onChange={(e) => setConfigAlertas({...configAlertas, horaAlmuerzo: e.target.value})} className={`${timeInputStyle} w-24 mx-auto rounded-xl p-2 text-xs font-mono text-center font-bold border block`} />
                   </div>
-                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1 w-full`}>
+                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1.5 text-center w-full`}>
                     <label className={`text-[10px] font-bold block ${textMuted}`}>{T.alertaMerienda}</label>
-                    <input type="time" value={configAlertas.horaMerienda} onChange={(e) => setConfigAlertas({...configAlertas, horaMerienda: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
+                    <input type="time" value={configAlertas.horaMerienda} onChange={(e) => setConfigAlertas({...configAlertas, horaMerienda: e.target.value})} className={`${timeInputStyle} w-24 mx-auto rounded-xl p-2 text-xs font-mono text-center font-bold border block`} />
                   </div>
-                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1 w-full`}>
+                  <div className={`${bgInnerCardSubtle} p-3 rounded-2xl border space-y-1.5 text-center w-full`}>
                     <label className={`text-[10px] font-bold block ${textMuted}`}>{T.alertaCena}</label>
-                    <input type="time" value={configAlertas.horaCena} onChange={(e) => setConfigAlertas({...configAlertas, horaCena: e.target.value})} className={`${timeInputStyle} w-full rounded-xl p-2 text-xs font-mono text-center font-bold`} />
+                    <input type="time" value={configAlertas.horaCena} onChange={(e) => setConfigAlertas({...configAlertas, horaCena: e.target.value})} className={`${timeInputStyle} w-24 mx-auto rounded-xl p-2 text-xs font-mono text-center font-bold border block`} />
                   </div>
                 </div>
 
-                <div className={`${bgInnerCardSubtle} p-3.5 rounded-2xl border space-y-1 w-full`}>
+                <div className={`${bgInnerCardSubtle} p-3.5 rounded-2xl border space-y-2 text-center w-full`}>
                   <label className={`text-xs font-bold block ${textMuted}`}>{T.alertaAgua}</label>
-                  <select value={configAlertas.intervaloAguaHoras} onChange={(e) => setConfigAlertas({...configAlertas, intervaloAguaHoras: Number(e.target.value)})} className={`${bgInput} font-bold text-center`}>
+                  <select value={configAlertas.intervaloAguaHoras} onChange={(e) => setConfigAlertas({...configAlertas, intervaloAguaHoras: Number(e.target.value)})} className={`${bgInput} font-bold text-center w-48 mx-auto block`}>
                     <option value={0.5}>Cada 30 minutos</option>
                     <option value={1}>Cada 1 hora</option>
                     <option value={2}>Cada 2 horas</option>
@@ -1830,7 +1956,7 @@ export default function Home() {
 
               </div>
 
-              <button onClick={() => alert('✅ Configuración de alertas guardada exitosamente.')} className={btnPrimary}>
+              <button onClick={() => guardarAlertasConfig(configAlertas)} className={btnPrimary}>
                 {T.guardarAlertas}
               </button>
             </section>
